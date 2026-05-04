@@ -12,7 +12,7 @@ import kotlin.properties.ReadOnlyProperty
  * library-specific delegate methods that call [register] with a
  * `materializer` lambda for any live state they need to build alongside
  * the wire-data entry. In skeleton mode the materializer is skipped and
- * only [entries] is populated — used by `bindTyped` to recover typed
+ * only [entries] is populated — used by [bindTyped] to recover typed
  * delegate keys without paying for unused live state.
  */
 abstract class LiveSchema<C : Any> {
@@ -22,8 +22,17 @@ abstract class LiveSchema<C : Any> {
     /** Captured at construction from [LiveSchema.currentSkeletonMode]. */
     val skeletonMode: Boolean = currentSkeletonMode
 
-    /** Append a `Named<C>` to [entries]. Exposed for delegates that don't fit [register]. */
+    /**
+     * Append a [Named] entry to [entries]. Throws if [name] is already
+     * present — names are entry identity, duplicates are always a bug.
+     * Property-delegate-built entries can't collide (Kotlin enforces unique
+     * property names per class), but [add] is exposed for delegates that
+     * don't fit [register] and so does need this check.
+     */
     protected fun add(name: String, config: C) {
+        require(_entries.none { it.name == name }) {
+            "Duplicate entry name '$name' in ${this::class.simpleName ?: "schema"}"
+        }
         _entries.add(Named(name, config))
     }
 
@@ -52,6 +61,30 @@ abstract class LiveSchema<C : Any> {
         ReadOnlyProperty { _, _ -> key }
     }
 
+    /**
+     * Hook called by [definition] before producing the wire form. Override
+     * to enforce cross-entry invariants (e.g. "schema must be non-empty",
+     * "entry X must precede entry Y", referential integrity between
+     * config fields). Throw on violation; the message surfaces to
+     * [bindTyped] callers and HTTP / config-load error logs.
+     *
+     * Default: no-op.
+     */
+    protected open fun validate(entries: List<Named<C>>) {}
+
+    /**
+     * Pure-data, serializable view of this schema. Library subclasses
+     * override only when they need a wider wire shape (e.g. klause adds a
+     * separate `constraints` list); the default returns
+     * `SchemaDef(entries)`.
+     *
+     * Calls [validate] before producing the snapshot.
+     */
+    open fun definition(): SchemaDef<C> {
+        validate(_entries)
+        return SchemaDef(_entries.toList())
+    }
+
     companion object {
         /**
          * When `true`, [LiveSchema] subclasses constructed *during this call*
@@ -72,6 +105,21 @@ abstract class LiveSchema<C : Any> {
             currentSkeletonMode = true
             try {
                 return factory()
+            } finally {
+                currentSkeletonMode = prev
+            }
+        }
+
+        /**
+         * Run an arbitrary [block] in skeleton mode. Use when you need a
+         * scope but aren't returning a `LiveSchema` directly (e.g.
+         * comparing two factories).
+         */
+        inline fun <R> withSkeleton(block: () -> R): R {
+            val prev = currentSkeletonMode
+            currentSkeletonMode = true
+            try {
+                return block()
             } finally {
                 currentSkeletonMode = prev
             }

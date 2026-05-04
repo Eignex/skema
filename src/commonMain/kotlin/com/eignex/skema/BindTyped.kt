@@ -10,7 +10,7 @@ package com.eignex.skema
  * fun <T : StatSchema> StatSchemaDef.bindTo(factory: () -> T, c: Concurrency) =
  *     bindTyped(this, factory, definitionOf = { it.definition() }) {
  *         StatGroup(stats = materializeSeries(c), concurrency = c)
- *     }.let { (s, g) -> TypedSchema(s, g) }
+ *     }
  * ```
  *
  * The factory runs under [LiveSchema.skeleton], so it produces typed
@@ -20,16 +20,16 @@ package com.eignex.skema
  * Wire-vs-local equality is strict: any drift between [def] and
  * `definitionOf(schema)` throws with both values surfaced for diff.
  */
-inline fun <T : LiveSchema<C>, C : Any, D, Live> bindTyped(
+inline fun <S : LiveSchema<C>, C : Any, D, L> bindTyped(
     def: D,
-    crossinline factory: () -> T,
-    crossinline definitionOf: (T) -> D,
-    crossinline materialize: () -> Live,
-): Pair<T, Live> {
+    crossinline factory: () -> S,
+    crossinline definitionOf: (S) -> D,
+    crossinline materialize: () -> L,
+): Bound<S, L> {
     val schema = LiveSchema.skeleton(factory)
     val expected = definitionOf(schema)
     require(def == expected) {
         "Wire schema differs from ${schema::class.simpleName}: expected $expected, got $def"
     }
-    return schema to materialize()
+    return Bound(schema, materialize())
 }
