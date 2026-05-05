@@ -2,10 +2,6 @@ package com.eignex.skema
 
 import kotlinx.serialization.Serializable
 
-/**
- * Generic envelope: pairs a property-style [name] with a [config] value.
- * Both halves of every Eignex schema live in named entries — variables,
- * stats, constraints, anything the user declares with a property delegate.
- */
+/** Pairs a property-style [name] with a [config] payload. The on-wire envelope for every schema entry. */
 @Serializable
 data class Named<C>(val name: String, val config: C)

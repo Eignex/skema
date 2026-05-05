@@ -4,21 +4,14 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonBuilder
 
 /**
- * Recommended `Json` configuration for Eignex schema payloads. Apply to any
- * [Json] builder for the standard contract: `@type` discriminator,
- * suppressed defaults, no explicit nulls.
- *
+ * Recommended `Json` configuration for Eignex schema payloads: `@type`
+ * discriminator, suppressed defaults, no explicit nulls. Apply to your
+ * own builder for custom overrides:
  * ```
- * val myJson = Json {
- *     schemaJsonConfig()
- *     prettyPrint = true   // your own overrides
- * }
+ * val myJson = Json { schemaJsonConfig(); prettyPrint = true }
  * ```
- *
- * skema is format-agnostic — `Named<C>`, `LiveSchema<C>`, and `bindTyped`
- * work with any `SerialFormat` (ProtoBuf, Cbor, …). This config only
- * applies to JSON / kaml-style YAML; binary formats use tag-number
- * polymorphism and don't need a string discriminator.
+ * Binary formats (ProtoBuf, Cbor) use tag-number polymorphism and don't
+ * need this config.
  */
 val schemaJsonConfig: JsonBuilder.() -> Unit = {
     classDiscriminator = "@type"

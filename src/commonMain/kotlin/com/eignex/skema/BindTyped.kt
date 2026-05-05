@@ -1,24 +1,19 @@
 package com.eignex.skema
 
 /**
- * Generic typed-schema round-trip: rebuild the typed [LiveSchema] subclass
- * from a wire-decoded [def], verify the wire matches what [factory]
- * declares, and produce a library-specific live value via [materialize].
+ * Round-trip a wire-decoded [def] back to a typed [LiveSchema] subclass.
+ * [factory] runs under [LiveSchema.skeleton] so it produces typed delegate
+ * keys without allocating live state; [materialize] supplies the live
+ * value, fed by [def]. Wire-vs-local equality is strict — drift throws
+ * with both values surfaced.
  *
- * Library-side wrappers thin this to taste, e.g. kumulant:
+ * Library wrappers thin this. Kumulant:
  * ```
  * fun <T : StatSchema> StatSchemaDef.bindTo(factory: () -> T, c: Concurrency) =
  *     bindTyped(this, factory, definitionOf = { it.definition() }) {
  *         StatGroup(stats = materializeSeries(c), concurrency = c)
  *     }
  * ```
- *
- * The factory runs under [LiveSchema.skeleton], so it produces typed
- * delegate keys without allocating live state — only [materialize] does
- * that, fed by [def].
- *
- * Wire-vs-local equality is strict: any drift between [def] and
- * `definitionOf(schema)` throws with both values surfaced for diff.
  */
 inline fun <S : LiveSchema<C>, C : Any, D, L> bindTyped(
     def: D,
