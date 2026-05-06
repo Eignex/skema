@@ -39,6 +39,8 @@ data class BoolKey(override val name: String) : FieldKey
 data class IntKey(override val name: String, val min: Int, val max: Int) : FieldKey
 
 abstract class FormSchema : Schema<FormField>() {
+    // Assignment form: explicit name, useful when the wire name should differ
+    // from the Kotlin property or when the property isn't a top-level val.
     protected fun bool(name: String): BoolKey {
         add(name, BoolField)
         return BoolKey(name)
@@ -47,15 +49,19 @@ abstract class FormSchema : Schema<FormField>() {
         add(name, IntField(min, max))
         return IntKey(name, min, max)
     }
+
+    // Delegate form: captures the property name automatically.
+    protected fun bool() = register(BoolField, ::BoolKey)
+    protected fun int(min: Int, max: Int) = register(IntField(min, max)) { IntKey(it, min, max) }
 }
 ```
 
-A concrete schema is a singleton object that uses assignment instead of property delegation. Compile-time access works on the schema; instances are a hand-rolled data class:
+A concrete schema is a singleton object. Mix-and-match assignment and delegation per property; both produce the same wire entry:
 
 ```kotlin
 object SignupFormSchema : FormSchema() {
-    val acceptsTos = bool("acceptsTos")
-    val age        = int("age", 13, 120)
+    val acceptsTos = bool("acceptsTos")  // assignment: explicit name
+    val age        by int(13, 120)        // delegate: name from the property
 }
 
 data class SignupResponse(val acceptsTos: Boolean, val age: Int)
@@ -70,7 +76,7 @@ val wire: String = SchemaJson.encodeToString(SchemaDef.serializer(FormField.seri
 // ]}
 ```
 
-The name string is repeated once in the declaration rather than implicit in a property delegate. That's the Kotlin price of skipping reflection; in exchange, schemas are plain singletons that can be referenced from anywhere without instantiation, and renaming a property no longer silently changes the wire form.
+Pick whichever form suits each entry: assignment makes the wire name explicit and survives property renames without changing the schema; the delegate form keeps the call site terse when the property name is the wire name. Schemas are plain singletons either way.
 
 A downstream consumer (different process, no SignupFormSchema class) decodes the same wire string and walks the entries by name:
 

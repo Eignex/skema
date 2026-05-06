@@ -1,9 +1,13 @@
 package com.eignex.skema
 
+import kotlin.properties.PropertyDelegateProvider
+import kotlin.properties.ReadOnlyProperty
+
 /**
  * Builder base for any schema'd Eignex library. Subclasses (e.g. kumulant
- * `StatSchema`, klause `VariableSchema`) expose library-specific name-taking
- * declarators that call [add] to record entries.
+ * `StatSchema`, klause `VariableSchema`) expose library-specific declarators
+ * that call [add] (assignment form, explicit name) or [register] (delegate
+ * form, name captured from the property).
  *
  * The pure-data view of this schema is [definition], a [SchemaDef] that
  * serializes through any kotlinx-serialization format. Two paths:
@@ -28,6 +32,21 @@ abstract class Schema<C : Any> {
             "Duplicate entry name '$name' in ${this::class.simpleName ?: "schema"}"
         }
         mutableEntries.add(Named(name, config))
+    }
+
+    /**
+     * Property-delegate variant of [add]: captures the property name and
+     * returns a typed [Key]. Use when you'd rather not repeat the name
+     * (`val flag by bool()` instead of `val flag = bool("flag")`).
+     */
+    protected inline fun <Key> register(
+        config: C,
+        crossinline keyOf: (name: String) -> Key,
+    ) = PropertyDelegateProvider<Schema<C>, ReadOnlyProperty<Schema<C>, Key>> { _, property ->
+        val name = property.name
+        add(name, config)
+        val key = keyOf(name)
+        ReadOnlyProperty { _, _ -> key }
     }
 
     /** Override to enforce cross-entry invariants. Called by [definition]; throw on violation. */

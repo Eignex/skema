@@ -32,17 +32,19 @@ private abstract class FormSchema : Schema<FormField>() {
         add(name, IntField(min, max))
         return IntKey(name, min, max)
     }
+    protected fun bool() = register(BoolField, ::BoolKey)
+    protected fun int(min: Int, max: Int) = register(IntField(min, max)) { IntKey(it, min, max) }
 }
 
 private object SignupFormSchema : FormSchema() {
     val acceptsTos = bool("acceptsTos")
-    val age = int("age", 13, 120)
+    val age by int(13, 120)
 }
 
 class SchemaTest {
 
     @Test
-    fun `assignment-style declarators populate entries and return typed keys`() {
+    fun `mixed assignment and delegate forms populate entries and return typed keys`() {
         assertEquals(listOf("acceptsTos", "age"), SignupFormSchema.entries.map { it.name })
         assertEquals(BoolKey("acceptsTos"), SignupFormSchema.acceptsTos)
         assertEquals(IntKey("age", 13, 120), SignupFormSchema.age)
