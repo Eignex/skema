@@ -27,7 +27,7 @@ If you only ever need typed access, write a data class. If you only ever need wi
 implementation("com.eignex:skema:0.1.0")
 ```
 
-Define a vocabulary of config types and a base schema that wraps `register`:
+Define a vocabulary of config types and a base schema with name-taking declarators (the same convention JetBrains' Exposed uses for SQL columns):
 
 ```kotlin
 @Serializable sealed interface ToyVar
@@ -39,31 +39,38 @@ data class BoolKey(override val name: String) : ToyKey
 data class IntKey(override val name: String, val min: Int, val max: Int) : ToyKey
 
 abstract class ToyBaseSchema : LiveSchema<ToyVar>() {
-    protected fun bool() = register(BoolToy, keyOf = { BoolKey(it) })
-    protected fun int(min: Int, max: Int) = register(IntToy(min, max), keyOf = { IntKey(it, min, max) })
+    protected fun bool(name: String): BoolKey {
+        add(name, BoolToy)
+        return BoolKey(name)
+    }
+    protected fun int(name: String, min: Int, max: Int): IntKey {
+        add(name, IntToy(min, max))
+        return IntKey(name, min, max)
+    }
 }
 ```
 
-The producer declares a schema as a class. Compile-time access works on the schema; instances are a hand-rolled data class:
+The producer declares a schema as a singleton object, with assignment instead of property delegation. Compile-time access works on the schema; instances are a hand-rolled data class:
 
 ```kotlin
-class FormSchema : ToyBaseSchema() {
-    val acceptsTos by bool()
-    val age        by int(13, 120)
+object FormSchema : ToyBaseSchema() {
+    val acceptsTos = bool("acceptsTos")
+    val age        = int("age", 13, 120)
 }
 
 data class FormResponse(val acceptsTos: Boolean, val age: Int)
 
-val schema = FormSchema()
 val response = FormResponse(acceptsTos = true, age = 27)
 response.age  // typed Int
 
-val wire: String = SchemaJson.encodeToString(SchemaDef.serializer(ToyVar.serializer()), schema.definition())
+val wire: String = SchemaJson.encodeToString(SchemaDef.serializer(ToyVar.serializer()), FormSchema.definition())
 // {"entries":[
 //   {"name":"acceptsTos","config":{"$type":"Bool"}},
 //   {"name":"age","config":{"$type":"Int","min":13,"max":120}}
 // ]}
 ```
+
+The name string is repeated once (in the declaration) rather than implicit in a `by`-delegate. That's the Kotlin price of skipping reflection; in exchange, schemas are plain singletons that can be referenced from anywhere without instantiation, and renaming a property no longer silently changes the wire form.
 
 A downstream consumer (different process, no `FormSchema` class) decodes the same wire string and walks the entries by name:
 
@@ -81,4 +88,4 @@ The same schema serves both sides without the consumer needing the producer's Ko
 
 The schema is shape (names, types, per-entry config) and is what skema owns. An instance carries values conforming to a schema (assignments, accumulator state, response payloads) and lives in the consuming library. The example above keeps them separate: `FormSchema` is the schema, `FormResponse` is the instance, materialization is the user's call.
 
-The schema's typed keys (`schema.acceptsTos`, `schema.age`) come into play when an instance can't be a hand-rolled data class because the schema isn't known at compile time. kumulant accepts any user-defined `StatSchema` and stores accumulators in a name-keyed map; lookup is `instance[schema.someStat]`. klause does the same for solver-assigned variables. skema doesn't impose a shape on instances, only on the schema description.
+The schema's typed keys (`FormSchema.acceptsTos`, `FormSchema.age`) come into play when an instance can't be a hand-rolled data class because the schema isn't known at compile time. kumulant accepts any user-defined `StatSchema` and stores accumulators in a name-keyed map; lookup is `instance[FormSchema.someStat]`. klause does the same for solver-assigned variables. skema doesn't impose a shape on instances, only on the schema description.
