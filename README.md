@@ -66,32 +66,29 @@ SchemaJson.encodeToString(SchemaDef.serializer(ToyVar.serializer()), schema.defi
 
 A schema describes shape: names, types, per-entry config. An instance carries values that conform to a schema: assignments for variables, accumulator state for stats, etc. skema owns the schema side; the consuming library defines what an instance looks like and how it materializes from a schema.
 
-A toy library might back an instance with a plain map keyed by name:
+A toy library backs an instance with a name-keyed map and gives it typed accessors:
 
 ```kotlin
-class ToyInstance(private val values: Map<String, Any>) {
-    operator fun get(key: BoolKey): Boolean = values[key.name] as Boolean
-    operator fun get(key: IntKey): Int = values[key.name] as Int
-
-    companion object {
-        fun random(schema: MySchema): ToyInstance {
-            val values = schema.entries.associate { (name, config) ->
-                name to when (config) {
-                    is BoolToy -> Random.nextBoolean()
-                    is IntToy  -> Random.nextInt(config.min, config.max + 1)
-                }
-            }
-            return ToyInstance(values)
-        }
-    }
+data class ToyInstance(val values: Map<String, Any>) {
+    operator fun get(key: BoolKey): Boolean = values.getValue(key.name) as Boolean
+    operator fun get(key: IntKey): Int = values.getValue(key.name) as Int
 }
+
+fun ToyBaseSchema.randomInstance(): ToyInstance = ToyInstance(
+    entries.associate { (name, config) ->
+        name to when (config) {
+            is BoolToy -> Random.nextBoolean()
+            is IntToy  -> Random.nextInt(config.min, config.max + 1)
+        }
+    },
+)
 ```
 
 Reading then lines up cleanly:
 
 ```kotlin
 val schema = MySchema()
-val instance = ToyInstance.random(schema)
+val instance = schema.randomInstance()
 instance[schema.score]   // Int, typed at the call site
 instance[schema.flag]    // Boolean
 ```
