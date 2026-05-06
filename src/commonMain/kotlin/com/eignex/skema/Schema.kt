@@ -5,8 +5,8 @@ package com.eignex.skema
  * `StatSchema`, klause `VariableSchema`) expose library-specific name-taking
  * declarators that call [add] to record entries.
  *
- * The pure-data view of the schema is [definition]; the live state lives
- * on the subclass. Two paths:
+ * The pure-data view of this schema is [definition], a [SchemaDef] that
+ * serializes through any kotlinx-serialization format. Two paths:
  *
  *  - **Class is the source of truth.** Producer and consumer share the
  *    schema class as code; build with `MySchema()`, serialize
@@ -18,7 +18,7 @@ package com.eignex.skema
  *
  * skema supports both shapes from the same definition surface.
  */
-abstract class LiveSchema<C : Any> {
+abstract class Schema<C : Any> {
     private val mutableEntries = mutableListOf<Named<C>>()
     val entries: List<Named<C>> get() = mutableEntries
 

@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 /**
  * Pure-data, serializable form of a schema: the wire value produced by
- * [LiveSchema.definition]. Round-trips through any kotlinx-serialization
+ * [Schema.definition]. Round-trips through any kotlinx-serialization
  * format (JSON, ProtoBuf, Cbor) without skema-side changes.
  *
  * Library wire types either alias this directly (`typealias StatSchemaDef =
