@@ -17,22 +17,23 @@ private data object BoolToy : ToyVar
 @Serializable @SerialName("Int")
 private data class IntToy(val min: Int, val max: Int) : ToyVar
 
-private class ToySchema : LiveSchema<ToyVar>() {
-    val materialized = mutableListOf<String>()
+private sealed interface ToyKey { val name: String }
+private data class BoolKey(override val name: String) : ToyKey
+private data class IntKey(override val name: String, val min: Int, val max: Int) : ToyKey
 
-    val flag by register(BoolToy, keyOf = { it }) { name -> materialized += name }
-    val score by register(IntToy(0, 100), keyOf = { it }) { name -> materialized += name }
+private class ToySchema : LiveSchema<ToyVar>() {
+    val flag by register(BoolToy, keyOf = { BoolKey(it) })
+    val score by register(IntToy(0, 100), keyOf = { IntKey(it, 0, 100) })
 }
 
 class LiveSchemaTest {
 
     @Test
-    fun `register populates entries and runs the materializer`() {
+    fun `register populates entries and returns typed keys`() {
         val s = ToySchema()
         assertEquals(listOf("flag", "score"), s.entries.map { it.name })
-        assertEquals(listOf("flag", "score"), s.materialized)
-        assertEquals("flag", s.flag)
-        assertEquals("score", s.score)
+        assertEquals(BoolKey("flag"), s.flag)
+        assertEquals(IntKey("score", 0, 100), s.score)
     }
 
     @Test
@@ -81,7 +82,7 @@ class LiveSchemaTest {
     @Test
     fun `validate hook runs at definition time and propagates exceptions`() {
         class Validating : LiveSchema<ToyVar>() {
-            val flag by register(BoolToy, keyOf = { it }) { }
+            val flag by register(BoolToy, keyOf = { BoolKey(it) })
             override fun validate(entries: List<Named<ToyVar>>) {
                 require(entries.size >= 2) { "this schema demands at least 2 entries" }
             }

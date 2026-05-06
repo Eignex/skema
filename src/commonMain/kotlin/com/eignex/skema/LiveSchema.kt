@@ -38,19 +38,18 @@ abstract class LiveSchema<C : Any> {
      * Property-delegate helper used by subclass delegates:
      * ```
      * protected fun <R> series(config: SeriesStatConfig<R>) =
-     *     register(config, keyOf = { StatKey<R>(it) }) { name ->
-     *         specs.add(StatSpec(StatKey<R>(name), config.materialize(concurrency)))
-     *     }
+     *     register(config, keyOf = { StatKey<R>(it) })
      * ```
+     * Returns a typed [Key] for use at call sites. Live state is built
+     * separately by walking [entries] (or [definition]) after schema
+     * construction.
      */
     protected inline fun <Key> register(
         config: C,
         crossinline keyOf: (name: String) -> Key,
-        crossinline materializer: (name: String) -> Unit,
     ) = PropertyDelegateProvider<LiveSchema<C>, ReadOnlyProperty<LiveSchema<C>, Key>> { _, property ->
         val name = property.name
         add(name, config)
-        materializer(name)
         val key = keyOf(name)
         ReadOnlyProperty { _, _ -> key }
     }
