@@ -15,9 +15,9 @@
 [![codecov](https://codecov.io/gh/eignex/skema/branch/main/graph/badge.svg)](https://codecov.io/gh/eignex/skema)
 [![License](https://img.shields.io/github/license/eignex/skema)](https://github.com/eignex/skema/blob/main/LICENSE)
 
-A Kotlin Multiplatform library for schemas that work two ways at once. Declare a schema as a singleton object on the producer side and you get typed compile-time access to every field; serialize the same definition to JSON, YAML, ProtoBuf, or any other kotlinx-serialization format and a downstream consumer that doesn't share your Kotlin code can decode the schema and walk it by name. Both paths terminate at a shared `Named<C>` entry envelope and `SchemaDef<C>` wire wrapper, so producers and consumers mix and match without reinventing either side.
+A Kotlin Multiplatform library for schemas that work two ways at once. Declare a schema as a singleton object on the producer side and you get typed compile-time access to every field; serialize the same definition to JSON, YAML, ProtoBuf, or any other kotlinx-serialization format, and a downstream consumer that doesn't share your Kotlin code can decode the schema and walk it by name. Both paths terminate at the same Named entry envelope and SchemaDef wire wrapper, so producers and consumers mix and match without reinventing either side.
 
-If you only need typed access, write a data class. If you only need wire data, write a sealed `@Serializable` interface. skema is for the case where both are required.
+If you only need typed access, write a data class. If you only need wire data, write a sealed Serializable interface. skema is for the case where both are required.
 
 Used by [kumulant](https://github.com/Eignex/kumulant) (streaming statistics), [klause](https://github.com/Eignex/klause) (constraint solver), and [combo](https://github.com/Eignex/combo) (multi-armed bandit), but not coupled to any of them; the library is generic plumbing.
 
@@ -27,7 +27,7 @@ Used by [kumulant](https://github.com/Eignex/kumulant) (streaming statistics), [
 implementation("com.eignex:skema:0.1.0")
 ```
 
-Define a vocabulary of config types and a base schema with name-taking declarators. The convention is borrowed directly from JetBrains' [Exposed](https://github.com/JetBrains/Exposed), where SQL columns are declared as `val name = varchar("name", 50)` on a `Table` singleton; the same shape works here for any schema entry:
+Define a vocabulary of config types and a base schema with name-taking declarators. The convention is borrowed directly from JetBrains' [Exposed](https://github.com/JetBrains/Exposed), where SQL columns are declared as `val name = varchar("name", 50)` on a Table singleton; the same shape works here for any schema entry:
 
 ```kotlin
 @Serializable sealed interface FormField
@@ -70,9 +70,9 @@ val wire: String = SchemaJson.encodeToString(SchemaDef.serializer(FormField.seri
 // ]}
 ```
 
-The name string is repeated once (in the declaration) rather than implicit in a `by`-delegate. That's the Kotlin price of skipping reflection; in exchange, schemas are plain singletons that can be referenced from anywhere without instantiation, and renaming a property no longer silently changes the wire form.
+The name string is repeated once in the declaration rather than implicit in a property delegate. That's the Kotlin price of skipping reflection; in exchange, schemas are plain singletons that can be referenced from anywhere without instantiation, and renaming a property no longer silently changes the wire form.
 
-A downstream consumer (different process, no `SignupFormSchema` class) decodes the same wire string and walks the entries by name:
+A downstream consumer (different process, no SignupFormSchema class) decodes the same wire string and walks the entries by name:
 
 ```kotlin
 val def = SchemaJson.decodeFromString(SchemaDef.serializer(FormField.serializer()), wire)
@@ -86,6 +86,6 @@ The same schema serves both sides without the consumer needing the producer's Ko
 
 ## Schema vs instance
 
-The schema is shape (names, types, per-entry config) and is what skema owns. An instance carries values conforming to a schema (assignments, accumulator state, response payloads) and lives in the consuming library. The example above keeps them separate: `SignupFormSchema` is the schema, `SignupResponse` is the instance, materialization is the user's call.
+The schema is shape (names, types, per-entry config) and is what skema owns. An instance carries values conforming to a schema (assignments, accumulator state, response payloads) and lives in the consuming library. The example above keeps them separate: SignupFormSchema is the schema, SignupResponse is the instance, materialization is the user's call.
 
-The schema's typed keys (`SignupFormSchema.acceptsTos`, `SignupFormSchema.age`) come into play when an instance can't be a hand-rolled data class because the schema isn't known at compile time. kumulant accepts any user-defined `StatSchema` and stores accumulators in a name-keyed map; lookup is `instance[SignupFormSchema.someStat]`. klause does the same for solver-assigned variables. skema doesn't impose a shape on instances, only on the schema description.
+The schema's typed keys come into play when an instance can't be a hand-rolled data class because the schema isn't known at compile time. kumulant accepts any user-defined StatSchema and stores accumulators in a name-keyed map; lookup is `instance[schema.someStat]`. klause does the same for solver-assigned variables. skema doesn't impose a shape on instances, only on the schema description.
