@@ -22,22 +22,42 @@ Shared schema-serialization plumbing for Eignex libraries ([kumulant](https://gi
 ## Usage
 
 ```kotlin
-implementation("com.eignex:skema:<version>")
+implementation("com.eignex:skema:0.1.0")
 ```
 
-```kotlin
-class ToySchema : LiveSchema<ToyVar>() {
-    val materialized = mutableListOf<String>()
-    val flag  by register(BoolToy,        keyOf = { it }) { name -> materialized += name }
-    val score by register(IntToy(0, 100), keyOf = { it }) { name -> materialized += name }
-}
+A consuming library defines its config sealed type and a base schema that exposes typed delegates on top of register:
 
-val s = ToySchema()
+```kotlin
+@Serializable sealed interface ToyVar
+@Serializable @SerialName("Bool") data object BoolToy : ToyVar
+@Serializable @SerialName("Int")  data class IntToy(val min: Int, val max: Int) : ToyVar
+
+abstract class ToyBaseSchema : LiveSchema<ToyVar>() {
+    val materialized = mutableListOf<String>()
+    protected fun bool() = register(BoolToy, keyOf = { it }) { name -> materialized += name }
+    protected fun int(min: Int, max: Int) =
+        register(IntToy(min, max), keyOf = { it }) { name -> materialized += name }
+}
+```
+
+The end user subclasses that base and declares schema entries as properties:
+
+```kotlin
+class MySchema : ToyBaseSchema() {
+    val flag  by bool()
+    val score by int(0, 100)
+}
+```
+
+End-user usage: instantiate, serialize entries with any SerialFormat, then round-trip back through bindTyped:
+
+```kotlin
+val s = MySchema()
 s.entries  // [Named("flag", BoolToy), Named("score", IntToy(0, 100))]
 
 val (rebuilt, live) = bindTyped(
     def = s.entries,
-    factory = ::ToySchema,
+    factory = ::MySchema,
     definitionOf = { it.entries },
     materialize = { /* build live state */ },
 )
