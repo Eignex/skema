@@ -29,18 +29,21 @@ skema is for libraries whose users want both a typed Kotlin schema (defined as a
 implementation("com.eignex:skema:0.1.0")
 ```
 
-A consuming library defines its config sealed type and a base schema that exposes typed delegates on top of `register`:
+A consuming library defines its config sealed type, a typed key that the property delegate returns, and a base schema that exposes typed delegates on top of `register`:
 
 ```kotlin
 @Serializable sealed interface ToyVar
 @Serializable @SerialName("Bool") data object BoolToy : ToyVar
 @Serializable @SerialName("Int")  data class IntToy(val min: Int, val max: Int) : ToyVar
 
+sealed interface ToyKey { val name: String }
+data class BoolKey(override val name: String) : ToyKey
+data class IntKey(override val name: String, val min: Int, val max: Int) : ToyKey
+
 abstract class ToyBaseSchema : LiveSchema<ToyVar>() {
-    val materialized = mutableListOf<String>()
-    protected fun bool() = register(BoolToy, keyOf = { it }) { name -> materialized += name }
+    protected fun bool() = register(BoolToy, keyOf = { BoolKey(it) }) { /* materialize */ }
     protected fun int(min: Int, max: Int) =
-        register(IntToy(min, max), keyOf = { it }) { name -> materialized += name }
+        register(IntToy(min, max), keyOf = { IntKey(it, min, max) }) { /* materialize */ }
 }
 ```
 
@@ -53,35 +56,33 @@ class MySchema : ToyBaseSchema() {
 }
 
 val s = MySchema()
-s.entries          // [Named("flag", BoolToy), Named("score", IntToy(0, 100))]
-s.definition()     // SchemaDef(entries=[…])
+s.flag         // BoolKey(name = "flag")
+s.score        // IntKey(name = "score", min = 0, max = 100)
+s.entries      // [Named("flag", BoolToy), Named("score", IntToy(0, 100))]
 SchemaJson.encodeToString(SchemaDef.serializer(ToyVar.serializer()), s.definition())
 // {"entries":[{"name":"flag","config":{"$type":"Bool"}},…]}
 ```
 
-The wire form decodes back into a `SchemaDef<ToyVar>` that downstream code can iterate by name without ever instantiating `MySchema`. That's the dynamic path.
-
 ## Reading values
 
-A schema declares names, types, and any per-entry config; the actual values come from whatever the consuming library decides to do at materialization time. For the typed path, properties on the schema instance double as keys; library-specific live state is exposed alongside.
+A schema declares names, types, and per-entry config; actual measurement or assignment values come from whatever the consuming library does at materialization time. For the typed path, the property accessor returns the key the delegate built, and the consuming library uses it to look up live state:
 
 ```kotlin
 val s = MySchema()
-s.flag           // "flag" (the key value the delegate returned)
-s.score          // "score"
-s.materialized   // ["flag", "score"] (whatever the library tracked in its materializer)
+s.score                  // IntKey("score", 0, 100)
+liveState.lookup(s.score) // library-specific result
 ```
 
-For the dynamic path, walk `entries` or look up by name on `SchemaDef`:
+For the dynamic path (no schema class on the consumer side), walk `entries` or look up by name on `SchemaDef`:
 
 ```kotlin
 val def: SchemaDef<ToyVar> = SchemaJson.decodeFromString(serializer(), wireText)
 def.names                  // ["flag", "score"]
 def["score"]               // IntToy(0, 100)
 for ((name, config) in def.entries) when (config) {
-    is BoolToy -> /* … */
-    is IntToy  -> /* uses config.min, config.max */
+    is BoolToy -> println(name)
+    is IntToy  -> println("$name in ${config.min}..${config.max}")
 }
 ```
 
-Result values from a live materialization (e.g. kumulant `GroupResult`, klause solver assignment) are the consuming library's concern; skema only owns the schema description.
+Result values from a live materialization (kumulant `GroupResult`, klause solver assignment, etc.) are the consuming library's concern; skema only owns the schema description.
