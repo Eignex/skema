@@ -45,38 +45,43 @@ class SchemaTest {
 
     @Test
     fun `mixed assignment and delegate forms populate entries and return typed keys`() {
-        assertEquals(listOf("acceptsTos", "age"), SignupFormSchema.entries.map { it.name })
+        assertEquals(listOf("acceptsTos", "age"), SignupFormSchema.entries.keys.toList())
         assertEquals(BoolKey("acceptsTos"), SignupFormSchema.acceptsTos)
         assertEquals(IntKey("age", 13, 120), SignupFormSchema.age)
-    }
-
-    @Test
-    fun `Named entries serialize through SchemaJson with the standard discriminator`() {
-        val first = SignupFormSchema.entries[0]
-        val encoded = SchemaJson.encodeToString(Named.serializer(FormField.serializer()), first)
-        assertEquals("""{"name":"acceptsTos","config":{"${'$'}type":"Bool"}}""", encoded)
     }
 
     @Test
     fun `default definition returns SchemaDef with all entries`() {
         val def = SignupFormSchema.definition()
         assertEquals(2, def.size)
-        assertEquals(listOf("acceptsTos", "age"), def.names)
+        assertEquals(setOf("acceptsTos", "age"), def.names)
         assertEquals(BoolField, def["acceptsTos"])
         assertEquals(IntField(13, 120), def["age"])
     }
 
     @Test
-    fun `definition round-trips through SchemaJson with discriminator`() {
+    fun `definition round-trips through SchemaJson with a name-keyed map`() {
         val def = SignupFormSchema.definition()
         val encoded = SchemaJson.encodeToString(SchemaDef.serializer(FormField.serializer()), def)
         assertEquals(
-            """{"entries":[""" +
-                """{"name":"acceptsTos","config":{"${'$'}type":"Bool"}},""" +
-                """{"name":"age","config":{"${'$'}type":"Int","min":13,"max":120}}""" +
-                """]}""",
+            """{"entries":{""" +
+                """"acceptsTos":{"${'$'}type":"Bool"},""" +
+                """"age":{"${'$'}type":"Int","min":13,"max":120}""" +
+                """}}""",
             encoded,
         )
+    }
+
+    @Test
+    fun `subclass can override definition for a custom root field name`() {
+        @Serializable data class FormSchemaDef(val fields: Map<String, FormField>)
+
+        val custom = object : FormSchema() {
+            init { add("flag", BoolField) }
+            fun customDef() = FormSchemaDef(entries)
+        }
+        val encoded = SchemaJson.encodeToString(FormSchemaDef.serializer(), custom.customDef())
+        assertEquals("""{"fields":{"flag":{"${'$'}type":"Bool"}}}""", encoded)
     }
 
     @Test
@@ -96,7 +101,7 @@ class SchemaTest {
     fun `validate hook runs at definition time and propagates exceptions`() {
         class Validating : Schema<FormField>() {
             init { add("acceptsTos", BoolField) }
-            override fun validate(entries: List<Named<FormField>>) {
+            override fun validate(entries: Map<String, FormField>) {
                 require(entries.size >= 2) { "this schema demands at least 2 entries" }
             }
         }
@@ -106,7 +111,7 @@ class SchemaTest {
 
     @Test
     fun `SchemaDef get throws on missing name with available names listed`() {
-        val def = SchemaDef(listOf(Named<FormField>("a", BoolField), Named("b", IntField(0, 1))))
+        val def = SchemaDef<FormField>(mapOf("a" to BoolField, "b" to IntField(0, 1)))
         val ex = assertFailsWith<IllegalStateException> { def["missing"] }
         assertTrue(ex.message!!.contains("missing"))
         assertTrue(ex.message!!.contains("a"))
@@ -114,43 +119,14 @@ class SchemaTest {
     }
 
     @Test
-    fun `Named is a data class with structural equality and copy`() {
-        val a = Named<FormField>("x", BoolField)
-        val b = Named<FormField>("x", BoolField)
-        val differentName = Named<FormField>("y", BoolField)
-        val differentConfig = Named<FormField>("x", IntField(0, 1))
-        assertEquals(a, b)
-        assertEquals(a.hashCode(), b.hashCode())
-        assertTrue(a != differentName)
-        assertTrue(a != differentConfig)
-        assertTrue(!a.equals("not a Named"))
-        assertEquals(differentName, a.copy(name = "y"))
-        assertEquals("Named(name=x, config=BoolField)", a.toString())
-    }
-
-    @Test
     fun `SchemaDef is a data class with structural equality and copy`() {
-        val a = SchemaDef(listOf(Named<FormField>("x", BoolField)))
-        val b = SchemaDef(listOf(Named<FormField>("x", BoolField)))
-        val empty = SchemaDef<FormField>(emptyList())
+        val a = SchemaDef<FormField>(mapOf("x" to BoolField))
+        val b = SchemaDef<FormField>(mapOf("x" to BoolField))
+        val empty = SchemaDef<FormField>(emptyMap())
         assertEquals(a, b)
         assertEquals(a.hashCode(), b.hashCode())
         assertTrue(a != empty)
         assertTrue(!a.equals("not a SchemaDef"))
-        assertEquals(empty, a.copy(entries = emptyList()))
-    }
-
-    // Anonymous objects' simpleName is null on JVM, exercising the "?: schema" fallback in add().
-    @Test
-    fun `add error message falls back to 'schema' when class has no simple name`() {
-        val ex = assertFailsWith<IllegalArgumentException> {
-            object : Schema<FormField>() {
-                init {
-                    add("dup", BoolField)
-                    add("dup", IntField(0, 1))
-                }
-            }
-        }
-        assertTrue(ex.message!!.contains("schema") || ex.message!!.contains("dup"))
+        assertEquals(empty, a.copy(entries = emptyMap()))
     }
 }

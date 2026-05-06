@@ -70,10 +70,10 @@ val response = SignupResponse(acceptsTos = true, age = 27)
 response.age  // typed Int
 
 val wire: String = SchemaJson.encodeToString(SchemaDef.serializer(FormField.serializer()), SignupFormSchema.definition())
-// {"entries":[
-//   {"name":"acceptsTos","config":{"$type":"Bool"}},
-//   {"name":"age","config":{"$type":"Int","min":13,"max":120}}
-// ]}
+// {"entries":{
+//   "acceptsTos":{"$type":"Bool"},
+//   "age":{"$type":"Int","min":13,"max":120}
+// }}
 ```
 
 Pick whichever form suits each entry: assignment makes the wire name explicit and survives property renames without changing the schema; the delegate form keeps the call site terse when the property name is the wire name. Schemas are plain singletons either way.
@@ -89,3 +89,18 @@ for ((name, config) in def.entries) when (config) {
 ```
 
 The same schema serves both sides without the consumer needing the producer's Kotlin code. That's the win.
+
+The default wire wraps entries under a field called `entries`. To ship under a different root name, or to add adjunct fields (klause carries `vars` plus `constraints`, for example), define a Serializable wrapper and expose it as a separate method:
+
+```kotlin
+@Serializable data class SignupForm(val fields: Map<String, FormField>)
+
+object SignupFormSchema : FormSchema() {
+    val acceptsTos = bool("acceptsTos")
+    val age        by int(13, 120)
+    fun signupDef() = SignupForm(entries)
+}
+
+SchemaJson.encodeToString(SignupForm.serializer(), SignupFormSchema.signupDef())
+// {"fields":{"acceptsTos":{"$type":"Bool"},"age":{"$type":"Int","min":13,"max":120}}}
+```

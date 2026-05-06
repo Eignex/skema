@@ -7,18 +7,23 @@ import kotlinx.serialization.Serializable
  * [Schema.definition]. Round-trips through any kotlinx-serialization
  * format (JSON, ProtoBuf, Cbor) without skema-side changes.
  *
- * Library wire types either alias this directly (`typealias StatSchemaDef =
- * SchemaDef<StatConfig>`) or compose with it when they need extra fields
- * (klause adds a separate `constraints` list).
+ * The default root field name is `entries`. To ship the wire under a
+ * different key (e.g. `stats`, `vars`) or to add adjunct lists, define
+ * your own wrapper data class and override [Schema.definition]:
+ *
+ * ```
+ * @Serializable data class StatSchemaDef(val stats: Map<String, StatConfig>)
+ * abstract class StatSchema : Schema<StatConfig>() {
+ *     override fun definition() = StatSchemaDef(entries)
+ * }
+ * ```
  */
 @Serializable
-data class SchemaDef<C>(val entries: List<Named<C>>) {
+data class SchemaDef<C>(val entries: Map<String, C>) {
     val size: Int get() = entries.size
-
-    val names: List<String> get() = entries.map { it.name }
+    val names: Set<String> get() = entries.keys
 
     /** Look up an entry's config by name; throws if not present. */
     operator fun get(name: String): C =
-        entries.firstOrNull { it.name == name }?.config
-            ?: error("SchemaDef has no entry named '$name'. Available: ${entries.map { it.name }}")
+        entries[name] ?: error("SchemaDef has no entry named '$name'. Available: ${entries.keys}")
 }

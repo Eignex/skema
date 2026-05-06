@@ -10,28 +10,20 @@ import kotlin.properties.ReadOnlyProperty
  * form, name captured from the property).
  *
  * The pure-data view of this schema is [definition], a [SchemaDef] that
- * serializes through any kotlinx-serialization format. Two paths:
- *
- *  - **Class is the source of truth.** Producer and consumer share the
- *    schema class as code; build with `MySchema()`, serialize
- *    `definition()` for transport only. No deserialization on the
- *    consumer side.
- *  - **Wire is the source of truth.** No class on the consumer side;
- *    decode `SchemaDef<C>` and use a library-specific materializer to
- *    build the live form. Access by name only.
- *
- * skema supports both shapes from the same definition surface.
+ * serializes through any kotlinx-serialization format. Override
+ * [definition] to use a wrapper with a different root field name or to
+ * carry adjunct lists alongside the main entries.
  */
 abstract class Schema<C : Any> {
-    private val mutableEntries = mutableListOf<Named<C>>()
-    val entries: List<Named<C>> get() = mutableEntries
+    private val mutableEntries = LinkedHashMap<String, C>()
+    val entries: Map<String, C> get() = mutableEntries
 
     /** Append an entry. Throws on duplicate names. */
     protected fun add(name: String, config: C) {
-        require(mutableEntries.none { it.name == name }) {
+        require(name !in mutableEntries) {
             "Duplicate entry name '$name' in ${this::class.simpleName ?: "schema"}"
         }
-        mutableEntries.add(Named(name, config))
+        mutableEntries[name] = config
     }
 
     /**
@@ -50,15 +42,15 @@ abstract class Schema<C : Any> {
     }
 
     /** Override to enforce cross-entry invariants. Called by [definition]; throw on violation. */
-    protected open fun validate(entries: List<Named<C>>) {}
+    protected open fun validate(entries: Map<String, C>) {}
 
     /**
-     * Pure-data, serializable view of this schema. Override only when the
-     * library needs a wider wire shape (e.g. klause adds a separate
-     * `constraints` list).
+     * Pure-data, serializable view of this schema. Default wraps
+     * [entries] in [SchemaDef] (root field name "entries"); override to
+     * use a wrapper with a different name or adjunct fields.
      */
     open fun definition(): SchemaDef<C> {
         validate(mutableEntries)
-        return SchemaDef(mutableEntries.toList())
+        return SchemaDef(LinkedHashMap(mutableEntries))
     }
 }
