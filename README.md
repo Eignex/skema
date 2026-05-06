@@ -61,7 +61,7 @@ A concrete schema is a singleton object. Mix-and-match assignment and delegation
 ```kotlin
 object SignupFormSchema : FormSchema() {
     val acceptsTos = bool("acceptsTos")  // assignment: explicit name
-    val age        by int(13, 120)        // delegate: name from the property
+    val age       by int(13, 120)        // delegate: name from the property
 }
 
 data class SignupResponse(val acceptsTos: Boolean, val age: Int)
