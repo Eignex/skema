@@ -15,11 +15,11 @@
 [![codecov](https://codecov.io/gh/eignex/skema/branch/main/graph/badge.svg)](https://codecov.io/gh/eignex/skema)
 [![License](https://img.shields.io/github/license/eignex/skema)](https://github.com/eignex/skema/blob/main/LICENSE)
 
-> This repository is intended for internal use, but feel free to use however you want.
+A Kotlin Multiplatform library for schemas that work two ways at once. Declare a schema as a singleton object on the producer side and you get typed compile-time access to every field; serialize the same definition to JSON, YAML, ProtoBuf, or any other kotlinx-serialization format and a downstream consumer that doesn't share your Kotlin code can decode the schema and walk it by name. Both paths terminate at a shared `Named<C>` entry envelope and `SchemaDef<C>` wire wrapper, so producers and consumers mix and match without reinventing either side.
 
-Shared schema-serialization plumbing for Eignex libraries ([kumulant](https://github.com/Eignex/kumulant), [klause](https://github.com/Eignex/klause), [combo](https://github.com/Eignex/combo)). Lets a producer declare a schema as a Kotlin class for compile-time access, ship the same schema as JSON or YAML, and have a downstream consumer that doesn't share the class iterate the wire form by name. The two paths share a `Named<C>` entry envelope and a `SchemaDef<C>` wire wrapper, so producers and consumers can mix and match without reinventing either side.
+If you only need typed access, write a data class. If you only need wire data, write a sealed `@Serializable` interface. skema is for the case where both are required.
 
-If you only ever need typed access, write a data class. If you only ever need wire data, write a sealed `@Serializable` interface. skema is for the case where both are required.
+Used by [kumulant](https://github.com/Eignex/kumulant) (streaming statistics), [klause](https://github.com/Eignex/klause) (constraint solver), and [combo](https://github.com/Eignex/combo) (multi-armed bandit), but not coupled to any of them; the library is generic plumbing.
 
 ## A complete example
 
