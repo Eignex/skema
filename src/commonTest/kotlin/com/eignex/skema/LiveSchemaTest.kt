@@ -11,10 +11,12 @@ import kotlin.test.assertTrue
 @Serializable
 private sealed interface ToyVar
 
-@Serializable @SerialName("Bool")
+@Serializable
+@SerialName("Bool")
 private data object BoolToy : ToyVar
 
-@Serializable @SerialName("Int")
+@Serializable
+@SerialName("Int")
 private data class IntToy(val min: Int, val max: Int) : ToyVar
 
 private sealed interface ToyKey { val name: String }

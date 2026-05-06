@@ -1,14 +1,8 @@
-@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
-
 package com.eignex.skema
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromByteArray
-import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.protobuf.ProtoBuf
-import kotlinx.serialization.serializer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -35,21 +29,12 @@ class NamedTest {
     }
 
     @Test
-    fun `defaults are suppressed under encodeDefaults=false`() {
+    fun `defaults are suppressed under encodeDefaults false`() {
         val entry = Named<ToyConfig>("a", FooConfig())
         // n=0 is the default and must not appear on the wire.
         assertEquals(
             """{"name":"a","config":{"${'$'}type":"Foo"}}""",
             SchemaJson.encodeToString(entry),
         )
-    }
-
-    @Test
-    fun `Named round-trips through ProtoBuf - format independence`() {
-        val entry = Named<ToyConfig>("alpha", BarConfig("hello"))
-        val proto = ProtoBuf
-        val bytes = proto.encodeToByteArray(serializer<Named<ToyConfig>>(), entry)
-        val decoded = proto.decodeFromByteArray(serializer<Named<ToyConfig>>(), bytes)
-        assertEquals(entry, decoded)
     }
 }

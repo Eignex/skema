@@ -23,15 +23,15 @@ import kotlin.properties.ReadOnlyProperty
  * skema supports both shapes from the same definition surface.
  */
 abstract class LiveSchema<C : Any> {
-    @PublishedApi internal val _entries = mutableListOf<Named<C>>()
-    val entries: List<Named<C>> get() = _entries
+    @PublishedApi internal val mutableEntries = mutableListOf<Named<C>>()
+    val entries: List<Named<C>> get() = mutableEntries
 
     /** Append an entry. Throws on duplicate names. */
     protected fun add(name: String, config: C) {
-        require(_entries.none { it.name == name }) {
+        require(mutableEntries.none { it.name == name }) {
             "Duplicate entry name '$name' in ${this::class.simpleName ?: "schema"}"
         }
-        _entries.add(Named(name, config))
+        mutableEntries.add(Named(name, config))
     }
 
     /**
@@ -63,7 +63,7 @@ abstract class LiveSchema<C : Any> {
      * `constraints` list).
      */
     open fun definition(): SchemaDef<C> {
-        validate(_entries)
-        return SchemaDef(_entries.toList())
+        validate(mutableEntries)
+        return SchemaDef(mutableEntries.toList())
     }
 }
