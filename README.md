@@ -17,19 +17,17 @@
 
 > This repository is intended for internal use, but feel free to use however you want.
 
-Shared schema-serialization plumbing for Eignex libraries ([kumulant](https://github.com/Eignex/kumulant), [klause](https://github.com/Eignex/klause), [combo](https://github.com/Eignex/combo)). Format-agnostic core: a `Named<C>` entry envelope, a `LiveSchema` property-delegate builder, a `SchemaDef<C>` wire wrapper, and a `SchemaJson` configuration with a `$type` discriminator (unquoted in YAML). Works with any kotlinx.serialization SerialFormat; binary formats use tag numbers instead.
+Shared schema-serialization plumbing for Eignex libraries ([kumulant](https://github.com/Eignex/kumulant), [klause](https://github.com/Eignex/klause), [combo](https://github.com/Eignex/combo)). Lets a producer declare a schema as a Kotlin class for compile-time access, ship the same schema as JSON or YAML, and have a downstream consumer that doesn't share the class iterate the wire form by name. The two paths share a `Named<C>` entry envelope and a `SchemaDef<C>` wire wrapper, so producers and consumers can mix and match without reinventing either side.
 
-## When to use it
+If you only ever need typed access, write a data class. If you only ever need wire data, write a sealed `@Serializable` interface. skema is for the case where both are required.
 
-skema is for libraries whose users want both a typed Kotlin schema (defined as a class so call sites get compile-time keys like `snap[schema.requests].sum`) and an external wire schema (HTTP payloads, YAML cloud configs) decoded into the same definition surface and accessed by name. Both paths terminate at the same `SchemaDef<C>` / `Named<C>` data shape, so producers and consumers can mix and match without reinventing the envelope. If you only need one mode you don't need skema; just write a sealed interface and a `Json {}` config.
-
-## Usage
+## A complete example
 
 ```kotlin
 implementation("com.eignex:skema:0.1.0")
 ```
 
-A consuming library defines its config sealed type, a typed key the property delegate returns, and a base schema with typed delegates on top of `register`:
+Define a vocabulary of config types and a base schema that wraps `register`:
 
 ```kotlin
 @Serializable sealed interface ToyVar
@@ -46,58 +44,41 @@ abstract class ToyBaseSchema : LiveSchema<ToyVar>() {
 }
 ```
 
-End users subclass that base and declare entries as properties:
+The producer declares a schema as a class. Compile-time access works on the schema; instances are a hand-rolled data class:
 
 ```kotlin
-class MySchema : ToyBaseSchema() {
-    val flag  by bool()
-    val score by int(0, 100)
+class FormSchema : ToyBaseSchema() {
+    val acceptsTos by bool()
+    val age        by int(13, 120)
 }
 
-val schema = MySchema()
-schema.flag       // BoolKey(name = "flag")
-schema.score      // IntKey(name = "score", min = 0, max = 100)
-schema.entries    // [Named("flag", BoolToy), Named("score", IntToy(0, 100))]
-SchemaJson.encodeToString(SchemaDef.serializer(ToyVar.serializer()), schema.definition())
-// {"entries":[{"name":"flag","config":{"$type":"Bool"}},…]}
+data class FormResponse(val acceptsTos: Boolean, val age: Int)
+
+val schema = FormSchema()
+val response = FormResponse(acceptsTos = true, age = 27)
+response.age  // typed Int
+
+val wire: String = SchemaJson.encodeToString(SchemaDef.serializer(ToyVar.serializer()), schema.definition())
+// {"entries":[
+//   {"name":"acceptsTos","config":{"$type":"Bool"}},
+//   {"name":"age","config":{"$type":"Int","min":13,"max":120}}
+// ]}
 ```
+
+A downstream consumer (different process, no `FormSchema` class) decodes the same wire string and walks the entries by name:
+
+```kotlin
+val def = SchemaJson.decodeFromString(SchemaDef.serializer(ToyVar.serializer()), wire)
+for ((name, config) in def.entries) when (config) {
+    is BoolToy -> renderCheckbox(name)
+    is IntToy  -> renderSlider(name, config.min, config.max)
+}
+```
+
+The same schema serves both sides without the consumer needing the producer's Kotlin code. That's the win.
 
 ## Schema vs instance
 
-A schema describes shape: names, types, per-entry config. An instance carries values that conform to a schema: assignments for variables, accumulator state for stats, etc. skema owns the schema side; the consuming library defines what an instance looks like and how it materializes from a schema.
+The schema is shape (names, types, per-entry config) and is what skema owns. An instance carries values conforming to a schema (assignments, accumulator state, response payloads) and lives in the consuming library. The example above keeps them separate: `FormSchema` is the schema, `FormResponse` is the instance, materialization is the user's call.
 
-When the schema is known at compile time, the instance is just a data class with the same fields:
-
-```kotlin
-data class ToyInstance(val flag: Boolean, val score: Int)
-
-fun MySchema.randomInstance() = ToyInstance(
-    flag = Random.nextBoolean(),
-    score = Random.nextInt(0, 101),
-)
-```
-
-Reading is direct property access:
-
-```kotlin
-val schema = MySchema()
-val instance = schema.randomInstance()
-instance.flag    // Boolean
-instance.score   // Int
-```
-
-The schema's typed keys (`schema.flag`, `schema.score`) earn their keep on the dynamic side: when a consumer can't enumerate fields at compile time (kumulant accepting any user-defined `StatSchema`, klause assigning solutions to runtime-built variable lists), instances are name-keyed maps and the keys index into them. Real consumers replace `ToyInstance` with `kumulant.StatGroup`, klause solver assignments, etc. skema doesn't know or care which.
-
-## Dynamic path
-
-When there's no schema class on the consumer side, walk `entries` or look up by name on `SchemaDef`:
-
-```kotlin
-val def: SchemaDef<ToyVar> = SchemaJson.decodeFromString(serializer(), wireText)
-def.names                  // ["flag", "score"]
-def["score"]               // IntToy(0, 100)
-for ((name, config) in def.entries) when (config) {
-    is BoolToy -> println(name)
-    is IntToy  -> println("$name in ${config.min}..${config.max}")
-}
-```
+The schema's typed keys (`schema.acceptsTos`, `schema.age`) come into play when an instance can't be a hand-rolled data class because the schema isn't known at compile time. kumulant accepts any user-defined `StatSchema` and stores accumulators in a name-keyed map; lookup is `instance[schema.someStat]`. klause does the same for solver-assigned variables. skema doesn't impose a shape on instances, only on the schema description.
