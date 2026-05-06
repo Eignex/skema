@@ -1,14 +1,6 @@
 package com.eignex.skema
 
-/**
- * Per-entry difference between two schemas. Names that exist on both sides
- * with structurally-equal configs are omitted; the rest land in [added],
- * [removed], or [changed].
- *
- * Equality on the config payload is structural (kotlinx-serialization
- * sealed roots are typically data classes / data objects), so this works
- * out of the box for any well-defined config hierarchy.
- */
+/** Per-entry difference between two schemas. Equal entries on both sides are omitted. */
 data class SchemaDiff<C>(
     val added: Map<String, C>,
     val removed: Map<String, C>,
@@ -17,7 +9,6 @@ data class SchemaDiff<C>(
     val isEmpty: Boolean get() = added.isEmpty() && removed.isEmpty() && changed.isEmpty()
 }
 
-/** Compute the per-entry diff between two schemas. */
 fun <C> SchemaDef<C>.diff(other: SchemaDef<C>): SchemaDiff<C> {
     val added = other.entries.filterKeys { it !in entries }
     val removed = entries.filterKeys { it !in other.entries }

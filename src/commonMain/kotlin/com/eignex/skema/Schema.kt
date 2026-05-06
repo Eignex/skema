@@ -4,21 +4,14 @@ import kotlin.properties.PropertyDelegateProvider
 import kotlin.properties.ReadOnlyProperty
 
 /**
- * Builder base for any schema'd Eignex library. Subclasses (e.g. kumulant
- * `StatSchema`, klause `VariableSchema`) expose library-specific declarators
- * that call [add] (assignment form, explicit name) or [register] (delegate
- * form, name captured from the property).
- *
- * The pure-data view of this schema is [definition], a [SchemaDef] that
- * serializes through any kotlinx-serialization format. Override
- * [definition] to use a wrapper with a different root field name or to
- * carry adjunct lists alongside the main entries.
+ * Builder base for any schema'd Eignex library. Subclasses expose
+ * library-specific declarators that call [add] (assignment form) or
+ * [register] (delegate form). [definition] returns the wire form.
  */
 abstract class Schema<C : Any> {
     private val mutableEntries = LinkedHashMap<String, C>()
     val entries: Map<String, C> get() = mutableEntries
 
-    /** Append an entry. Throws on duplicate names. */
     protected fun add(name: String, config: C) {
         require(name !in mutableEntries) {
             "Duplicate entry name '$name' in ${this::class.simpleName ?: "schema"}"
@@ -27,9 +20,9 @@ abstract class Schema<C : Any> {
     }
 
     /**
-     * Property-delegate variant of [add]: captures the property name and
-     * returns a typed [Key]. Use when you'd rather not repeat the name
-     * (`val flag by bool()` instead of `val flag = bool("flag")`).
+     * Property-delegate variant of [add]; captures the property name and
+     * returns a typed [Key]. `val flag by bool()` instead of
+     * `val flag = bool("flag")`.
      */
     protected inline fun <Key> register(
         config: C,
@@ -41,13 +34,12 @@ abstract class Schema<C : Any> {
         ReadOnlyProperty { _, _ -> key }
     }
 
-    /** Override to enforce cross-entry invariants. Called by [definition]; throw on violation. */
+    /** Override to enforce cross-entry invariants; called by [definition]. */
     protected open fun validate(entries: Map<String, C>) {}
 
     /**
-     * Pure-data, serializable view of this schema. Default wraps
-     * [entries] in [SchemaDef] (root field name "entries"); override to
-     * use a wrapper with a different name or adjunct fields.
+     * Pure-data, serializable view of this schema. Override to ship under
+     * a different root field name or to add adjunct fields.
      */
     open fun definition(): SchemaDef<C> {
         validate(mutableEntries)

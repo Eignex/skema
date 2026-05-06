@@ -4,14 +4,9 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonBuilder
 
 /**
- * Recommended `Json` configuration for Eignex schema payloads: `$type`
- * discriminator (unquoted in YAML, unlike `@type`), suppressed defaults,
- * no explicit nulls. Apply to your own builder for custom overrides:
- * ```
- * val myJson = Json { schemaJsonConfig(); prettyPrint = true }
- * ```
- * Binary formats (ProtoBuf, Cbor) use tag-number polymorphism and don't
- * need this config.
+ * Recommended Json configuration for Eignex schema payloads. Apply to
+ * any [Json] builder (`Json { schemaJsonConfig() }`) for the standard
+ * `$type` discriminator with suppressed defaults.
  */
 val schemaJsonConfig: JsonBuilder.() -> Unit = {
     classDiscriminator = "\$type"

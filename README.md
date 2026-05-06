@@ -15,7 +15,7 @@
 [![codecov](https://codecov.io/gh/eignex/skema/branch/main/graph/badge.svg)](https://codecov.io/gh/eignex/skema)
 [![License](https://img.shields.io/github/license/eignex/skema)](https://github.com/eignex/skema/blob/main/LICENSE)
 
-A Kotlin Multiplatform library for schemas that work two ways at once. Declare a schema as a singleton object on the producer side and you get typed compile-time access to every field; serialize the same definition to JSON, YAML, ProtoBuf, or any other kotlinx-serialization format, and a downstream consumer that doesn't share your Kotlin code can decode the schema and walk it by name. Both paths terminate at the same Named entry envelope and SchemaDef wire wrapper, so producers and consumers mix and match without reinventing either side.
+A Kotlin Multiplatform library for schemas that work two ways at once. Declare a schema as a singleton object on the producer side and you get typed compile-time access to every field; serialize the same definition to JSON, YAML, ProtoBuf, or any other kotlinx-serialization format, and a downstream consumer that doesn't share your Kotlin code can decode the schema and walk it by name. Both paths share the same SchemaDef wire shape, so producers and consumers mix and match without reinventing either side.
 
 If you only need typed access, write a data class. If you only need wire data, write a sealed Serializable interface. skema is for the case where both are required.
 
@@ -39,8 +39,6 @@ data class BoolKey(override val name: String) : FieldKey
 data class IntKey(override val name: String, val min: Int, val max: Int) : FieldKey
 
 abstract class FormSchema : Schema<FormField>() {
-    // Assignment form: explicit name, useful when the wire name should differ
-    // from the Kotlin property or when the property isn't a top-level val.
     protected fun bool(name: String): BoolKey {
         add(name, BoolField)
         return BoolKey(name)
@@ -50,7 +48,6 @@ abstract class FormSchema : Schema<FormField>() {
         return IntKey(name, min, max)
     }
 
-    // Delegate form: captures the property name automatically.
     protected fun bool() = register(BoolField, ::BoolKey)
     protected fun int(min: Int, max: Int) = register(IntField(min, max)) { IntKey(it, min, max) }
 }
@@ -60,8 +57,8 @@ A concrete schema is a singleton object. Mix-and-match assignment and delegation
 
 ```kotlin
 object SignupFormSchema : FormSchema() {
-    val acceptsTos = bool("acceptsTos")  // assignment: explicit name
-    val age       by int(13, 120)        // delegate: name from the property
+    val acceptsTos = bool("acceptsTos")
+    val age       by int(13, 120)
 }
 
 data class SignupResponse(val acceptsTos: Boolean, val age: Int)
