@@ -21,12 +21,7 @@ Shared schema-serialization plumbing for Eignex libraries ([kumulant](https://gi
 
 ## When to use it
 
-skema is for libraries whose users want **both** of:
-
-- **Typed Kotlin schemas defined as classes**, so call sites get compile-time keys: `snap[schema.requests].sum`. The class is the source of truth; serialization is just transport.
-- **External wire schemas** (HTTP payloads, YAML cloud configs) decoded into the same definition surface and accessed by name. No Kotlin class on the consumer side.
-
-Both paths terminate at the same `SchemaDef<C>` / `Named<C>` data shape, so producers and consumers can mix and match without reinventing the envelope. If you only need one mode you don't need skema — just write a sealed interface and a `Json {}` config.
+skema is for libraries whose users want both a typed Kotlin schema (defined as a class so call sites get compile-time keys like `snap[schema.requests].sum`) and an external wire schema (HTTP payloads, YAML cloud configs) decoded into the same definition surface and accessed by name. Both paths terminate at the same `SchemaDef<C>` / `Named<C>` data shape, so producers and consumers can mix and match without reinventing the envelope. If you only need one mode you don't need skema; just write a sealed interface and a `Json {}` config.
 
 ## Usage
 
@@ -64,4 +59,4 @@ SchemaJson.encodeToString(SchemaDef.serializer(ToyVar.serializer()), s.definitio
 // {"entries":[{"name":"flag","config":{"$type":"Bool"}},…]}
 ```
 
-The wire form decodes back into a `SchemaDef<ToyVar>` that downstream code can iterate by name without ever instantiating `MySchema` — the dynamic path.
+The wire form decodes back into a `SchemaDef<ToyVar>` that downstream code can iterate by name without ever instantiating `MySchema`. That's the dynamic path.
