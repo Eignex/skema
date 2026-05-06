@@ -50,7 +50,7 @@ class LiveSchemaTest {
     fun `skeleton mode is reentrant and restores the prior flag`() {
         val outer = LiveSchema.skeleton {
             val inner = ToySchema()
-            assertTrue(inner.skeletonMode, "Inner schema constructed inside skeleton block must also be skeleton")
+            assertTrue(inner.skeletonMode)
             ToySchema()
         }
         assertTrue(outer.skeletonMode)
@@ -67,7 +67,6 @@ class LiveSchemaTest {
             a.skeletonMode to b.skeletonMode
         }
         assertEquals(true to true, captured)
-        // Flag restored.
         assertFalse(ToySchema().skeletonMode)
     }
 
@@ -76,7 +75,7 @@ class LiveSchemaTest {
         val s = ToySchema()
         val first = s.entries[0]
         val encoded = SchemaJson.encodeToString(Named.serializer(ToyVar.serializer()), first)
-        assertEquals("""{"name":"flag","config":{"@type":"Bool"}}""", encoded)
+        assertEquals("""{"name":"flag","config":{"${'$'}type":"Bool"}}""", encoded)
     }
 
     @Test
@@ -89,13 +88,13 @@ class LiveSchemaTest {
     }
 
     @Test
-    fun `definition() round-trips through SchemaJson with @type discriminator`() {
+    fun `definition() round-trips through SchemaJson with ${'$'}type discriminator`() {
         val def = ToySchema().definition()
         val encoded = SchemaJson.encodeToString(SchemaDef.serializer(ToyVar.serializer()), def)
         assertEquals(
             """{"entries":[""" +
-                """{"name":"flag","config":{"@type":"Bool"}},""" +
-                """{"name":"score","config":{"@type":"Int","min":0,"max":100}}""" +
+                """{"name":"flag","config":{"${'$'}type":"Bool"}},""" +
+                """{"name":"score","config":{"${'$'}type":"Int","min":0,"max":100}}""" +
                 """]}""",
             encoded,
         )
@@ -111,7 +110,7 @@ class LiveSchemaTest {
                 }
             }
         }
-        assertTrue(ex.message!!.contains("dup"), "message names the duplicate: ${ex.message}")
+        assertTrue(ex.message!!.contains("dup"))
     }
 
     @Test

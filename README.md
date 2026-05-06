@@ -17,7 +17,7 @@
 
 > This repository is intended for internal use, but feel free to use however you want.
 
-Shared schema-serialization plumbing for Eignex libraries ([kumulant](https://github.com/Eignex/kumulant), [klause](https://github.com/Eignex/klause), [combo](https://github.com/Eignex/combo)). Format-agnostic core: Named entries, a LiveSchema property-delegate builder with reentrant skeleton mode, a SchemaJson configuration with the standard @type discriminator, and a bindTyped round-trip helper. Works with any kotlinx.serialization SerialFormat; binary formats use tag numbers instead of @type.
+Shared schema-serialization plumbing for Eignex libraries ([kumulant](https://github.com/Eignex/kumulant), [klause](https://github.com/Eignex/klause), [combo](https://github.com/Eignex/combo)). Format-agnostic core: Named entries, a LiveSchema property-delegate builder with reentrant skeleton mode, a SchemaJson configuration with a `$type` discriminator (unquoted in YAML), and a bindTyped round-trip helper. Works with any kotlinx.serialization SerialFormat; binary formats use tag numbers instead.
 
 ## Usage
 
