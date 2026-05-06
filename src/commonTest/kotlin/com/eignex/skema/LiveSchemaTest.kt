@@ -6,8 +6,6 @@ import kotlinx.serialization.encodeToString
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 @Serializable
@@ -29,45 +27,12 @@ private class ToySchema : LiveSchema<ToyVar>() {
 class LiveSchemaTest {
 
     @Test
-    fun `non-skeleton path populates entries and runs the materializer`() {
+    fun `register populates entries and runs the materializer`() {
         val s = ToySchema()
         assertEquals(listOf("flag", "score"), s.entries.map { it.name })
         assertEquals(listOf("flag", "score"), s.materialized)
         assertEquals("flag", s.flag)
         assertEquals("score", s.score)
-        assertFalse(s.skeletonMode)
-    }
-
-    @Test
-    fun `skeleton path populates entries but skips the materializer`() {
-        val s = LiveSchema.skeleton(::ToySchema)
-        assertEquals(listOf("flag", "score"), s.entries.map { it.name })
-        assertEquals(emptyList(), s.materialized)
-        assertTrue(s.skeletonMode)
-    }
-
-    @Test
-    fun `skeleton mode is reentrant and restores the prior flag`() {
-        val outer = LiveSchema.skeleton {
-            val inner = ToySchema()
-            assertTrue(inner.skeletonMode)
-            ToySchema()
-        }
-        assertTrue(outer.skeletonMode)
-        val normal = ToySchema()
-        assertFalse(normal.skeletonMode)
-        assertEquals(listOf("flag", "score"), normal.materialized)
-    }
-
-    @Test
-    fun `withSkeleton wraps arbitrary blocks - not just LiveSchema factories`() {
-        val captured = LiveSchema.withSkeleton {
-            val a = ToySchema()
-            val b = ToySchema()
-            a.skeletonMode to b.skeletonMode
-        }
-        assertEquals(true to true, captured)
-        assertFalse(ToySchema().skeletonMode)
     }
 
     @Test
@@ -88,7 +53,7 @@ class LiveSchemaTest {
     }
 
     @Test
-    fun `definition() round-trips through SchemaJson with ${'$'}type discriminator`() {
+    fun `definition() round-trips through SchemaJson with discriminator`() {
         val def = ToySchema().definition()
         val encoded = SchemaJson.encodeToString(SchemaDef.serializer(ToyVar.serializer()), def)
         assertEquals(
@@ -121,49 +86,14 @@ class LiveSchemaTest {
                 require(entries.size >= 2) { "this schema demands at least 2 entries" }
             }
         }
-        val s = Validating()
-        val ex = assertFailsWith<IllegalArgumentException> { s.definition() }
+        val ex = assertFailsWith<IllegalArgumentException> { Validating().definition() }
         assertTrue(ex.message!!.contains("at least 2 entries"))
-    }
-
-    @Test
-    fun `bindTyped accepts matching definition and returns a Bound`() {
-        val live = ToySchema()
-        val wire = live.entries
-
-        val bound = bindTyped(
-            def = wire,
-            factory = ::ToySchema,
-            definitionOf = { it.entries },
-            materialize = { "live!" },
-        )
-        assertEquals(wire, bound.schema.entries)
-        assertEquals("live!", bound.live)
-        assertTrue(bound.schema.skeletonMode)
-        assertEquals(emptyList(), bound.schema.materialized)
-    }
-
-    @Test
-    fun `bindTyped rejects drift loudly`() {
-        val wire = ToySchema().entries + Named("extra", BoolToy)
-        val ex = assertFailsWith<IllegalArgumentException> {
-            bindTyped(
-                def = wire,
-                factory = ::ToySchema,
-                definitionOf = { it.entries },
-                materialize = { "live!" },
-            )
-        }
-        assertNotNull(ex.message)
-        assertTrue(ex.message!!.contains("ToySchema"))
     }
 
     @Test
     fun `add() exposed for delegates that don't fit register`() {
         val s = object : LiveSchema<ToyVar>() {
-            init {
-                add("manual", IntToy(1, 10))
-            }
+            init { add("manual", IntToy(1, 10)) }
         }
         assertEquals(1, s.entries.size)
         assertEquals("manual", s.entries[0].name)

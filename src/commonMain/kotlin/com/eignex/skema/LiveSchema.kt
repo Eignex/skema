@@ -7,18 +7,24 @@ import kotlin.properties.ReadOnlyProperty
  * Builder base for any schema'd Eignex library. Subclasses (e.g. kumulant
  * `StatSchema`, klause `VariableSchema`) declare library-specific delegate
  * methods that call [register] to collect property-named [Named] entries
- * and optionally materialize live state alongside.
+ * and materialize live state alongside.
  *
- * In skeleton mode (see [skeleton]) the materializer is skipped, so a
- * factory call yields a schema with typed delegate keys but no live state —
- * used by [bindTyped] to recover types from a wire-decoded definition
- * without paying for unused materialization.
+ * The pure-data view of the schema is [definition]; the live state lives
+ * on the subclass. Two paths:
+ *
+ *  - **Class is the source of truth.** Producer and consumer share the
+ *    schema class as code; build with `MySchema()`, serialize
+ *    `definition()` for transport only. No deserialization on the
+ *    consumer side.
+ *  - **Wire is the source of truth.** No class on the consumer side;
+ *    decode `SchemaDef<C>` and use a library-specific materializer to
+ *    build the live form. Access by name only.
+ *
+ * skema supports both shapes from the same definition surface.
  */
 abstract class LiveSchema<C : Any> {
     @PublishedApi internal val _entries = mutableListOf<Named<C>>()
     val entries: List<Named<C>> get() = _entries
-
-    val skeletonMode: Boolean = currentSkeletonMode
 
     /** Append an entry. Throws on duplicate names. */
     protected fun add(name: String, config: C) {
@@ -44,7 +50,7 @@ abstract class LiveSchema<C : Any> {
     ) = PropertyDelegateProvider<LiveSchema<C>, ReadOnlyProperty<LiveSchema<C>, Key>> { _, property ->
         val name = property.name
         add(name, config)
-        if (!skeletonMode) materializer(name)
+        materializer(name)
         val key = keyOf(name)
         ReadOnlyProperty { _, _ -> key }
     }
@@ -60,26 +66,5 @@ abstract class LiveSchema<C : Any> {
     open fun definition(): SchemaDef<C> {
         validate(_entries)
         return SchemaDef(_entries.toList())
-    }
-
-    companion object {
-        @PublishedApi internal var currentSkeletonMode: Boolean = false
-
-        /**
-         * Run [factory] in skeleton mode — the returned schema has empty
-         * live state but a fully populated [entries]. Reentrant.
-         */
-        inline fun <T : LiveSchema<*>> skeleton(factory: () -> T): T {
-            val prev = currentSkeletonMode
-            currentSkeletonMode = true
-            try { return factory() } finally { currentSkeletonMode = prev }
-        }
-
-        /** Like [skeleton] but for arbitrary blocks that don't return a `LiveSchema`. */
-        inline fun <R> withSkeleton(block: () -> R): R {
-            val prev = currentSkeletonMode
-            currentSkeletonMode = true
-            try { return block() } finally { currentSkeletonMode = prev }
-        }
     }
 }

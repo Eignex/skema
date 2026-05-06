@@ -17,7 +17,16 @@
 
 > This repository is intended for internal use, but feel free to use however you want.
 
-Shared schema-serialization plumbing for Eignex libraries ([kumulant](https://github.com/Eignex/kumulant), [klause](https://github.com/Eignex/klause), [combo](https://github.com/Eignex/combo)). Format-agnostic core: Named entries, a LiveSchema property-delegate builder with reentrant skeleton mode, a SchemaJson configuration with a `$type` discriminator (unquoted in YAML), and a bindTyped round-trip helper. Works with any kotlinx.serialization SerialFormat; binary formats use tag numbers instead.
+Shared schema-serialization plumbing for Eignex libraries ([kumulant](https://github.com/Eignex/kumulant), [klause](https://github.com/Eignex/klause), [combo](https://github.com/Eignex/combo)). Format-agnostic core: a `Named<C>` entry envelope, a `LiveSchema` property-delegate builder, a `SchemaDef<C>` wire wrapper, and a `SchemaJson` configuration with a `$type` discriminator (unquoted in YAML). Works with any kotlinx.serialization SerialFormat; binary formats use tag numbers instead.
+
+## When to use it
+
+skema is for libraries whose users want **both** of:
+
+- **Typed Kotlin schemas defined as classes**, so call sites get compile-time keys: `snap[schema.requests].sum`. The class is the source of truth; serialization is just transport.
+- **External wire schemas** (HTTP payloads, YAML cloud configs) decoded into the same definition surface and accessed by name. No Kotlin class on the consumer side.
+
+Both paths terminate at the same `SchemaDef<C>` / `Named<C>` data shape, so producers and consumers can mix and match without reinventing the envelope. If you only need one mode you don't need skema — just write a sealed interface and a `Json {}` config.
 
 ## Usage
 
@@ -25,7 +34,7 @@ Shared schema-serialization plumbing for Eignex libraries ([kumulant](https://gi
 implementation("com.eignex:skema:0.1.0")
 ```
 
-A consuming library defines its config sealed type and a base schema that exposes typed delegates on top of register:
+A consuming library defines its config sealed type and a base schema that exposes typed delegates on top of `register`:
 
 ```kotlin
 @Serializable sealed interface ToyVar
@@ -40,25 +49,19 @@ abstract class ToyBaseSchema : LiveSchema<ToyVar>() {
 }
 ```
 
-The end user subclasses that base and declares schema entries as properties:
+End users subclass that base and declare schema entries as properties:
 
 ```kotlin
 class MySchema : ToyBaseSchema() {
     val flag  by bool()
     val score by int(0, 100)
 }
-```
 
-End-user usage: instantiate, serialize entries with any SerialFormat, then round-trip back through bindTyped:
-
-```kotlin
 val s = MySchema()
-s.entries  // [Named("flag", BoolToy), Named("score", IntToy(0, 100))]
-
-val (rebuilt, live) = bindTyped(
-    def = s.entries,
-    factory = ::MySchema,
-    definitionOf = { it.entries },
-    materialize = { /* build live state */ },
-)
+s.entries          // [Named("flag", BoolToy), Named("score", IntToy(0, 100))]
+s.definition()     // SchemaDef(entries=[…])
+SchemaJson.encodeToString(SchemaDef.serializer(ToyVar.serializer()), s.definition())
+// {"entries":[{"name":"flag","config":{"$type":"Bool"}},…]}
 ```
+
+The wire form decodes back into a `SchemaDef<ToyVar>` that downstream code can iterate by name without ever instantiating `MySchema` — the dynamic path.
