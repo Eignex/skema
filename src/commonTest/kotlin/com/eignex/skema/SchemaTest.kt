@@ -129,4 +129,110 @@ class SchemaTest {
         assertTrue(!a.equals("not a SchemaDef"))
         assertEquals(empty, a.copy(entries = emptyMap()))
     }
+
+    // diff
+
+    private fun def(vararg pairs: Pair<String, FormField>) = SchemaDef(mapOf(*pairs))
+
+    @Test
+    fun `diff between equal schemas is empty`() {
+        val a = def("x" to BoolField, "y" to IntField(0, 10))
+        val b = def("x" to BoolField, "y" to IntField(0, 10))
+        val d = a.diff(b)
+        assertTrue(d.isEmpty)
+        assertEquals(emptyMap(), d.added)
+        assertEquals(emptyMap(), d.removed)
+        assertEquals(emptyMap(), d.changed)
+    }
+
+    @Test
+    fun `diff detects added entries`() {
+        val a = def("x" to BoolField)
+        val b = def("x" to BoolField, "y" to IntField(0, 10))
+        val d = a.diff(b)
+        assertEquals(mapOf("y" to IntField(0, 10)), d.added)
+        assertTrue(d.removed.isEmpty())
+        assertTrue(d.changed.isEmpty())
+    }
+
+    @Test
+    fun `diff detects removed entries`() {
+        val a = def("x" to BoolField, "y" to IntField(0, 10))
+        val b = def("x" to BoolField)
+        val d = a.diff(b)
+        assertEquals(mapOf("y" to IntField(0, 10)), d.removed)
+        assertTrue(d.added.isEmpty())
+        assertTrue(d.changed.isEmpty())
+    }
+
+    @Test
+    fun `diff detects changed entries with old and new payloads`() {
+        val a = def("x" to BoolField, "y" to IntField(0, 10))
+        val b = def("x" to BoolField, "y" to IntField(0, 100))
+        val d = a.diff(b)
+        assertEquals(mapOf("y" to (IntField(0, 10) to IntField(0, 100))), d.changed)
+        assertTrue(d.added.isEmpty())
+        assertTrue(d.removed.isEmpty())
+    }
+
+    @Test
+    fun `diff handles mixed adds removes and changes`() {
+        val a = def("kept" to BoolField, "moved" to IntField(0, 10), "gone" to BoolField)
+        val b = def("kept" to BoolField, "moved" to IntField(0, 100), "new" to BoolField)
+        val d = a.diff(b)
+        assertEquals(mapOf("new" to BoolField), d.added)
+        assertEquals(mapOf("gone" to BoolField), d.removed)
+        assertEquals(mapOf("moved" to (IntField(0, 10) to IntField(0, 100))), d.changed)
+        assertTrue(!d.isEmpty)
+    }
+
+    // composition
+
+    @Test
+    fun `plus combines disjoint schemas preserving order`() {
+        val a = def("a" to BoolField, "b" to BoolField)
+        val b = def("c" to BoolField, "d" to BoolField)
+        assertEquals(listOf("a", "b", "c", "d"), (a + b).entries.keys.toList())
+    }
+
+    @Test
+    fun `plus throws on overlap and names the overlapping keys`() {
+        val a = def("x" to BoolField, "y" to BoolField)
+        val b = def("y" to IntField(0, 1), "z" to BoolField)
+        val ex = assertFailsWith<IllegalArgumentException> { a + b }
+        assertTrue(ex.message!!.contains("y"))
+    }
+
+    @Test
+    fun `plus with empty is identity`() {
+        val a = def("x" to BoolField)
+        val empty = def()
+        assertEquals(a, a + empty)
+        assertEquals(a, empty + a)
+    }
+
+    @Test
+    fun `namespaced prefixes every key with the default separator`() {
+        val a = def("email" to BoolField, "phone" to BoolField)
+        assertEquals(listOf("user.email", "user.phone"), a.namespaced("user").entries.keys.toList())
+    }
+
+    @Test
+    fun `namespaced respects a custom separator`() {
+        val a = def("email" to BoolField)
+        assertEquals(listOf("user/email"), a.namespaced("user", separator = "/").entries.keys.toList())
+    }
+
+    @Test
+    fun `namespaced rejects empty prefix`() {
+        assertFailsWith<IllegalArgumentException> { def("x" to BoolField).namespaced("") }
+    }
+
+    @Test
+    fun `plus of two namespaced schemas with different prefixes never overlaps`() {
+        val users = def("email" to BoolField).namespaced("user")
+        val billing = def("email" to BoolField).namespaced("billing")
+        val combined = users + billing
+        assertEquals(listOf("user.email", "billing.email"), combined.entries.keys.toList())
+    }
 }

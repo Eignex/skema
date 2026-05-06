@@ -104,3 +104,22 @@ object SignupFormSchema : FormSchema() {
 SchemaJson.encodeToString(SignupForm.serializer(), SignupFormSchema.signupDef())
 // {"fields":{"acceptsTos":{"$type":"Bool"},"age":{"$type":"Int","min":13,"max":120}}}
 ```
+
+## Diff and composition
+
+`SchemaDef.diff(other)` reports per-entry adds, removes, and changes between two schemas. Use it to detect drift between producer and consumer versions, or to gate a schema migration:
+
+```kotlin
+val current = SignupFormSchema.definition()
+val incoming = SchemaJson.decodeFromString(SchemaDef.serializer(FormField.serializer()), wire)
+val diff = current.diff(incoming)
+if (!diff.isEmpty) error("Schema drifted: added=${diff.added.keys}, removed=${diff.removed.keys}, changed=${diff.changed.keys}")
+```
+
+Two schemas combine with `+`, with names prefixed via `namespaced(prefix)`. The combination throws on overlap, so plugin-style modules can compose without silent collisions:
+
+```kotlin
+val users   = userFieldsSchema.namespaced("user")     // user.email, user.phone
+val billing = billingFieldsSchema.namespaced("billing") // billing.address, ...
+val app     = users + billing
+```
