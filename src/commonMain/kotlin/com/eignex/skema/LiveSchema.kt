@@ -1,13 +1,9 @@
 package com.eignex.skema
 
-import kotlin.properties.PropertyDelegateProvider
-import kotlin.properties.ReadOnlyProperty
-
 /**
  * Builder base for any schema'd Eignex library. Subclasses (e.g. kumulant
- * `StatSchema`, klause `VariableSchema`) declare library-specific delegate
- * methods that call [register] to collect property-named [Named] entries
- * and materialize live state alongside.
+ * `StatSchema`, klause `VariableSchema`) expose library-specific name-taking
+ * declarators that call [add] to record entries.
  *
  * The pure-data view of the schema is [definition]; the live state lives
  * on the subclass. Two paths:
@@ -23,7 +19,7 @@ import kotlin.properties.ReadOnlyProperty
  * skema supports both shapes from the same definition surface.
  */
 abstract class LiveSchema<C : Any> {
-    @PublishedApi internal val mutableEntries = mutableListOf<Named<C>>()
+    private val mutableEntries = mutableListOf<Named<C>>()
     val entries: List<Named<C>> get() = mutableEntries
 
     /** Append an entry. Throws on duplicate names. */
@@ -32,26 +28,6 @@ abstract class LiveSchema<C : Any> {
             "Duplicate entry name '$name' in ${this::class.simpleName ?: "schema"}"
         }
         mutableEntries.add(Named(name, config))
-    }
-
-    /**
-     * Property-delegate helper used by subclass delegates:
-     * ```
-     * protected fun <R> series(config: SeriesStatConfig<R>) =
-     *     register(config, keyOf = { StatKey<R>(it) })
-     * ```
-     * Returns a typed [Key] for use at call sites. Live state is built
-     * separately by walking [entries] (or [definition]) after schema
-     * construction.
-     */
-    protected inline fun <Key> register(
-        config: C,
-        crossinline keyOf: (name: String) -> Key,
-    ) = PropertyDelegateProvider<LiveSchema<C>, ReadOnlyProperty<LiveSchema<C>, Key>> { _, property ->
-        val name = property.name
-        add(name, config)
-        val key = keyOf(name)
-        ReadOnlyProperty { _, _ -> key }
     }
 
     /** Override to enforce cross-entry invariants. Called by [definition]; throw on violation. */

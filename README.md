@@ -27,7 +27,7 @@ If you only ever need typed access, write a data class. If you only ever need wi
 implementation("com.eignex:skema:0.1.0")
 ```
 
-Define a vocabulary of config types and a base schema with name-taking declarators (the same convention JetBrains' Exposed uses for SQL columns):
+Define a vocabulary of config types and a base schema with name-taking declarators. The convention is borrowed directly from JetBrains' [Exposed](https://github.com/JetBrains/Exposed), where SQL columns are declared as `val name = varchar("name", 50)` on a `Table` singleton; the same shape works here for any schema entry:
 
 ```kotlin
 @Serializable sealed interface ToyVar

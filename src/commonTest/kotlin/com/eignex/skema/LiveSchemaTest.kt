@@ -23,32 +23,41 @@ private sealed interface ToyKey { val name: String }
 private data class BoolKey(override val name: String) : ToyKey
 private data class IntKey(override val name: String, val min: Int, val max: Int) : ToyKey
 
-private class ToySchema : LiveSchema<ToyVar>() {
-    val flag by register(BoolToy, keyOf = { BoolKey(it) })
-    val score by register(IntToy(0, 100), keyOf = { IntKey(it, 0, 100) })
+private abstract class ToyBaseSchema : LiveSchema<ToyVar>() {
+    protected fun bool(name: String): BoolKey {
+        add(name, BoolToy)
+        return BoolKey(name)
+    }
+    protected fun int(name: String, min: Int, max: Int): IntKey {
+        add(name, IntToy(min, max))
+        return IntKey(name, min, max)
+    }
+}
+
+private object ToySchema : ToyBaseSchema() {
+    val flag = bool("flag")
+    val score = int("score", 0, 100)
 }
 
 class LiveSchemaTest {
 
     @Test
-    fun `register populates entries and returns typed keys`() {
-        val s = ToySchema()
-        assertEquals(listOf("flag", "score"), s.entries.map { it.name })
-        assertEquals(BoolKey("flag"), s.flag)
-        assertEquals(IntKey("score", 0, 100), s.score)
+    fun `assignment-style declarators populate entries and return typed keys`() {
+        assertEquals(listOf("flag", "score"), ToySchema.entries.map { it.name })
+        assertEquals(BoolKey("flag"), ToySchema.flag)
+        assertEquals(IntKey("score", 0, 100), ToySchema.score)
     }
 
     @Test
     fun `Named entries serialize through SchemaJson with the standard discriminator`() {
-        val s = ToySchema()
-        val first = s.entries[0]
+        val first = ToySchema.entries[0]
         val encoded = SchemaJson.encodeToString(Named.serializer(ToyVar.serializer()), first)
         assertEquals("""{"name":"flag","config":{"${'$'}type":"Bool"}}""", encoded)
     }
 
     @Test
     fun `default definition returns SchemaDef with all entries`() {
-        val def = ToySchema().definition()
+        val def = ToySchema.definition()
         assertEquals(2, def.size)
         assertEquals(listOf("flag", "score"), def.names)
         assertEquals(BoolToy, def["flag"])
@@ -57,7 +66,7 @@ class LiveSchemaTest {
 
     @Test
     fun `definition round-trips through SchemaJson with discriminator`() {
-        val def = ToySchema().definition()
+        val def = ToySchema.definition()
         val encoded = SchemaJson.encodeToString(SchemaDef.serializer(ToyVar.serializer()), def)
         assertEquals(
             """{"entries":[""" +
@@ -84,22 +93,12 @@ class LiveSchemaTest {
     @Test
     fun `validate hook runs at definition time and propagates exceptions`() {
         class Validating : LiveSchema<ToyVar>() {
-            val flag by register(BoolToy, keyOf = { BoolKey(it) })
+            init { add("flag", BoolToy) }
             override fun validate(entries: List<Named<ToyVar>>) {
                 require(entries.size >= 2) { "this schema demands at least 2 entries" }
             }
         }
         val ex = assertFailsWith<IllegalArgumentException> { Validating().definition() }
         assertTrue(ex.message!!.contains("at least 2 entries"))
-    }
-
-    @Test
-    fun `add is exposed for delegates that do not fit register`() {
-        val s = object : LiveSchema<ToyVar>() {
-            init { add("manual", IntToy(1, 10)) }
-        }
-        assertEquals(1, s.entries.size)
-        assertEquals("manual", s.entries[0].name)
-        assertEquals(IntToy(1, 10), s.entries[0].config)
     }
 }
