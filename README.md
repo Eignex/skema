@@ -89,9 +89,3 @@ for ((name, config) in def.entries) when (config) {
 ```
 
 The same schema serves both sides without the consumer needing the producer's Kotlin code. That's the win.
-
-## Schema vs instance
-
-The schema is shape (names, types, per-entry config) and is what skema owns. An instance carries values conforming to a schema (assignments, accumulator state, response payloads) and lives in the consuming library. The example above keeps them separate: SignupFormSchema is the schema, SignupResponse is the instance, materialization is the user's call.
-
-The schema's typed keys come into play when an instance can't be a hand-rolled data class because the schema isn't known at compile time. kumulant accepts any user-defined StatSchema and stores accumulators in a name-keyed map; lookup is `instance[schema.someStat]`. klause does the same for solver-assigned variables. skema doesn't impose a shape on instances, only on the schema description.
