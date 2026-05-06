@@ -60,3 +60,28 @@ SchemaJson.encodeToString(SchemaDef.serializer(ToyVar.serializer()), s.definitio
 ```
 
 The wire form decodes back into a `SchemaDef<ToyVar>` that downstream code can iterate by name without ever instantiating `MySchema`. That's the dynamic path.
+
+## Reading values
+
+A schema declares names, types, and any per-entry config; the actual values come from whatever the consuming library decides to do at materialization time. For the typed path, properties on the schema instance double as keys; library-specific live state is exposed alongside.
+
+```kotlin
+val s = MySchema()
+s.flag           // "flag" (the key value the delegate returned)
+s.score          // "score"
+s.materialized   // ["flag", "score"] (whatever the library tracked in its materializer)
+```
+
+For the dynamic path, walk `entries` or look up by name on `SchemaDef`:
+
+```kotlin
+val def: SchemaDef<ToyVar> = SchemaJson.decodeFromString(serializer(), wireText)
+def.names                  // ["flag", "score"]
+def["score"]               // IntToy(0, 100)
+for ((name, config) in def.entries) when (config) {
+    is BoolToy -> /* … */
+    is IntToy  -> /* uses config.min, config.max */
+}
+```
+
+Result values from a live materialization (e.g. kumulant `GroupResult`, klause solver assignment) are the consuming library's concern; skema only owns the schema description.

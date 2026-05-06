@@ -44,7 +44,7 @@ class LiveSchemaTest {
     }
 
     @Test
-    fun `default definition() returns SchemaDef with all entries`() {
+    fun `default definition returns SchemaDef with all entries`() {
         val def = ToySchema().definition()
         assertEquals(2, def.size)
         assertEquals(listOf("flag", "score"), def.names)
@@ -53,7 +53,7 @@ class LiveSchemaTest {
     }
 
     @Test
-    fun `definition() round-trips through SchemaJson with discriminator`() {
+    fun `definition round-trips through SchemaJson with discriminator`() {
         val def = ToySchema().definition()
         val encoded = SchemaJson.encodeToString(SchemaDef.serializer(ToyVar.serializer()), def)
         assertEquals(
@@ -66,7 +66,7 @@ class LiveSchemaTest {
     }
 
     @Test
-    fun `add() rejects duplicate names with a descriptive message`() {
+    fun `add rejects duplicate names with a descriptive message`() {
         val ex = assertFailsWith<IllegalArgumentException> {
             object : LiveSchema<ToyVar>() {
                 init {
@@ -79,7 +79,7 @@ class LiveSchemaTest {
     }
 
     @Test
-    fun `validate() hook runs at definition() time and propagates exceptions`() {
+    fun `validate hook runs at definition time and propagates exceptions`() {
         class Validating : LiveSchema<ToyVar>() {
             val flag by register(BoolToy, keyOf = { it }) { }
             override fun validate(entries: List<Named<ToyVar>>) {
@@ -91,7 +91,7 @@ class LiveSchemaTest {
     }
 
     @Test
-    fun `add() exposed for delegates that don't fit register`() {
+    fun `add is exposed for delegates that do not fit register`() {
         val s = object : LiveSchema<ToyVar>() {
             init { add("manual", IntToy(1, 10)) }
         }

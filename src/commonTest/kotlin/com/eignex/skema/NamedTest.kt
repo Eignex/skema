@@ -26,7 +26,7 @@ private data class BarConfig(val label: String) : ToyConfig
 class NamedTest {
 
     @Test
-    fun `Named round-trips through configured Json with ${'$'}type discriminator`() {
+    fun `Named round-trips through configured Json with the discriminator`() {
         val entry = Named<ToyConfig>("alpha", BarConfig("hello"))
         val encoded = SchemaJson.encodeToString(entry)
         assertEquals("""{"name":"alpha","config":{"${'$'}type":"Bar","label":"hello"}}""", encoded)
