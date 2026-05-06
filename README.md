@@ -27,7 +27,7 @@ Used by [kumulant](https://github.com/Eignex/kumulant) (streaming statistics), [
 implementation("com.eignex:skema:0.1.0")
 ```
 
-Define a vocabulary of config types and a base schema with name-taking declarators. The convention is borrowed directly from JetBrains' [Exposed](https://github.com/JetBrains/Exposed), where SQL columns are declared as `val name = varchar("name", 50)` on a Table singleton; the same shape works here for any schema entry:
+Define a vocabulary of config types and a base schema with name-taking declarators. The convention is borrowed directly from JetBrains' [Exposed](https://github.com/JetBrains/Exposed):
 
 ```kotlin
 @Serializable sealed interface FormField
