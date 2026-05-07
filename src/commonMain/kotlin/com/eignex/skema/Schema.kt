@@ -13,6 +13,18 @@ abstract class Schema<C : Any> {
     val entries: Map<String, C> get() = mutableEntries
 
     protected fun add(name: String, config: C) {
+        addPublished(name, config)
+    }
+
+    /**
+     * Backing implementation for [add] and [register]. `register` is `inline`,
+     * so its body executes from a synthetic class in the consumer's package —
+     * JVM `protected` blocks that path with `IllegalAccessError`.
+     * `@PublishedApi internal` keeps the symbol off the public source API
+     * while letting inlined call sites reach it.
+     */
+    @PublishedApi
+    internal fun addPublished(name: String, config: C) {
         require(name !in mutableEntries) {
             "Duplicate entry name '$name' in ${this::class.simpleName ?: "schema"}"
         }
@@ -29,7 +41,7 @@ abstract class Schema<C : Any> {
         crossinline keyOf: (name: String) -> Key,
     ) = PropertyDelegateProvider<Schema<C>, ReadOnlyProperty<Schema<C>, Key>> { _, property ->
         val name = property.name
-        add(name, config)
+        addPublished(name, config)
         val key = keyOf(name)
         ReadOnlyProperty { _, _ -> key }
     }
