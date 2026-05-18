@@ -10,6 +10,8 @@ import kotlin.properties.ReadOnlyProperty
  */
 abstract class Schema<C : Any> {
     private val mutableEntries = LinkedHashMap<String, C>()
+
+    /** Registered entries keyed by name, in declaration order. */
     val entries: Map<String, C> get() = mutableEntries
 
     protected fun add(name: String, config: C) {
