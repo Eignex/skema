@@ -19,10 +19,13 @@ private data object BoolField : FormField
 @SerialName("Int")
 private data class IntField(val min: Int, val max: Int) : FormField
 
-private sealed interface FieldKey { val name: String }
+private sealed interface FieldKey {
+    val name: String
+}
 private data class BoolKey(override val name: String) : FieldKey
 private data class IntKey(override val name: String, val min: Int, val max: Int) : FieldKey
 
+@Suppress("AbstractClassCanBeConcreteClass")
 private abstract class FormSchema : Schema<FormField>() {
     protected fun bool(name: String): BoolKey {
         add(name, BoolField)
@@ -77,7 +80,9 @@ class SchemaTest {
         @Serializable data class FormSchemaDef(val fields: Map<String, FormField>)
 
         val custom = object : FormSchema() {
-            init { add("flag", BoolField) }
+            init {
+                add("flag", BoolField)
+            }
             fun customDef() = FormSchemaDef(entries)
         }
         val encoded = SchemaJson.encodeToString(FormSchemaDef.serializer(), custom.customDef())
@@ -100,7 +105,9 @@ class SchemaTest {
     @Test
     fun `validate hook runs at definition time and propagates exceptions`() {
         class Validating : Schema<FormField>() {
-            init { add("acceptsTos", BoolField) }
+            init {
+                add("acceptsTos", BoolField)
+            }
             override fun validate(entries: Map<String, FormField>) {
                 require(entries.size >= 2) { "this schema demands at least 2 entries" }
             }
