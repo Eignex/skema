@@ -4,7 +4,7 @@ import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 
 plugins {
     id("com.eignex.kmp") version "1.2.1"
-    kotlin("plugin.serialization") version "2.3.0"
+    kotlin("plugin.serialization") version "2.3.20"
 }
 
 eignexPublish {
@@ -27,12 +27,12 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-core:1.10.0")
-            compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
+            compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-core")
+            compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json")
         }
         commonTest.dependencies {
-            implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.10.0")
-            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-core")
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json")
         }
     }
 }
