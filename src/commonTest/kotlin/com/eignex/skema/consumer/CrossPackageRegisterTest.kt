@@ -15,6 +15,7 @@ private data object BoolField : Field
 
 private data class BoolKey(val name: String)
 
+@Suppress("AbstractClassCanBeConcreteClass")
 private abstract class FormSchema : Schema<Field>() {
     protected fun bool() = register(BoolField, ::BoolKey)
 }

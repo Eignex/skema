@@ -8,6 +8,7 @@ import kotlin.properties.ReadOnlyProperty
  * library-specific declarators that call [add] (assignment form) or
  * [register] (delegate form). [definition] returns the wire form.
  */
+@Suppress("AbstractClassCanBeConcreteClass")
 abstract class Schema<C : Any> {
     private val mutableEntries = LinkedHashMap<String, C>()
 
@@ -38,15 +39,13 @@ abstract class Schema<C : Any> {
      * returns a typed [Key]. `val flag by bool()` instead of
      * `val flag = bool("flag")`.
      */
-    protected inline fun <Key> register(
-        config: C,
-        crossinline keyOf: (name: String) -> Key,
-    ) = PropertyDelegateProvider<Schema<C>, ReadOnlyProperty<Schema<C>, Key>> { _, property ->
-        val name = property.name
-        addPublished(name, config)
-        val key = keyOf(name)
-        ReadOnlyProperty { _, _ -> key }
-    }
+    protected inline fun <Key> register(config: C, crossinline keyOf: (name: String) -> Key) =
+        PropertyDelegateProvider<Schema<C>, ReadOnlyProperty<Schema<C>, Key>> { _, property ->
+            val name = property.name
+            addPublished(name, config)
+            val key = keyOf(name)
+            ReadOnlyProperty { _, _ -> key }
+        }
 
     /** Override to enforce cross-entry invariants; called by [definition]. */
     protected open fun validate(entries: Map<String, C>) {}
