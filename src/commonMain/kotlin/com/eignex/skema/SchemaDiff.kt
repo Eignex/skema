@@ -1,4 +1,8 @@
+@file:JvmName("SchemaDiffs")
+
 package com.eignex.skema
+
+import kotlin.jvm.JvmName
 
 /** Per-entry difference between two schemas. Equal entries on both sides are omitted. */
 data class SchemaDiff<C>(
