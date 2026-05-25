@@ -120,3 +120,47 @@ val users   = userFieldsSchema.namespaced("user")     // user.email, user.phone
 val billing = billingFieldsSchema.namespaced("billing") // billing.address, ...
 val app     = users + billing
 ```
+
+## JSON Schema
+
+Schemas describe data, so the obvious next question is whether you can hand a consumer a [json-schema.org](https://json-schema.org) document instead of skema's own wire form. You can, but skema can only do it automatically when it knows the vocabulary. The descriptor for `IntField(min, max)` says "object with two ints"; nothing about it implies "the validated value is an integer between those bounds." That mapping is semantic, not structural, and has to come from somewhere.
+
+skema ships a small built-in vocabulary, `Primitive`, that covers the JSON Schema primitives directly: `Bool`, `Int(min, max)`, `Num(min, max)`, `Str(maxLength, pattern)`, `Enum(values)`. A schema whose config type is `Primitive` gets a JSON Schema for free:
+
+```kotlin
+abstract class FormSchema : Schema<Primitive>() {
+    protected fun bool() = register(Primitive.Bool, ::BoolKey)
+    protected fun int(min: Int, max: Int) =
+        register(Primitive.Int(min, max)) { IntKey(it, min, max) }
+}
+
+object SignupFormSchema : FormSchema() {
+    val acceptsTos by bool()
+    val age        by int(13, 120)
+}
+
+SignupFormSchema.definition().toJsonSchema()
+// {
+//   "$schema": "https://json-schema.org/draft/2020-12/schema",
+//   "type": "object",
+//   "properties": {
+//     "acceptsTos": {"type": "boolean"},
+//     "age": {"type": "integer", "minimum": 13, "maximum": 120}
+//   },
+//   "additionalProperties": false,
+//   "required": ["acceptsTos", "age"]
+// }
+```
+
+For a domain-specific vocabulary, supply a per-entry mapper. The no-arg form on a non-`Primitive` schema is a compile error, not a runtime throw, so you can't forget:
+
+```kotlin
+mySchema.definition().toJsonSchema { config -> when (config) {
+    BoolField   -> buildJsonObject { put("type", "boolean") }
+    is IntField -> buildJsonObject {
+        put("type", "integer"); put("minimum", config.min); put("maximum", config.max)
+    }
+}}
+```
+
+Mixed hierarchies, where your own sealed type carries a `Primitive` plus a few custom variants, reuse the built-in branch inside the mapper, so you only write JSON Schema for the parts skema doesn't already know.
