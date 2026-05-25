@@ -85,6 +85,11 @@ sealed interface Primitive {
         val maxLength: kotlin.Int? = null,
         /** Regex pattern the value must match, or `null` for no constraint. */
         val pattern: String? = null,
+        /**
+         * JSON Schema `format` annotation (`date-time`, `email`, `uri`, `uuid`, ...), or `null`.
+         * Free-form: JSON Schema treats unknown formats as annotations rather than errors.
+         */
+        val format: String? = null,
     ) : Primitive
 
     /** String value drawn from a fixed set. Maps to `{"type":"string","enum":[...]}`. */
@@ -134,6 +139,7 @@ fun Primitive.toJsonSchema(): JsonObject = when (this) {
         minLength?.let { put("minLength", it) }
         maxLength?.let { put("maxLength", it) }
         pattern?.let { put("pattern", it) }
+        format?.let { put("format", it) }
     }
 
     is Primitive.Enum -> buildJsonObject {
