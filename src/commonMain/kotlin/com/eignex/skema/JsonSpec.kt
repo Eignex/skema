@@ -196,6 +196,21 @@ sealed interface JsonSpec {
     ) : JsonSpec
 
     /**
+     * Conditional schema. If [condition] matches, [then] applies; otherwise
+     * [otherwise] applies. Either branch may be omitted.
+     */
+    @Serializable
+    @SerialName("IfThenElse")
+    data class IfThenElse(
+        /** The condition spec. */
+        val condition: JsonSpec,
+        /** Applied when [condition] matches. */
+        val then: JsonSpec? = null,
+        /** Applied when [condition] does not match. */
+        val otherwise: JsonSpec? = null,
+    ) : JsonSpec
+
+    /**
      * Wraps a [JsonSpec] so the value may also be null. Renders as
      * `{"anyOf":[<inner>, {"type":"null"}]}`. Equivalent to `OneOf(inner, Null)`
      * but spells the intent out.
@@ -327,6 +342,12 @@ fun JsonSpec.toJsonSchema(): JsonObject = when (this) {
     }
 
     is JsonSpec.Not -> buildJsonObject { put("not", spec.toJsonSchema()) }
+
+    is JsonSpec.IfThenElse -> buildJsonObject {
+        put("if", condition.toJsonSchema())
+        then?.let { put("then", it.toJsonSchema()) }
+        otherwise?.let { put("else", it.toJsonSchema()) }
+    }
 
     is JsonSpec.Nullable -> buildJsonObject {
         put(
