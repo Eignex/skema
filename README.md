@@ -24,7 +24,7 @@ Used by [kumulant](https://github.com/Eignex/kumulant) (streaming statistics), [
 ## A complete example
 
 ```kotlin
-implementation("com.eignex:skema:0.2.0")
+implementation("com.eignex:skema:0.3.0")
 ```
 
 Define a vocabulary of config types and a base schema with name-taking declarators. The convention is borrowed directly from JetBrains' [Exposed](https://github.com/JetBrains/Exposed):
