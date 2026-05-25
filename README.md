@@ -125,14 +125,9 @@ val app     = users + billing
 
 Schemas describe data, so the obvious next question is whether you can hand a consumer a [json-schema.org](https://json-schema.org) document instead of skema's own wire form. You can, but skema can only do it automatically when it knows the vocabulary. The descriptor for `IntField(min, max)` says "object with two ints"; nothing about it implies "the validated value is an integer between those bounds." That mapping is semantic, not structural, and has to come from somewhere.
 
-skema ships a built-in vocabulary called `JsonSpec` that mirrors JSON Schema (draft 2020-12). It is opt-in by type: a schema whose config parameter is `JsonSpec` gets `toJsonSchema()` for free; schemas with other config types fall back to the mapper overload. The `JsonSpec` variants cover the full set of JSON Schema constructs without forcing you to think about JSON Schema syntax:
+skema ships a built-in vocabulary called `JsonSpec` that mirrors JSON Schema draft 2020-12. It is opt-in by type. A schema whose config parameter is `JsonSpec` gets `toJsonSchema()` for free, and schemas with other config types fall back to the mapper overload that takes a per-entry lambda. The `JsonSpec` variants cover the full JSON Schema surface without forcing you to think about JSON Schema syntax.
 
-- Primitives: `Bool`, `Null`, `Int`, `Long`, `Num`, `Str`, `Enum`, `Const`. Each carries the natural bound parameters (`min`, `max`, `exclusiveMin`, `exclusiveMax`, `multipleOf`, `minLength`, `maxLength`, `pattern`, `format`).
-- Compound: `Array(items, prefixItems, minItems, maxItems, uniqueItems)` and `Object(properties, required, additionalPropertiesAllowed, additionalPropertiesSpec, minProperties, maxProperties)`.
-- Composition: `OneOf`, `AnyOf`, `AllOf`, `Not`, plus `Nullable` as ergonomic sugar.
-- Conditional: `IfThenElse(condition, then, otherwise)`.
-- Reference: `Ref(pointer)`, paired with a `defs` parameter on `toJsonSchema()` for the root `$defs` block.
-- Annotation: `Annotated(inner, title, description, default, examples, deprecated, readOnly, writeOnly, comment)` wraps any other variant without changing the values it accepts.
+The primitive variants are `Bool`, `Null`, `Int`, `Long`, `Num`, `Str`, `Enum`, and `Const`, each carrying the natural bound parameters where they make sense: integers and numbers take `min`, `max`, `exclusiveMin`, `exclusiveMax`, and `multipleOf`; strings take `minLength`, `maxLength`, `pattern`, and a free-form `format` annotation for things like `date-time`, `email`, or `uuid`. Compound shapes are expressed with `Array` (configured by `items`, `prefixItems`, `minItems`, `maxItems`, and `uniqueItems`) and `Object` (configured by `properties`, `required`, `additionalPropertiesAllowed` or `additionalPropertiesSpec`, and the property-count bounds). Composition uses `OneOf`, `AnyOf`, `AllOf`, and `Not`, with `Nullable` provided as ergonomic sugar for the common case of allowing null alongside another spec. `IfThenElse` covers conditional validation. References work through `Ref(pointer)` paired with a `defs` parameter on `toJsonSchema()` that populates the root `$defs` block. Finally, `Annotated` wraps any other variant with documentation fields like `title`, `description`, `default`, `examples`, `deprecated`, `readOnly`, `writeOnly`, and `comment`, none of which change the values the spec accepts.
 
 A schema whose entries are `JsonSpec`s gets a JSON Schema for free:
 
@@ -161,7 +156,7 @@ SignupFormSchema.definition().toJsonSchema()
 // }
 ```
 
-Compound shapes nest naturally. The recursion is plain data and serializes to the same wire bytes as every other `SchemaDef`:
+Compound shapes nest naturally. The recursion is plain data and serializes to the same wire bytes as every other `SchemaDef`, so a consumer that prefers `JsonSpec` over the rendered JSON Schema document gets a structured tree it can walk instead of parsing JSON Schema by hand. The example below assembles a user record from the variants above, wrapping the display name with a description and allowing the email to be null:
 
 ```kotlin
 val user = JsonSpec.Object(
@@ -175,16 +170,15 @@ val user = JsonSpec.Object(
 )
 ```
 
-Use `defs` for reuse and recursion:
+Shared and recursive sub-schemas live in `$defs`. Pass them to `toJsonSchema()` and refer to them from anywhere in the tree with `JsonSpec.Ref("#/${'$'}defs/User")`; the resulting document is a single self-contained JSON Schema that a consumer can resolve without out-of-band knowledge.
 
 ```kotlin
 mySchema.definition().toJsonSchema(
     defs = mapOf("User" to user),
 )
-// JsonSpec.Ref("#/${'$'}defs/User") anywhere in the tree resolves against this map.
 ```
 
-For a domain-specific vocabulary, supply a per-entry mapper. The no-arg form on a non-`JsonSpec` schema is a compile error, not a runtime throw, so you can't forget:
+For a domain-specific vocabulary, supply a per-entry mapper. The no-arg form on a non-`JsonSpec` schema is a compile error, not a runtime throw, so you can't forget; mixed hierarchies that carry a `JsonSpec` alongside custom variants reuse the built-in branch inside the mapper, and you only write JSON Schema for the parts skema doesn't already know.
 
 ```kotlin
 mySchema.definition().toJsonSchema { config -> when (config) {
@@ -193,6 +187,4 @@ mySchema.definition().toJsonSchema { config -> when (config) {
 }}
 ```
 
-Mixed hierarchies, where your own sealed type carries a `JsonSpec` plus a few custom variants, reuse the built-in branch inside the mapper, so you only write JSON Schema for the parts skema doesn't already know.
-
-JSON Schema is the only schema dialect skema ships. Protobuf wire output is already covered by `kotlinx-serialization-protobuf` since `SchemaDef` is `@Serializable`; generating `.proto` IDL would need a different vocabulary (field numbers, proto-specific primitives) and is not in scope here.
+JSON Schema is the only schema dialect skema ships. Protobuf wire output is already covered by `kotlinx-serialization-protobuf` since `SchemaDef` is `@Serializable`, and generating `.proto` IDL would need a different vocabulary (field numbers, proto-specific primitives) and so is not in scope here.
