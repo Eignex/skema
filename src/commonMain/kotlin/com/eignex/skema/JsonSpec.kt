@@ -102,6 +102,28 @@ sealed interface JsonSpec {
     ) : JsonSpec
 
     /**
+     * Object with named properties. [additionalPropertiesAllowed] gates extras; set
+     * [additionalPropertiesSpec] to constrain extras to a schema instead of a boolean.
+     * If both are set, the spec wins.
+     */
+    @Serializable
+    @SerialName("Object")
+    data class Object(
+        /** Named properties and their specs. */
+        val properties: Map<String, JsonSpec> = emptyMap(),
+        /** Property names that must be present. */
+        val required: List<String> = emptyList(),
+        /** Whether properties not listed in [properties] are allowed. Default true (per JSON Schema). */
+        val additionalPropertiesAllowed: Boolean? = null,
+        /** Spec that all additional (unlisted) properties must match. */
+        val additionalPropertiesSpec: JsonSpec? = null,
+        /** Minimum number of properties. */
+        val minProperties: kotlin.Int? = null,
+        /** Maximum number of properties. */
+        val maxProperties: kotlin.Int? = null,
+    ) : JsonSpec
+
+    /**
      * Array of values. [items] constrains every element; [prefixItems] constrains
      * the first N positionally (tuple-style); set both for a tuple with a trailing
      * homogeneous tail.
@@ -213,6 +235,24 @@ fun JsonSpec.toJsonSchema(): JsonObject = when (this) {
     is JsonSpec.Enum -> buildJsonObject {
         put("type", "string")
         put("enum", buildJsonArray { values.forEach { add(it) } })
+    }
+
+    is JsonSpec.Object -> buildJsonObject {
+        put("type", "object")
+        if (properties.isNotEmpty()) {
+            putJsonObject("properties") {
+                properties.forEach { (n, s) -> put(n, s.toJsonSchema()) }
+            }
+        }
+        if (required.isNotEmpty()) {
+            put("required", buildJsonArray { required.forEach(::add) })
+        }
+        when {
+            additionalPropertiesSpec != null -> put("additionalProperties", additionalPropertiesSpec.toJsonSchema())
+            additionalPropertiesAllowed != null -> put("additionalProperties", additionalPropertiesAllowed)
+        }
+        minProperties?.let { put("minProperties", it) }
+        maxProperties?.let { put("maxProperties", it) }
     }
 
     is JsonSpec.Array -> buildJsonObject {
