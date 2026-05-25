@@ -160,7 +160,7 @@ class JsonSpecTest {
     }
 
     @Test
-    fun `Array renders items, minItems and uniqueItems`() {
+    fun `Array renders items and uniqueItems with a min size`() {
         val js = JsonSpec.Array(
             items = JsonSpec.Int(min = 0),
             minItems = 1,
@@ -184,7 +184,7 @@ class JsonSpecTest {
     }
 
     @Test
-    fun `Object renders properties, required and additionalProperties false`() {
+    fun `Object renders properties and required and forbids extras`() {
         val js = JsonSpec.Object(
             properties = mapOf("a" to JsonSpec.Bool, "b" to JsonSpec.Int()),
             required = listOf("a"),
