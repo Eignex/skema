@@ -101,6 +101,26 @@ sealed interface JsonSpec {
         val values: List<String>,
     ) : JsonSpec
 
+    /**
+     * Array of values. [items] constrains every element; [prefixItems] constrains
+     * the first N positionally (tuple-style); set both for a tuple with a trailing
+     * homogeneous tail.
+     */
+    @Serializable
+    @SerialName("Array")
+    data class Array(
+        /** Spec for every element, or `null` for unconstrained. */
+        val items: JsonSpec? = null,
+        /** Positional specs for leading elements. */
+        val prefixItems: List<JsonSpec>? = null,
+        /** Minimum array length. */
+        val minItems: kotlin.Int? = null,
+        /** Maximum array length. */
+        val maxItems: kotlin.Int? = null,
+        /** If true, elements must be unique. */
+        val uniqueItems: Boolean? = null,
+    ) : JsonSpec
+
     /** Value constrained to a single constant. Maps to `{"const": value}`. */
     @Serializable
     @SerialName("Const")
@@ -193,6 +213,17 @@ fun JsonSpec.toJsonSchema(): JsonObject = when (this) {
     is JsonSpec.Enum -> buildJsonObject {
         put("type", "string")
         put("enum", buildJsonArray { values.forEach { add(it) } })
+    }
+
+    is JsonSpec.Array -> buildJsonObject {
+        put("type", "array")
+        items?.let { put("items", it.toJsonSchema()) }
+        prefixItems?.let { pi ->
+            put("prefixItems", buildJsonArray { pi.forEach { add(it.toJsonSchema()) } })
+        }
+        minItems?.let { put("minItems", it) }
+        maxItems?.let { put("maxItems", it) }
+        uniqueItems?.let { put("uniqueItems", it) }
     }
 
     is JsonSpec.Const -> buildJsonObject { put("const", value) }
