@@ -38,6 +38,22 @@ sealed interface Primitive {
         val multipleOf: kotlin.Int? = null,
     ) : Primitive
 
+    /** 64-bit integer value, optionally bounded. Maps to `{"type":"integer"}` plus `minimum`/`maximum`. */
+    @Serializable
+    @SerialName("Long")
+    data class Long(
+        /** Inclusive lower bound, or `null` for unbounded. */
+        val min: kotlin.Long? = null,
+        /** Inclusive upper bound, or `null` for unbounded. */
+        val max: kotlin.Long? = null,
+        /** Exclusive lower bound, or `null` for unbounded. */
+        val exclusiveMin: kotlin.Long? = null,
+        /** Exclusive upper bound, or `null` for unbounded. */
+        val exclusiveMax: kotlin.Long? = null,
+        /** Value must be a multiple of this, or `null` for no constraint. */
+        val multipleOf: kotlin.Long? = null,
+    ) : Primitive
+
     /** Floating-point value, optionally bounded. Maps to `{"type":"number"}` plus `minimum`/`maximum`. */
     @Serializable
     @SerialName("Number")
@@ -80,6 +96,15 @@ fun Primitive.toJsonSchema(): JsonObject = when (this) {
     Primitive.Bool -> buildJsonObject { put("type", "boolean") }
 
     is Primitive.Int -> buildJsonObject {
+        put("type", "integer")
+        min?.let { put("minimum", it) }
+        max?.let { put("maximum", it) }
+        exclusiveMin?.let { put("exclusiveMinimum", it) }
+        exclusiveMax?.let { put("exclusiveMaximum", it) }
+        multipleOf?.let { put("multipleOf", it) }
+    }
+
+    is Primitive.Long -> buildJsonObject {
         put("type", "integer")
         min?.let { put("minimum", it) }
         max?.let { put("maximum", it) }
