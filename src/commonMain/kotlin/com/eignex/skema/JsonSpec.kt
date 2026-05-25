@@ -2,6 +2,7 @@ package com.eignex.skema
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
@@ -99,6 +100,14 @@ sealed interface JsonSpec {
         /** Allowed values, in declaration order. */
         val values: List<String>,
     ) : JsonSpec
+
+    /** Value constrained to a single constant. Maps to `{"const": value}`. */
+    @Serializable
+    @SerialName("Const")
+    data class Const(
+        /** The required value, as a [JsonElement]. */
+        val value: JsonElement,
+    ) : JsonSpec
 }
 
 /** JSON Schema fragment describing the value this primitive validates. */
@@ -146,6 +155,8 @@ fun JsonSpec.toJsonSchema(): JsonObject = when (this) {
         put("type", "string")
         put("enum", buildJsonArray { values.forEach { add(it) } })
     }
+
+    is JsonSpec.Const -> buildJsonObject { put("const", value) }
 }
 
 /**
