@@ -110,6 +110,18 @@ sealed interface JsonSpec {
     ) : JsonSpec
 
     /**
+     * Wraps a [JsonSpec] so the value may also be null. Renders as
+     * `{"anyOf":[<inner>, {"type":"null"}]}`. Equivalent to `OneOf(inner, Null)`
+     * but spells the intent out.
+     */
+    @Serializable
+    @SerialName("Nullable")
+    data class Nullable(
+        /** The non-null spec. */
+        val inner: JsonSpec,
+    ) : JsonSpec
+
+    /**
      * Wraps another [JsonSpec] with JSON Schema annotations. Annotations decorate
      * the inner spec without changing the values it accepts.
      */
@@ -184,6 +196,16 @@ fun JsonSpec.toJsonSchema(): JsonObject = when (this) {
     }
 
     is JsonSpec.Const -> buildJsonObject { put("const", value) }
+
+    is JsonSpec.Nullable -> buildJsonObject {
+        put(
+            "anyOf",
+            buildJsonArray {
+                add(inner.toJsonSchema())
+                add(buildJsonObject { put("type", "null") })
+            },
+        )
+    }
 
     is JsonSpec.Annotated -> buildJsonObject {
         inner.toJsonSchema().forEach { (k, v) -> put(k, v) }
