@@ -46,6 +46,8 @@ sealed interface Primitive {
     @Serializable
     @SerialName("String")
     data class Str(
+        /** Minimum length, or `null` for unbounded. */
+        val minLength: kotlin.Int? = null,
         /** Maximum length, or `null` for unbounded. */
         val maxLength: kotlin.Int? = null,
         /** Regex pattern the value must match, or `null` for no constraint. */
@@ -79,6 +81,7 @@ fun Primitive.toJsonSchema(): JsonObject = when (this) {
 
     is Primitive.Str -> buildJsonObject {
         put("type", "string")
+        minLength?.let { put("minLength", it) }
         maxLength?.let { put("maxLength", it) }
         pattern?.let { put("pattern", it) }
     }
