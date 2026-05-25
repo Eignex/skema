@@ -22,6 +22,11 @@ sealed interface Primitive {
     @SerialName("Bool")
     data object Bool : Primitive
 
+    /** Null value. Maps to `{"type":"null"}`. Useful as a branch in [Nullable]-style composition. */
+    @Serializable
+    @SerialName("Null")
+    data object Null : Primitive
+
     /** Integer value, optionally bounded. Maps to `{"type":"integer"}` plus `minimum`/`maximum`. */
     @Serializable
     @SerialName("Int")
@@ -94,6 +99,8 @@ sealed interface Primitive {
 /** JSON Schema fragment describing the value this primitive validates. */
 fun Primitive.toJsonSchema(): JsonObject = when (this) {
     Primitive.Bool -> buildJsonObject { put("type", "boolean") }
+
+    Primitive.Null -> buildJsonObject { put("type", "null") }
 
     is Primitive.Int -> buildJsonObject {
         put("type", "integer")
