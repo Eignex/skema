@@ -151,6 +151,18 @@ sealed interface JsonSpec {
         val value: JsonElement,
     ) : JsonSpec
 
+    /**
+     * Reference to a named spec defined elsewhere. Renders as `{"$ref": pointer}`.
+     * Pass `pointer = "#/$defs/User"` to point at a definition supplied via the
+     * `defs` parameter of [SchemaDef.toJsonSchema]; absolute URIs work too.
+     */
+    @Serializable
+    @SerialName("Ref")
+    data class Ref(
+        /** JSON pointer or URI, e.g. `"#/${'$'}defs/User"`. */
+        val pointer: String,
+    ) : JsonSpec
+
     /** Value must match exactly one of the listed specs. */
     @Serializable
     @SerialName("OneOf")
@@ -300,6 +312,8 @@ fun JsonSpec.toJsonSchema(): JsonObject = when (this) {
 
     is JsonSpec.Const -> buildJsonObject { put("const", value) }
 
+    is JsonSpec.Ref -> buildJsonObject { put("\$ref", pointer) }
+
     is JsonSpec.OneOf -> buildJsonObject {
         put("oneOf", buildJsonArray { branches.forEach { add(it.toJsonSchema()) } })
     }
@@ -340,22 +354,31 @@ fun JsonSpec.toJsonSchema(): JsonObject = when (this) {
 /**
  * JSON Schema (draft 2020-12) for a schema whose entries are [JsonSpec]s.
  * All entries are emitted as required; post-process the result if a different
- * required-set is needed.
+ * required-set is needed. Supply [defs] to populate the root `$defs` block;
+ * reference them with `JsonSpec.Ref("#/${'$'}defs/<name>")`.
  */
-fun SchemaDef<JsonSpec>.toJsonSchema(): JsonObject = toJsonSchema { it.toJsonSchema() }
+fun SchemaDef<JsonSpec>.toJsonSchema(defs: Map<String, JsonSpec> = emptyMap()): JsonObject =
+    toJsonSchema(defs = defs) { it.toJsonSchema() }
 
 /**
  * JSON Schema (draft 2020-12) for an arbitrary config vocabulary. Supply a
  * mapper that turns each entry's config into a JSON Schema fragment for the
  * value it validates. For mixed hierarchies, call [JsonSpec.toJsonSchema]
- * inside the lambda for the [JsonSpec] branches.
+ * inside the lambda for the [JsonSpec] branches. Supply [defs] to populate
+ * the root `$defs` block.
  */
-fun <C : Any> SchemaDef<C>.toJsonSchema(map: (C) -> JsonObject): JsonObject = buildJsonObject {
-    put("\$schema", "https://json-schema.org/draft/2020-12/schema")
-    put("type", "object")
-    putJsonObject("properties") {
-        entries.forEach { (name, c) -> put(name, map(c)) }
+fun <C : Any> SchemaDef<C>.toJsonSchema(defs: Map<String, JsonSpec> = emptyMap(), map: (C) -> JsonObject): JsonObject =
+    buildJsonObject {
+        put("\$schema", "https://json-schema.org/draft/2020-12/schema")
+        put("type", "object")
+        putJsonObject("properties") {
+            entries.forEach { (name, c) -> put(name, map(c)) }
+        }
+        put("additionalProperties", false)
+        put("required", buildJsonArray { entries.keys.forEach { add(it) } })
+        if (defs.isNotEmpty()) {
+            putJsonObject("\$defs") {
+                defs.forEach { (n, s) -> put(n, s.toJsonSchema()) }
+            }
+        }
     }
-    put("additionalProperties", false)
-    put("required", buildJsonArray { entries.keys.forEach { add(it) } })
-}
