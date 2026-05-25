@@ -108,6 +108,33 @@ sealed interface JsonSpec {
         /** The required value, as a [JsonElement]. */
         val value: JsonElement,
     ) : JsonSpec
+
+    /**
+     * Wraps another [JsonSpec] with JSON Schema annotations. Annotations decorate
+     * the inner spec without changing the values it accepts.
+     */
+    @Serializable
+    @SerialName("Annotated")
+    data class Annotated(
+        /** The spec being annotated. */
+        val inner: JsonSpec,
+        /** Short human-readable label. */
+        val title: String? = null,
+        /** Longer human-readable explanation. */
+        val description: String? = null,
+        /** Default value, used by generators and form-renderers. */
+        val default: JsonElement? = null,
+        /** Example values, used by documentation. */
+        val examples: List<JsonElement>? = null,
+        /** Marks the value as deprecated. */
+        val deprecated: Boolean? = null,
+        /** Marks the value as read-only (e.g., server-assigned). */
+        val readOnly: Boolean? = null,
+        /** Marks the value as write-only (e.g., passwords). */
+        val writeOnly: Boolean? = null,
+        /** Non-validating comment, ignored by validators. */
+        val comment: String? = null,
+    ) : JsonSpec
 }
 
 /** JSON Schema fragment describing the value this primitive validates. */
@@ -157,6 +184,18 @@ fun JsonSpec.toJsonSchema(): JsonObject = when (this) {
     }
 
     is JsonSpec.Const -> buildJsonObject { put("const", value) }
+
+    is JsonSpec.Annotated -> buildJsonObject {
+        inner.toJsonSchema().forEach { (k, v) -> put(k, v) }
+        title?.let { put("title", it) }
+        description?.let { put("description", it) }
+        default?.let { put("default", it) }
+        examples?.let { put("examples", buildJsonArray { it.forEach(::add) }) }
+        deprecated?.let { put("deprecated", it) }
+        readOnly?.let { put("readOnly", it) }
+        writeOnly?.let { put("writeOnly", it) }
+        comment?.let { put("\$comment", it) }
+    }
 }
 
 /**
