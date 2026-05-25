@@ -30,11 +30,18 @@ class PrimitiveTest {
         val props = js["properties"] as JsonObject
         assertEquals(buildJsonObject { put("type", "boolean") }, props["acceptsTos"])
         assertEquals(
-            buildJsonObject { put("type", "integer"); put("minimum", 13); put("maximum", 120) },
+            buildJsonObject {
+                put("type", "integer")
+                put("minimum", 13)
+                put("maximum", 120)
+            },
             props["age"],
         )
         assertEquals(
-            buildJsonObject { put("type", "string"); put("pattern", "^[a-z]+$") },
+            buildJsonObject {
+                put("type", "string")
+                put("pattern", "^[a-z]+$")
+            },
             props["handle"],
         )
         assertEquals("[\"acceptsTos\",\"age\",\"handle\"]", js["required"]!!.toString())

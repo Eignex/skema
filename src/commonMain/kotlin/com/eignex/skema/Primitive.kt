@@ -17,43 +17,72 @@ import kotlinx.serialization.json.putJsonObject
  */
 @Serializable
 sealed interface Primitive {
-    @Serializable @SerialName("Bool")
+    /** Boolean value. Maps to `{"type":"boolean"}`. */
+    @Serializable
+    @SerialName("Bool")
     data object Bool : Primitive
 
-    @Serializable @SerialName("Int")
-    data class Int(val min: kotlin.Int? = null, val max: kotlin.Int? = null) : Primitive
+    /** Integer value, optionally bounded. Maps to `{"type":"integer"}` plus `minimum`/`maximum`. */
+    @Serializable
+    @SerialName("Int")
+    data class Int(
+        /** Inclusive lower bound, or `null` for unbounded. */
+        val min: kotlin.Int? = null,
+        /** Inclusive upper bound, or `null` for unbounded. */
+        val max: kotlin.Int? = null,
+    ) : Primitive
 
-    @Serializable @SerialName("Number")
-    data class Num(val min: Double? = null, val max: Double? = null) : Primitive
+    /** Floating-point value, optionally bounded. Maps to `{"type":"number"}` plus `minimum`/`maximum`. */
+    @Serializable
+    @SerialName("Number")
+    data class Num(
+        /** Inclusive lower bound, or `null` for unbounded. */
+        val min: Double? = null,
+        /** Inclusive upper bound, or `null` for unbounded. */
+        val max: Double? = null,
+    ) : Primitive
 
-    @Serializable @SerialName("String")
+    /** String value, optionally constrained by length and pattern. */
+    @Serializable
+    @SerialName("String")
     data class Str(
+        /** Maximum length, or `null` for unbounded. */
         val maxLength: kotlin.Int? = null,
+        /** Regex pattern the value must match, or `null` for no constraint. */
         val pattern: String? = null,
     ) : Primitive
 
-    @Serializable @SerialName("Enum")
-    data class Enum(val values: List<String>) : Primitive
+    /** String value drawn from a fixed set. Maps to `{"type":"string","enum":[...]}`. */
+    @Serializable
+    @SerialName("Enum")
+    data class Enum(
+        /** Allowed values, in declaration order. */
+        val values: List<String>,
+    ) : Primitive
 }
 
 /** JSON Schema fragment describing the value this primitive validates. */
 fun Primitive.toJsonSchema(): JsonObject = when (this) {
     Primitive.Bool -> buildJsonObject { put("type", "boolean") }
+
     is Primitive.Int -> buildJsonObject {
         put("type", "integer")
         min?.let { put("minimum", it) }
         max?.let { put("maximum", it) }
     }
+
     is Primitive.Num -> buildJsonObject {
         put("type", "number")
         min?.let { put("minimum", it) }
         max?.let { put("maximum", it) }
     }
+
     is Primitive.Str -> buildJsonObject {
         put("type", "string")
         maxLength?.let { put("maxLength", it) }
         pattern?.let { put("pattern", it) }
     }
+
     is Primitive.Enum -> buildJsonObject {
         put("type", "string")
         put("enum", buildJsonArray { values.forEach { add(it) } })
