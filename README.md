@@ -125,11 +125,16 @@ val app     = users + billing
 
 Schemas describe data, so the obvious next question is whether you can hand a consumer a [json-schema.org](https://json-schema.org) document instead of skema's own wire form. You can, but skema can only do it automatically when it knows the vocabulary. The descriptor for `IntField(min, max)` says "object with two ints"; nothing about it implies "the validated value is an integer between those bounds." That mapping is semantic, not structural, and has to come from somewhere.
 
-skema ships a built-in vocabulary called `JsonSpec` that mirrors JSON Schema draft 2020-12. It is opt-in by type. A schema whose config parameter is `JsonSpec` gets `toJsonSchema()` for free, and schemas with other config types fall back to the mapper overload that takes a per-entry lambda. The `JsonSpec` variants cover the full JSON Schema surface without forcing you to think about JSON Schema syntax.
+skema ships a built-in vocabulary called JsonSpec that mirrors JSON Schema draft 2020-12. It is opt-in by type. A schema whose config parameter is JsonSpec gets toJsonSchema for free, and schemas with other config types fall back to the mapper overload that takes a per-entry lambda. The variants cover the JSON Schema surface:
 
-The primitive variants are `Bool`, `Null`, `Int`, `Long`, `Num`, `Str`, `Enum`, and `Const`, each carrying the natural bound parameters where they make sense: integers and numbers take `min`, `max`, `exclusiveMin`, `exclusiveMax`, and `multipleOf`; strings take `minLength`, `maxLength`, `pattern`, and a free-form `format` annotation for things like `date-time`, `email`, or `uuid`. Compound shapes are expressed with `Array` (configured by `items`, `prefixItems`, `minItems`, `maxItems`, and `uniqueItems`) and `Object` (configured by `properties`, `required`, `additionalPropertiesAllowed` or `additionalPropertiesSpec`, and the property-count bounds). Composition uses `OneOf`, `AnyOf`, `AllOf`, and `Not`, with `Nullable` provided as ergonomic sugar for the common case of allowing null alongside another spec. `IfThenElse` covers conditional validation. References work through `Ref(pointer)` paired with a `defs` parameter on `toJsonSchema()` that populates the root `$defs` block. Finally, `Annotated` wraps any other variant with documentation fields like `title`, `description`, `default`, `examples`, `deprecated`, `readOnly`, `writeOnly`, and `comment`, none of which change the values the spec accepts.
+- Primitives: Bool, Null, Int, Long, Num, Str, Enum, Const. Numeric variants carry the usual `min`, `max`, `exclusiveMin`, `exclusiveMax`, and `multipleOf`; strings carry `minLength`, `maxLength`, `pattern`, and a free-form `format` annotation for things like date-time, email, or uuid.
+- Compound shapes: Array (with `items`, `prefixItems`, `minItems`, `maxItems`, `uniqueItems`) and Object (with `properties`, `required`, the additional-properties pair, and property-count bounds).
+- Composition: OneOf, AnyOf, AllOf, Not, with Nullable as ergonomic sugar for "this spec or null".
+- Conditional: IfThenElse with a condition and optional then/otherwise branches.
+- References: Ref paired with a `defs` parameter on toJsonSchema that populates the root `$defs` block.
+- Annotations: Annotated decorates any variant with title, description, default, examples, deprecated, readOnly, writeOnly, and comment, none of which change the values the spec accepts.
 
-A schema whose entries are `JsonSpec`s gets a JSON Schema for free:
+A schema whose entries are JsonSpec values gets a JSON Schema for free:
 
 ```kotlin
 abstract class FormSchema : Schema<JsonSpec>() {
@@ -156,7 +161,7 @@ SignupFormSchema.definition().toJsonSchema()
 // }
 ```
 
-Compound shapes nest naturally. The recursion is plain data and serializes to the same wire bytes as every other `SchemaDef`, so a consumer that prefers `JsonSpec` over the rendered JSON Schema document gets a structured tree it can walk instead of parsing JSON Schema by hand. The example below assembles a user record from the variants above, wrapping the display name with a description and allowing the email to be null:
+Compound shapes nest naturally. The recursion is plain data and serializes to the same wire bytes as every other SchemaDef, so a consumer that prefers JsonSpec over the rendered JSON Schema document gets a structured tree it can walk instead of parsing JSON Schema by hand. The example below assembles a user record from the variants above, wrapping the display name with a description and allowing the email to be null:
 
 ```kotlin
 val user = JsonSpec.Object(
@@ -170,7 +175,7 @@ val user = JsonSpec.Object(
 )
 ```
 
-Shared and recursive sub-schemas live in `$defs`. Pass them to `toJsonSchema()` and refer to them from anywhere in the tree with `JsonSpec.Ref("#/${'$'}defs/User")`; the resulting document is a single self-contained JSON Schema that a consumer can resolve without out-of-band knowledge.
+Shared and recursive sub-schemas live in `$defs`. Pass them to toJsonSchema and refer to them from anywhere in the tree with a Ref pointer like `#/$defs/User`; the resulting document is a single self-contained JSON Schema that a consumer can resolve without out-of-band knowledge.
 
 ```kotlin
 mySchema.definition().toJsonSchema(
@@ -178,7 +183,7 @@ mySchema.definition().toJsonSchema(
 )
 ```
 
-For a domain-specific vocabulary, supply a per-entry mapper. The no-arg form on a non-`JsonSpec` schema is a compile error, not a runtime throw, so you can't forget; mixed hierarchies that carry a `JsonSpec` alongside custom variants reuse the built-in branch inside the mapper, and you only write JSON Schema for the parts skema doesn't already know.
+For a domain-specific vocabulary, supply a per-entry mapper. The no-arg form on a non-JsonSpec schema is a compile error, not a runtime throw, so you can't forget; mixed hierarchies that carry a JsonSpec alongside custom variants reuse the built-in branch inside the mapper, and you only write JSON Schema for the parts skema doesn't already know.
 
 ```kotlin
 mySchema.definition().toJsonSchema { config -> when (config) {
@@ -187,4 +192,4 @@ mySchema.definition().toJsonSchema { config -> when (config) {
 }}
 ```
 
-JSON Schema is the only schema dialect skema ships. Protobuf wire output is already covered by `kotlinx-serialization-protobuf` since `SchemaDef` is `@Serializable`, and generating `.proto` IDL would need a different vocabulary (field numbers, proto-specific primitives) and so is not in scope here.
+JSON Schema is the only schema dialect skema ships. Protobuf wire output is already covered by kotlinx-serialization-protobuf since SchemaDef is `@Serializable`, and generating .proto IDL would need a different vocabulary (field numbers, proto-specific primitives) and so is not in scope here.
