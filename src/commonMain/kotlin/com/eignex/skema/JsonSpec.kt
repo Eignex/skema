@@ -10,22 +10,22 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 
 /**
- * Built-in primitive config vocabulary. Use as the type parameter of [Schema]
- * to get [toJsonSchema] without writing a mapper. For domain-specific configs,
- * define your own sealed type and use the [SchemaDef.toJsonSchema] overload
- * that takes a per-entry mapper lambda.
+ * Built-in JSON-Schema-shaped config vocabulary. Use as the type parameter of
+ * [Schema] to get [toJsonSchema] without writing a mapper. For domain-specific
+ * configs, define your own sealed type and use the [SchemaDef.toJsonSchema]
+ * overload that takes a per-entry mapper lambda.
  */
 @Serializable
-sealed interface Primitive {
+sealed interface JsonSpec {
     /** Boolean value. Maps to `{"type":"boolean"}`. */
     @Serializable
     @SerialName("Bool")
-    data object Bool : Primitive
+    data object Bool : JsonSpec
 
     /** Null value. Maps to `{"type":"null"}`. Useful as a branch in [Nullable]-style composition. */
     @Serializable
     @SerialName("Null")
-    data object Null : Primitive
+    data object Null : JsonSpec
 
     /** Integer value, optionally bounded. Maps to `{"type":"integer"}` plus `minimum`/`maximum`. */
     @Serializable
@@ -41,7 +41,7 @@ sealed interface Primitive {
         val exclusiveMax: kotlin.Int? = null,
         /** Value must be a multiple of this, or `null` for no constraint. */
         val multipleOf: kotlin.Int? = null,
-    ) : Primitive
+    ) : JsonSpec
 
     /** 64-bit integer value, optionally bounded. Maps to `{"type":"integer"}` plus `minimum`/`maximum`. */
     @Serializable
@@ -57,7 +57,7 @@ sealed interface Primitive {
         val exclusiveMax: kotlin.Long? = null,
         /** Value must be a multiple of this, or `null` for no constraint. */
         val multipleOf: kotlin.Long? = null,
-    ) : Primitive
+    ) : JsonSpec
 
     /** Floating-point value, optionally bounded. Maps to `{"type":"number"}` plus `minimum`/`maximum`. */
     @Serializable
@@ -73,7 +73,7 @@ sealed interface Primitive {
         val exclusiveMax: Double? = null,
         /** Value must be a multiple of this, or `null` for no constraint. */
         val multipleOf: Double? = null,
-    ) : Primitive
+    ) : JsonSpec
 
     /** String value, optionally constrained by length and pattern. */
     @Serializable
@@ -90,7 +90,7 @@ sealed interface Primitive {
          * Free-form: JSON Schema treats unknown formats as annotations rather than errors.
          */
         val format: String? = null,
-    ) : Primitive
+    ) : JsonSpec
 
     /** String value drawn from a fixed set. Maps to `{"type":"string","enum":[...]}`. */
     @Serializable
@@ -98,16 +98,16 @@ sealed interface Primitive {
     data class Enum(
         /** Allowed values, in declaration order. */
         val values: List<String>,
-    ) : Primitive
+    ) : JsonSpec
 }
 
 /** JSON Schema fragment describing the value this primitive validates. */
-fun Primitive.toJsonSchema(): JsonObject = when (this) {
-    Primitive.Bool -> buildJsonObject { put("type", "boolean") }
+fun JsonSpec.toJsonSchema(): JsonObject = when (this) {
+    JsonSpec.Bool -> buildJsonObject { put("type", "boolean") }
 
-    Primitive.Null -> buildJsonObject { put("type", "null") }
+    JsonSpec.Null -> buildJsonObject { put("type", "null") }
 
-    is Primitive.Int -> buildJsonObject {
+    is JsonSpec.Int -> buildJsonObject {
         put("type", "integer")
         min?.let { put("minimum", it) }
         max?.let { put("maximum", it) }
@@ -116,7 +116,7 @@ fun Primitive.toJsonSchema(): JsonObject = when (this) {
         multipleOf?.let { put("multipleOf", it) }
     }
 
-    is Primitive.Long -> buildJsonObject {
+    is JsonSpec.Long -> buildJsonObject {
         put("type", "integer")
         min?.let { put("minimum", it) }
         max?.let { put("maximum", it) }
@@ -125,7 +125,7 @@ fun Primitive.toJsonSchema(): JsonObject = when (this) {
         multipleOf?.let { put("multipleOf", it) }
     }
 
-    is Primitive.Num -> buildJsonObject {
+    is JsonSpec.Num -> buildJsonObject {
         put("type", "number")
         min?.let { put("minimum", it) }
         max?.let { put("maximum", it) }
@@ -134,7 +134,7 @@ fun Primitive.toJsonSchema(): JsonObject = when (this) {
         multipleOf?.let { put("multipleOf", it) }
     }
 
-    is Primitive.Str -> buildJsonObject {
+    is JsonSpec.Str -> buildJsonObject {
         put("type", "string")
         minLength?.let { put("minLength", it) }
         maxLength?.let { put("maxLength", it) }
@@ -142,24 +142,24 @@ fun Primitive.toJsonSchema(): JsonObject = when (this) {
         format?.let { put("format", it) }
     }
 
-    is Primitive.Enum -> buildJsonObject {
+    is JsonSpec.Enum -> buildJsonObject {
         put("type", "string")
         put("enum", buildJsonArray { values.forEach { add(it) } })
     }
 }
 
 /**
- * JSON Schema (draft 2020-12) for a schema whose entries are [Primitive]s.
+ * JSON Schema (draft 2020-12) for a schema whose entries are [JsonSpec]s.
  * All entries are emitted as required; post-process the result if a different
  * required-set is needed.
  */
-fun SchemaDef<Primitive>.toJsonSchema(): JsonObject = toJsonSchema { it.toJsonSchema() }
+fun SchemaDef<JsonSpec>.toJsonSchema(): JsonObject = toJsonSchema { it.toJsonSchema() }
 
 /**
  * JSON Schema (draft 2020-12) for an arbitrary config vocabulary. Supply a
  * mapper that turns each entry's config into a JSON Schema fragment for the
- * value it validates. For mixed hierarchies, call [Primitive.toJsonSchema]
- * inside the lambda for the primitive branches.
+ * value it validates. For mixed hierarchies, call [JsonSpec.toJsonSchema]
+ * inside the lambda for the [JsonSpec] branches.
  */
 fun <C : Any> SchemaDef<C>.toJsonSchema(map: (C) -> JsonObject): JsonObject = buildJsonObject {
     put("\$schema", "https://json-schema.org/draft/2020-12/schema")
