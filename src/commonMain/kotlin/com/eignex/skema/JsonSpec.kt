@@ -151,6 +151,38 @@ sealed interface JsonSpec {
         val value: JsonElement,
     ) : JsonSpec
 
+    /** Value must match exactly one of the listed specs. */
+    @Serializable
+    @SerialName("OneOf")
+    data class OneOf(
+        /** Branches; exactly one must match. */
+        val branches: List<JsonSpec>,
+    ) : JsonSpec
+
+    /** Value must match at least one of the listed specs. */
+    @Serializable
+    @SerialName("AnyOf")
+    data class AnyOf(
+        /** Branches; at least one must match. */
+        val branches: List<JsonSpec>,
+    ) : JsonSpec
+
+    /** Value must match all of the listed specs. */
+    @Serializable
+    @SerialName("AllOf")
+    data class AllOf(
+        /** Branches; all must match. */
+        val branches: List<JsonSpec>,
+    ) : JsonSpec
+
+    /** Value must NOT match the given spec. */
+    @Serializable
+    @SerialName("Not")
+    data class Not(
+        /** The spec the value must fail. */
+        val spec: JsonSpec,
+    ) : JsonSpec
+
     /**
      * Wraps a [JsonSpec] so the value may also be null. Renders as
      * `{"anyOf":[<inner>, {"type":"null"}]}`. Equivalent to `OneOf(inner, Null)`
@@ -267,6 +299,20 @@ fun JsonSpec.toJsonSchema(): JsonObject = when (this) {
     }
 
     is JsonSpec.Const -> buildJsonObject { put("const", value) }
+
+    is JsonSpec.OneOf -> buildJsonObject {
+        put("oneOf", buildJsonArray { branches.forEach { add(it.toJsonSchema()) } })
+    }
+
+    is JsonSpec.AnyOf -> buildJsonObject {
+        put("anyOf", buildJsonArray { branches.forEach { add(it.toJsonSchema()) } })
+    }
+
+    is JsonSpec.AllOf -> buildJsonObject {
+        put("allOf", buildJsonArray { branches.forEach { add(it.toJsonSchema()) } })
+    }
+
+    is JsonSpec.Not -> buildJsonObject { put("not", spec.toJsonSchema()) }
 
     is JsonSpec.Nullable -> buildJsonObject {
         put(
