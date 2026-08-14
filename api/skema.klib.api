@@ -1,0 +1,653 @@
+// Klib ABI Dump
+// Targets: [iosArm64, iosSimulatorArm64, iosX64, js, linuxArm64, linuxX64, macosArm64, mingwX64, wasmJs, wasmWasi]
+// Rendering settings:
+// - Signature version: 2
+// - Show manifest properties: true
+// - Show declarations: true
+
+// Library unique name: <com.eignex:skema>
+sealed interface com.eignex.skema/JsonSpec { // com.eignex.skema/JsonSpec|null[0]
+    final class AllOf : com.eignex.skema/JsonSpec { // com.eignex.skema/JsonSpec.AllOf|null[0]
+        constructor <init>(kotlin.collections/List<com.eignex.skema/JsonSpec>) // com.eignex.skema/JsonSpec.AllOf.<init>|<init>(kotlin.collections.List<com.eignex.skema.JsonSpec>){}[0]
+
+        final val branches // com.eignex.skema/JsonSpec.AllOf.branches|{}branches[0]
+            final fun <get-branches>(): kotlin.collections/List<com.eignex.skema/JsonSpec> // com.eignex.skema/JsonSpec.AllOf.branches.<get-branches>|<get-branches>(){}[0]
+
+        final fun component1(): kotlin.collections/List<com.eignex.skema/JsonSpec> // com.eignex.skema/JsonSpec.AllOf.component1|component1(){}[0]
+        final fun copy(kotlin.collections/List<com.eignex.skema/JsonSpec> = ...): com.eignex.skema/JsonSpec.AllOf // com.eignex.skema/JsonSpec.AllOf.copy|copy(kotlin.collections.List<com.eignex.skema.JsonSpec>){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.eignex.skema/JsonSpec.AllOf.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.eignex.skema/JsonSpec.AllOf.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.eignex.skema/JsonSpec.AllOf.toString|toString(){}[0]
+
+        final object $serializer : kotlinx.serialization.internal/GeneratedSerializer<com.eignex.skema/JsonSpec.AllOf> { // com.eignex.skema/JsonSpec.AllOf.$serializer|null[0]
+            final val descriptor // com.eignex.skema/JsonSpec.AllOf.$serializer.descriptor|{}descriptor[0]
+                final fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // com.eignex.skema/JsonSpec.AllOf.$serializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
+
+            final fun childSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // com.eignex.skema/JsonSpec.AllOf.$serializer.childSerializers|childSerializers(){}[0]
+            final fun deserialize(kotlinx.serialization.encoding/Decoder): com.eignex.skema/JsonSpec.AllOf // com.eignex.skema/JsonSpec.AllOf.$serializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
+            final fun serialize(kotlinx.serialization.encoding/Encoder, com.eignex.skema/JsonSpec.AllOf) // com.eignex.skema/JsonSpec.AllOf.$serializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;com.eignex.skema.JsonSpec.AllOf){}[0]
+        }
+
+        final object Companion { // com.eignex.skema/JsonSpec.AllOf.Companion|null[0]
+            final val $childSerializers // com.eignex.skema/JsonSpec.AllOf.Companion.$childSerializers|{}$childSerializers[0]
+
+            final fun serializer(): kotlinx.serialization/KSerializer<com.eignex.skema/JsonSpec.AllOf> // com.eignex.skema/JsonSpec.AllOf.Companion.serializer|serializer(){}[0]
+        }
+    }
+
+    final class Annotated : com.eignex.skema/JsonSpec { // com.eignex.skema/JsonSpec.Annotated|null[0]
+        constructor <init>(com.eignex.skema/JsonSpec, kotlin/String? = ..., kotlin/String? = ..., kotlinx.serialization.json/JsonElement? = ..., kotlin.collections/List<kotlinx.serialization.json/JsonElement>? = ..., kotlin/Boolean? = ..., kotlin/Boolean? = ..., kotlin/Boolean? = ..., kotlin/String? = ...) // com.eignex.skema/JsonSpec.Annotated.<init>|<init>(com.eignex.skema.JsonSpec;kotlin.String?;kotlin.String?;kotlinx.serialization.json.JsonElement?;kotlin.collections.List<kotlinx.serialization.json.JsonElement>?;kotlin.Boolean?;kotlin.Boolean?;kotlin.Boolean?;kotlin.String?){}[0]
+
+        final val comment // com.eignex.skema/JsonSpec.Annotated.comment|{}comment[0]
+            final fun <get-comment>(): kotlin/String? // com.eignex.skema/JsonSpec.Annotated.comment.<get-comment>|<get-comment>(){}[0]
+        final val default // com.eignex.skema/JsonSpec.Annotated.default|{}default[0]
+            final fun <get-default>(): kotlinx.serialization.json/JsonElement? // com.eignex.skema/JsonSpec.Annotated.default.<get-default>|<get-default>(){}[0]
+        final val deprecated // com.eignex.skema/JsonSpec.Annotated.deprecated|{}deprecated[0]
+            final fun <get-deprecated>(): kotlin/Boolean? // com.eignex.skema/JsonSpec.Annotated.deprecated.<get-deprecated>|<get-deprecated>(){}[0]
+        final val description // com.eignex.skema/JsonSpec.Annotated.description|{}description[0]
+            final fun <get-description>(): kotlin/String? // com.eignex.skema/JsonSpec.Annotated.description.<get-description>|<get-description>(){}[0]
+        final val examples // com.eignex.skema/JsonSpec.Annotated.examples|{}examples[0]
+            final fun <get-examples>(): kotlin.collections/List<kotlinx.serialization.json/JsonElement>? // com.eignex.skema/JsonSpec.Annotated.examples.<get-examples>|<get-examples>(){}[0]
+        final val inner // com.eignex.skema/JsonSpec.Annotated.inner|{}inner[0]
+            final fun <get-inner>(): com.eignex.skema/JsonSpec // com.eignex.skema/JsonSpec.Annotated.inner.<get-inner>|<get-inner>(){}[0]
+        final val readOnly // com.eignex.skema/JsonSpec.Annotated.readOnly|{}readOnly[0]
+            final fun <get-readOnly>(): kotlin/Boolean? // com.eignex.skema/JsonSpec.Annotated.readOnly.<get-readOnly>|<get-readOnly>(){}[0]
+        final val title // com.eignex.skema/JsonSpec.Annotated.title|{}title[0]
+            final fun <get-title>(): kotlin/String? // com.eignex.skema/JsonSpec.Annotated.title.<get-title>|<get-title>(){}[0]
+        final val writeOnly // com.eignex.skema/JsonSpec.Annotated.writeOnly|{}writeOnly[0]
+            final fun <get-writeOnly>(): kotlin/Boolean? // com.eignex.skema/JsonSpec.Annotated.writeOnly.<get-writeOnly>|<get-writeOnly>(){}[0]
+
+        final fun component1(): com.eignex.skema/JsonSpec // com.eignex.skema/JsonSpec.Annotated.component1|component1(){}[0]
+        final fun component2(): kotlin/String? // com.eignex.skema/JsonSpec.Annotated.component2|component2(){}[0]
+        final fun component3(): kotlin/String? // com.eignex.skema/JsonSpec.Annotated.component3|component3(){}[0]
+        final fun component4(): kotlinx.serialization.json/JsonElement? // com.eignex.skema/JsonSpec.Annotated.component4|component4(){}[0]
+        final fun component5(): kotlin.collections/List<kotlinx.serialization.json/JsonElement>? // com.eignex.skema/JsonSpec.Annotated.component5|component5(){}[0]
+        final fun component6(): kotlin/Boolean? // com.eignex.skema/JsonSpec.Annotated.component6|component6(){}[0]
+        final fun component7(): kotlin/Boolean? // com.eignex.skema/JsonSpec.Annotated.component7|component7(){}[0]
+        final fun component8(): kotlin/Boolean? // com.eignex.skema/JsonSpec.Annotated.component8|component8(){}[0]
+        final fun component9(): kotlin/String? // com.eignex.skema/JsonSpec.Annotated.component9|component9(){}[0]
+        final fun copy(com.eignex.skema/JsonSpec = ..., kotlin/String? = ..., kotlin/String? = ..., kotlinx.serialization.json/JsonElement? = ..., kotlin.collections/List<kotlinx.serialization.json/JsonElement>? = ..., kotlin/Boolean? = ..., kotlin/Boolean? = ..., kotlin/Boolean? = ..., kotlin/String? = ...): com.eignex.skema/JsonSpec.Annotated // com.eignex.skema/JsonSpec.Annotated.copy|copy(com.eignex.skema.JsonSpec;kotlin.String?;kotlin.String?;kotlinx.serialization.json.JsonElement?;kotlin.collections.List<kotlinx.serialization.json.JsonElement>?;kotlin.Boolean?;kotlin.Boolean?;kotlin.Boolean?;kotlin.String?){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.eignex.skema/JsonSpec.Annotated.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.eignex.skema/JsonSpec.Annotated.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.eignex.skema/JsonSpec.Annotated.toString|toString(){}[0]
+
+        final object $serializer : kotlinx.serialization.internal/GeneratedSerializer<com.eignex.skema/JsonSpec.Annotated> { // com.eignex.skema/JsonSpec.Annotated.$serializer|null[0]
+            final val descriptor // com.eignex.skema/JsonSpec.Annotated.$serializer.descriptor|{}descriptor[0]
+                final fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // com.eignex.skema/JsonSpec.Annotated.$serializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
+
+            final fun childSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // com.eignex.skema/JsonSpec.Annotated.$serializer.childSerializers|childSerializers(){}[0]
+            final fun deserialize(kotlinx.serialization.encoding/Decoder): com.eignex.skema/JsonSpec.Annotated // com.eignex.skema/JsonSpec.Annotated.$serializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
+            final fun serialize(kotlinx.serialization.encoding/Encoder, com.eignex.skema/JsonSpec.Annotated) // com.eignex.skema/JsonSpec.Annotated.$serializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;com.eignex.skema.JsonSpec.Annotated){}[0]
+        }
+
+        final object Companion { // com.eignex.skema/JsonSpec.Annotated.Companion|null[0]
+            final val $childSerializers // com.eignex.skema/JsonSpec.Annotated.Companion.$childSerializers|{}$childSerializers[0]
+
+            final fun serializer(): kotlinx.serialization/KSerializer<com.eignex.skema/JsonSpec.Annotated> // com.eignex.skema/JsonSpec.Annotated.Companion.serializer|serializer(){}[0]
+        }
+    }
+
+    final class AnyOf : com.eignex.skema/JsonSpec { // com.eignex.skema/JsonSpec.AnyOf|null[0]
+        constructor <init>(kotlin.collections/List<com.eignex.skema/JsonSpec>) // com.eignex.skema/JsonSpec.AnyOf.<init>|<init>(kotlin.collections.List<com.eignex.skema.JsonSpec>){}[0]
+
+        final val branches // com.eignex.skema/JsonSpec.AnyOf.branches|{}branches[0]
+            final fun <get-branches>(): kotlin.collections/List<com.eignex.skema/JsonSpec> // com.eignex.skema/JsonSpec.AnyOf.branches.<get-branches>|<get-branches>(){}[0]
+
+        final fun component1(): kotlin.collections/List<com.eignex.skema/JsonSpec> // com.eignex.skema/JsonSpec.AnyOf.component1|component1(){}[0]
+        final fun copy(kotlin.collections/List<com.eignex.skema/JsonSpec> = ...): com.eignex.skema/JsonSpec.AnyOf // com.eignex.skema/JsonSpec.AnyOf.copy|copy(kotlin.collections.List<com.eignex.skema.JsonSpec>){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.eignex.skema/JsonSpec.AnyOf.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.eignex.skema/JsonSpec.AnyOf.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.eignex.skema/JsonSpec.AnyOf.toString|toString(){}[0]
+
+        final object $serializer : kotlinx.serialization.internal/GeneratedSerializer<com.eignex.skema/JsonSpec.AnyOf> { // com.eignex.skema/JsonSpec.AnyOf.$serializer|null[0]
+            final val descriptor // com.eignex.skema/JsonSpec.AnyOf.$serializer.descriptor|{}descriptor[0]
+                final fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // com.eignex.skema/JsonSpec.AnyOf.$serializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
+
+            final fun childSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // com.eignex.skema/JsonSpec.AnyOf.$serializer.childSerializers|childSerializers(){}[0]
+            final fun deserialize(kotlinx.serialization.encoding/Decoder): com.eignex.skema/JsonSpec.AnyOf // com.eignex.skema/JsonSpec.AnyOf.$serializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
+            final fun serialize(kotlinx.serialization.encoding/Encoder, com.eignex.skema/JsonSpec.AnyOf) // com.eignex.skema/JsonSpec.AnyOf.$serializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;com.eignex.skema.JsonSpec.AnyOf){}[0]
+        }
+
+        final object Companion { // com.eignex.skema/JsonSpec.AnyOf.Companion|null[0]
+            final val $childSerializers // com.eignex.skema/JsonSpec.AnyOf.Companion.$childSerializers|{}$childSerializers[0]
+
+            final fun serializer(): kotlinx.serialization/KSerializer<com.eignex.skema/JsonSpec.AnyOf> // com.eignex.skema/JsonSpec.AnyOf.Companion.serializer|serializer(){}[0]
+        }
+    }
+
+    final class Array : com.eignex.skema/JsonSpec { // com.eignex.skema/JsonSpec.Array|null[0]
+        constructor <init>(com.eignex.skema/JsonSpec? = ..., kotlin.collections/List<com.eignex.skema/JsonSpec>? = ..., kotlin/Int? = ..., kotlin/Int? = ..., kotlin/Boolean? = ...) // com.eignex.skema/JsonSpec.Array.<init>|<init>(com.eignex.skema.JsonSpec?;kotlin.collections.List<com.eignex.skema.JsonSpec>?;kotlin.Int?;kotlin.Int?;kotlin.Boolean?){}[0]
+
+        final val items // com.eignex.skema/JsonSpec.Array.items|{}items[0]
+            final fun <get-items>(): com.eignex.skema/JsonSpec? // com.eignex.skema/JsonSpec.Array.items.<get-items>|<get-items>(){}[0]
+        final val maxItems // com.eignex.skema/JsonSpec.Array.maxItems|{}maxItems[0]
+            final fun <get-maxItems>(): kotlin/Int? // com.eignex.skema/JsonSpec.Array.maxItems.<get-maxItems>|<get-maxItems>(){}[0]
+        final val minItems // com.eignex.skema/JsonSpec.Array.minItems|{}minItems[0]
+            final fun <get-minItems>(): kotlin/Int? // com.eignex.skema/JsonSpec.Array.minItems.<get-minItems>|<get-minItems>(){}[0]
+        final val prefixItems // com.eignex.skema/JsonSpec.Array.prefixItems|{}prefixItems[0]
+            final fun <get-prefixItems>(): kotlin.collections/List<com.eignex.skema/JsonSpec>? // com.eignex.skema/JsonSpec.Array.prefixItems.<get-prefixItems>|<get-prefixItems>(){}[0]
+        final val uniqueItems // com.eignex.skema/JsonSpec.Array.uniqueItems|{}uniqueItems[0]
+            final fun <get-uniqueItems>(): kotlin/Boolean? // com.eignex.skema/JsonSpec.Array.uniqueItems.<get-uniqueItems>|<get-uniqueItems>(){}[0]
+
+        final fun component1(): com.eignex.skema/JsonSpec? // com.eignex.skema/JsonSpec.Array.component1|component1(){}[0]
+        final fun component2(): kotlin.collections/List<com.eignex.skema/JsonSpec>? // com.eignex.skema/JsonSpec.Array.component2|component2(){}[0]
+        final fun component3(): kotlin/Int? // com.eignex.skema/JsonSpec.Array.component3|component3(){}[0]
+        final fun component4(): kotlin/Int? // com.eignex.skema/JsonSpec.Array.component4|component4(){}[0]
+        final fun component5(): kotlin/Boolean? // com.eignex.skema/JsonSpec.Array.component5|component5(){}[0]
+        final fun copy(com.eignex.skema/JsonSpec? = ..., kotlin.collections/List<com.eignex.skema/JsonSpec>? = ..., kotlin/Int? = ..., kotlin/Int? = ..., kotlin/Boolean? = ...): com.eignex.skema/JsonSpec.Array // com.eignex.skema/JsonSpec.Array.copy|copy(com.eignex.skema.JsonSpec?;kotlin.collections.List<com.eignex.skema.JsonSpec>?;kotlin.Int?;kotlin.Int?;kotlin.Boolean?){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.eignex.skema/JsonSpec.Array.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.eignex.skema/JsonSpec.Array.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.eignex.skema/JsonSpec.Array.toString|toString(){}[0]
+
+        final object $serializer : kotlinx.serialization.internal/GeneratedSerializer<com.eignex.skema/JsonSpec.Array> { // com.eignex.skema/JsonSpec.Array.$serializer|null[0]
+            final val descriptor // com.eignex.skema/JsonSpec.Array.$serializer.descriptor|{}descriptor[0]
+                final fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // com.eignex.skema/JsonSpec.Array.$serializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
+
+            final fun childSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // com.eignex.skema/JsonSpec.Array.$serializer.childSerializers|childSerializers(){}[0]
+            final fun deserialize(kotlinx.serialization.encoding/Decoder): com.eignex.skema/JsonSpec.Array // com.eignex.skema/JsonSpec.Array.$serializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
+            final fun serialize(kotlinx.serialization.encoding/Encoder, com.eignex.skema/JsonSpec.Array) // com.eignex.skema/JsonSpec.Array.$serializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;com.eignex.skema.JsonSpec.Array){}[0]
+        }
+
+        final object Companion { // com.eignex.skema/JsonSpec.Array.Companion|null[0]
+            final val $childSerializers // com.eignex.skema/JsonSpec.Array.Companion.$childSerializers|{}$childSerializers[0]
+
+            final fun serializer(): kotlinx.serialization/KSerializer<com.eignex.skema/JsonSpec.Array> // com.eignex.skema/JsonSpec.Array.Companion.serializer|serializer(){}[0]
+        }
+    }
+
+    final class Const : com.eignex.skema/JsonSpec { // com.eignex.skema/JsonSpec.Const|null[0]
+        constructor <init>(kotlinx.serialization.json/JsonElement) // com.eignex.skema/JsonSpec.Const.<init>|<init>(kotlinx.serialization.json.JsonElement){}[0]
+
+        final val value // com.eignex.skema/JsonSpec.Const.value|{}value[0]
+            final fun <get-value>(): kotlinx.serialization.json/JsonElement // com.eignex.skema/JsonSpec.Const.value.<get-value>|<get-value>(){}[0]
+
+        final fun component1(): kotlinx.serialization.json/JsonElement // com.eignex.skema/JsonSpec.Const.component1|component1(){}[0]
+        final fun copy(kotlinx.serialization.json/JsonElement = ...): com.eignex.skema/JsonSpec.Const // com.eignex.skema/JsonSpec.Const.copy|copy(kotlinx.serialization.json.JsonElement){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.eignex.skema/JsonSpec.Const.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.eignex.skema/JsonSpec.Const.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.eignex.skema/JsonSpec.Const.toString|toString(){}[0]
+
+        final object $serializer : kotlinx.serialization.internal/GeneratedSerializer<com.eignex.skema/JsonSpec.Const> { // com.eignex.skema/JsonSpec.Const.$serializer|null[0]
+            final val descriptor // com.eignex.skema/JsonSpec.Const.$serializer.descriptor|{}descriptor[0]
+                final fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // com.eignex.skema/JsonSpec.Const.$serializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
+
+            final fun childSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // com.eignex.skema/JsonSpec.Const.$serializer.childSerializers|childSerializers(){}[0]
+            final fun deserialize(kotlinx.serialization.encoding/Decoder): com.eignex.skema/JsonSpec.Const // com.eignex.skema/JsonSpec.Const.$serializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
+            final fun serialize(kotlinx.serialization.encoding/Encoder, com.eignex.skema/JsonSpec.Const) // com.eignex.skema/JsonSpec.Const.$serializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;com.eignex.skema.JsonSpec.Const){}[0]
+        }
+
+        final object Companion { // com.eignex.skema/JsonSpec.Const.Companion|null[0]
+            final fun serializer(): kotlinx.serialization/KSerializer<com.eignex.skema/JsonSpec.Const> // com.eignex.skema/JsonSpec.Const.Companion.serializer|serializer(){}[0]
+        }
+    }
+
+    final class Enum : com.eignex.skema/JsonSpec { // com.eignex.skema/JsonSpec.Enum|null[0]
+        constructor <init>(kotlin.collections/List<kotlin/String>) // com.eignex.skema/JsonSpec.Enum.<init>|<init>(kotlin.collections.List<kotlin.String>){}[0]
+
+        final val values // com.eignex.skema/JsonSpec.Enum.values|{}values[0]
+            final fun <get-values>(): kotlin.collections/List<kotlin/String> // com.eignex.skema/JsonSpec.Enum.values.<get-values>|<get-values>(){}[0]
+
+        final fun component1(): kotlin.collections/List<kotlin/String> // com.eignex.skema/JsonSpec.Enum.component1|component1(){}[0]
+        final fun copy(kotlin.collections/List<kotlin/String> = ...): com.eignex.skema/JsonSpec.Enum // com.eignex.skema/JsonSpec.Enum.copy|copy(kotlin.collections.List<kotlin.String>){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.eignex.skema/JsonSpec.Enum.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.eignex.skema/JsonSpec.Enum.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.eignex.skema/JsonSpec.Enum.toString|toString(){}[0]
+
+        final object $serializer : kotlinx.serialization.internal/GeneratedSerializer<com.eignex.skema/JsonSpec.Enum> { // com.eignex.skema/JsonSpec.Enum.$serializer|null[0]
+            final val descriptor // com.eignex.skema/JsonSpec.Enum.$serializer.descriptor|{}descriptor[0]
+                final fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // com.eignex.skema/JsonSpec.Enum.$serializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
+
+            final fun childSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // com.eignex.skema/JsonSpec.Enum.$serializer.childSerializers|childSerializers(){}[0]
+            final fun deserialize(kotlinx.serialization.encoding/Decoder): com.eignex.skema/JsonSpec.Enum // com.eignex.skema/JsonSpec.Enum.$serializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
+            final fun serialize(kotlinx.serialization.encoding/Encoder, com.eignex.skema/JsonSpec.Enum) // com.eignex.skema/JsonSpec.Enum.$serializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;com.eignex.skema.JsonSpec.Enum){}[0]
+        }
+
+        final object Companion { // com.eignex.skema/JsonSpec.Enum.Companion|null[0]
+            final val $childSerializers // com.eignex.skema/JsonSpec.Enum.Companion.$childSerializers|{}$childSerializers[0]
+
+            final fun serializer(): kotlinx.serialization/KSerializer<com.eignex.skema/JsonSpec.Enum> // com.eignex.skema/JsonSpec.Enum.Companion.serializer|serializer(){}[0]
+        }
+    }
+
+    final class IfThenElse : com.eignex.skema/JsonSpec { // com.eignex.skema/JsonSpec.IfThenElse|null[0]
+        constructor <init>(com.eignex.skema/JsonSpec, com.eignex.skema/JsonSpec? = ..., com.eignex.skema/JsonSpec? = ...) // com.eignex.skema/JsonSpec.IfThenElse.<init>|<init>(com.eignex.skema.JsonSpec;com.eignex.skema.JsonSpec?;com.eignex.skema.JsonSpec?){}[0]
+
+        final val condition // com.eignex.skema/JsonSpec.IfThenElse.condition|{}condition[0]
+            final fun <get-condition>(): com.eignex.skema/JsonSpec // com.eignex.skema/JsonSpec.IfThenElse.condition.<get-condition>|<get-condition>(){}[0]
+        final val otherwise // com.eignex.skema/JsonSpec.IfThenElse.otherwise|{}otherwise[0]
+            final fun <get-otherwise>(): com.eignex.skema/JsonSpec? // com.eignex.skema/JsonSpec.IfThenElse.otherwise.<get-otherwise>|<get-otherwise>(){}[0]
+        final val then // com.eignex.skema/JsonSpec.IfThenElse.then|{}then[0]
+            final fun <get-then>(): com.eignex.skema/JsonSpec? // com.eignex.skema/JsonSpec.IfThenElse.then.<get-then>|<get-then>(){}[0]
+
+        final fun component1(): com.eignex.skema/JsonSpec // com.eignex.skema/JsonSpec.IfThenElse.component1|component1(){}[0]
+        final fun component2(): com.eignex.skema/JsonSpec? // com.eignex.skema/JsonSpec.IfThenElse.component2|component2(){}[0]
+        final fun component3(): com.eignex.skema/JsonSpec? // com.eignex.skema/JsonSpec.IfThenElse.component3|component3(){}[0]
+        final fun copy(com.eignex.skema/JsonSpec = ..., com.eignex.skema/JsonSpec? = ..., com.eignex.skema/JsonSpec? = ...): com.eignex.skema/JsonSpec.IfThenElse // com.eignex.skema/JsonSpec.IfThenElse.copy|copy(com.eignex.skema.JsonSpec;com.eignex.skema.JsonSpec?;com.eignex.skema.JsonSpec?){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.eignex.skema/JsonSpec.IfThenElse.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.eignex.skema/JsonSpec.IfThenElse.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.eignex.skema/JsonSpec.IfThenElse.toString|toString(){}[0]
+
+        final object $serializer : kotlinx.serialization.internal/GeneratedSerializer<com.eignex.skema/JsonSpec.IfThenElse> { // com.eignex.skema/JsonSpec.IfThenElse.$serializer|null[0]
+            final val descriptor // com.eignex.skema/JsonSpec.IfThenElse.$serializer.descriptor|{}descriptor[0]
+                final fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // com.eignex.skema/JsonSpec.IfThenElse.$serializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
+
+            final fun childSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // com.eignex.skema/JsonSpec.IfThenElse.$serializer.childSerializers|childSerializers(){}[0]
+            final fun deserialize(kotlinx.serialization.encoding/Decoder): com.eignex.skema/JsonSpec.IfThenElse // com.eignex.skema/JsonSpec.IfThenElse.$serializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
+            final fun serialize(kotlinx.serialization.encoding/Encoder, com.eignex.skema/JsonSpec.IfThenElse) // com.eignex.skema/JsonSpec.IfThenElse.$serializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;com.eignex.skema.JsonSpec.IfThenElse){}[0]
+        }
+
+        final object Companion { // com.eignex.skema/JsonSpec.IfThenElse.Companion|null[0]
+            final val $childSerializers // com.eignex.skema/JsonSpec.IfThenElse.Companion.$childSerializers|{}$childSerializers[0]
+
+            final fun serializer(): kotlinx.serialization/KSerializer<com.eignex.skema/JsonSpec.IfThenElse> // com.eignex.skema/JsonSpec.IfThenElse.Companion.serializer|serializer(){}[0]
+        }
+    }
+
+    final class Int : com.eignex.skema/JsonSpec { // com.eignex.skema/JsonSpec.Int|null[0]
+        constructor <init>(kotlin/Int? = ..., kotlin/Int? = ..., kotlin/Int? = ..., kotlin/Int? = ..., kotlin/Int? = ...) // com.eignex.skema/JsonSpec.Int.<init>|<init>(kotlin.Int?;kotlin.Int?;kotlin.Int?;kotlin.Int?;kotlin.Int?){}[0]
+
+        final val exclusiveMax // com.eignex.skema/JsonSpec.Int.exclusiveMax|{}exclusiveMax[0]
+            final fun <get-exclusiveMax>(): kotlin/Int? // com.eignex.skema/JsonSpec.Int.exclusiveMax.<get-exclusiveMax>|<get-exclusiveMax>(){}[0]
+        final val exclusiveMin // com.eignex.skema/JsonSpec.Int.exclusiveMin|{}exclusiveMin[0]
+            final fun <get-exclusiveMin>(): kotlin/Int? // com.eignex.skema/JsonSpec.Int.exclusiveMin.<get-exclusiveMin>|<get-exclusiveMin>(){}[0]
+        final val max // com.eignex.skema/JsonSpec.Int.max|{}max[0]
+            final fun <get-max>(): kotlin/Int? // com.eignex.skema/JsonSpec.Int.max.<get-max>|<get-max>(){}[0]
+        final val min // com.eignex.skema/JsonSpec.Int.min|{}min[0]
+            final fun <get-min>(): kotlin/Int? // com.eignex.skema/JsonSpec.Int.min.<get-min>|<get-min>(){}[0]
+        final val multipleOf // com.eignex.skema/JsonSpec.Int.multipleOf|{}multipleOf[0]
+            final fun <get-multipleOf>(): kotlin/Int? // com.eignex.skema/JsonSpec.Int.multipleOf.<get-multipleOf>|<get-multipleOf>(){}[0]
+
+        final fun component1(): kotlin/Int? // com.eignex.skema/JsonSpec.Int.component1|component1(){}[0]
+        final fun component2(): kotlin/Int? // com.eignex.skema/JsonSpec.Int.component2|component2(){}[0]
+        final fun component3(): kotlin/Int? // com.eignex.skema/JsonSpec.Int.component3|component3(){}[0]
+        final fun component4(): kotlin/Int? // com.eignex.skema/JsonSpec.Int.component4|component4(){}[0]
+        final fun component5(): kotlin/Int? // com.eignex.skema/JsonSpec.Int.component5|component5(){}[0]
+        final fun copy(kotlin/Int? = ..., kotlin/Int? = ..., kotlin/Int? = ..., kotlin/Int? = ..., kotlin/Int? = ...): com.eignex.skema/JsonSpec.Int // com.eignex.skema/JsonSpec.Int.copy|copy(kotlin.Int?;kotlin.Int?;kotlin.Int?;kotlin.Int?;kotlin.Int?){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.eignex.skema/JsonSpec.Int.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.eignex.skema/JsonSpec.Int.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.eignex.skema/JsonSpec.Int.toString|toString(){}[0]
+
+        final object $serializer : kotlinx.serialization.internal/GeneratedSerializer<com.eignex.skema/JsonSpec.Int> { // com.eignex.skema/JsonSpec.Int.$serializer|null[0]
+            final val descriptor // com.eignex.skema/JsonSpec.Int.$serializer.descriptor|{}descriptor[0]
+                final fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // com.eignex.skema/JsonSpec.Int.$serializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
+
+            final fun childSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // com.eignex.skema/JsonSpec.Int.$serializer.childSerializers|childSerializers(){}[0]
+            final fun deserialize(kotlinx.serialization.encoding/Decoder): com.eignex.skema/JsonSpec.Int // com.eignex.skema/JsonSpec.Int.$serializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
+            final fun serialize(kotlinx.serialization.encoding/Encoder, com.eignex.skema/JsonSpec.Int) // com.eignex.skema/JsonSpec.Int.$serializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;com.eignex.skema.JsonSpec.Int){}[0]
+        }
+
+        final object Companion { // com.eignex.skema/JsonSpec.Int.Companion|null[0]
+            final fun serializer(): kotlinx.serialization/KSerializer<com.eignex.skema/JsonSpec.Int> // com.eignex.skema/JsonSpec.Int.Companion.serializer|serializer(){}[0]
+        }
+    }
+
+    final class Long : com.eignex.skema/JsonSpec { // com.eignex.skema/JsonSpec.Long|null[0]
+        constructor <init>(kotlin/Long? = ..., kotlin/Long? = ..., kotlin/Long? = ..., kotlin/Long? = ..., kotlin/Long? = ...) // com.eignex.skema/JsonSpec.Long.<init>|<init>(kotlin.Long?;kotlin.Long?;kotlin.Long?;kotlin.Long?;kotlin.Long?){}[0]
+
+        final val exclusiveMax // com.eignex.skema/JsonSpec.Long.exclusiveMax|{}exclusiveMax[0]
+            final fun <get-exclusiveMax>(): kotlin/Long? // com.eignex.skema/JsonSpec.Long.exclusiveMax.<get-exclusiveMax>|<get-exclusiveMax>(){}[0]
+        final val exclusiveMin // com.eignex.skema/JsonSpec.Long.exclusiveMin|{}exclusiveMin[0]
+            final fun <get-exclusiveMin>(): kotlin/Long? // com.eignex.skema/JsonSpec.Long.exclusiveMin.<get-exclusiveMin>|<get-exclusiveMin>(){}[0]
+        final val max // com.eignex.skema/JsonSpec.Long.max|{}max[0]
+            final fun <get-max>(): kotlin/Long? // com.eignex.skema/JsonSpec.Long.max.<get-max>|<get-max>(){}[0]
+        final val min // com.eignex.skema/JsonSpec.Long.min|{}min[0]
+            final fun <get-min>(): kotlin/Long? // com.eignex.skema/JsonSpec.Long.min.<get-min>|<get-min>(){}[0]
+        final val multipleOf // com.eignex.skema/JsonSpec.Long.multipleOf|{}multipleOf[0]
+            final fun <get-multipleOf>(): kotlin/Long? // com.eignex.skema/JsonSpec.Long.multipleOf.<get-multipleOf>|<get-multipleOf>(){}[0]
+
+        final fun component1(): kotlin/Long? // com.eignex.skema/JsonSpec.Long.component1|component1(){}[0]
+        final fun component2(): kotlin/Long? // com.eignex.skema/JsonSpec.Long.component2|component2(){}[0]
+        final fun component3(): kotlin/Long? // com.eignex.skema/JsonSpec.Long.component3|component3(){}[0]
+        final fun component4(): kotlin/Long? // com.eignex.skema/JsonSpec.Long.component4|component4(){}[0]
+        final fun component5(): kotlin/Long? // com.eignex.skema/JsonSpec.Long.component5|component5(){}[0]
+        final fun copy(kotlin/Long? = ..., kotlin/Long? = ..., kotlin/Long? = ..., kotlin/Long? = ..., kotlin/Long? = ...): com.eignex.skema/JsonSpec.Long // com.eignex.skema/JsonSpec.Long.copy|copy(kotlin.Long?;kotlin.Long?;kotlin.Long?;kotlin.Long?;kotlin.Long?){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.eignex.skema/JsonSpec.Long.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.eignex.skema/JsonSpec.Long.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.eignex.skema/JsonSpec.Long.toString|toString(){}[0]
+
+        final object $serializer : kotlinx.serialization.internal/GeneratedSerializer<com.eignex.skema/JsonSpec.Long> { // com.eignex.skema/JsonSpec.Long.$serializer|null[0]
+            final val descriptor // com.eignex.skema/JsonSpec.Long.$serializer.descriptor|{}descriptor[0]
+                final fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // com.eignex.skema/JsonSpec.Long.$serializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
+
+            final fun childSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // com.eignex.skema/JsonSpec.Long.$serializer.childSerializers|childSerializers(){}[0]
+            final fun deserialize(kotlinx.serialization.encoding/Decoder): com.eignex.skema/JsonSpec.Long // com.eignex.skema/JsonSpec.Long.$serializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
+            final fun serialize(kotlinx.serialization.encoding/Encoder, com.eignex.skema/JsonSpec.Long) // com.eignex.skema/JsonSpec.Long.$serializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;com.eignex.skema.JsonSpec.Long){}[0]
+        }
+
+        final object Companion { // com.eignex.skema/JsonSpec.Long.Companion|null[0]
+            final fun serializer(): kotlinx.serialization/KSerializer<com.eignex.skema/JsonSpec.Long> // com.eignex.skema/JsonSpec.Long.Companion.serializer|serializer(){}[0]
+        }
+    }
+
+    final class Not : com.eignex.skema/JsonSpec { // com.eignex.skema/JsonSpec.Not|null[0]
+        constructor <init>(com.eignex.skema/JsonSpec) // com.eignex.skema/JsonSpec.Not.<init>|<init>(com.eignex.skema.JsonSpec){}[0]
+
+        final val spec // com.eignex.skema/JsonSpec.Not.spec|{}spec[0]
+            final fun <get-spec>(): com.eignex.skema/JsonSpec // com.eignex.skema/JsonSpec.Not.spec.<get-spec>|<get-spec>(){}[0]
+
+        final fun component1(): com.eignex.skema/JsonSpec // com.eignex.skema/JsonSpec.Not.component1|component1(){}[0]
+        final fun copy(com.eignex.skema/JsonSpec = ...): com.eignex.skema/JsonSpec.Not // com.eignex.skema/JsonSpec.Not.copy|copy(com.eignex.skema.JsonSpec){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.eignex.skema/JsonSpec.Not.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.eignex.skema/JsonSpec.Not.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.eignex.skema/JsonSpec.Not.toString|toString(){}[0]
+
+        final object $serializer : kotlinx.serialization.internal/GeneratedSerializer<com.eignex.skema/JsonSpec.Not> { // com.eignex.skema/JsonSpec.Not.$serializer|null[0]
+            final val descriptor // com.eignex.skema/JsonSpec.Not.$serializer.descriptor|{}descriptor[0]
+                final fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // com.eignex.skema/JsonSpec.Not.$serializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
+
+            final fun childSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // com.eignex.skema/JsonSpec.Not.$serializer.childSerializers|childSerializers(){}[0]
+            final fun deserialize(kotlinx.serialization.encoding/Decoder): com.eignex.skema/JsonSpec.Not // com.eignex.skema/JsonSpec.Not.$serializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
+            final fun serialize(kotlinx.serialization.encoding/Encoder, com.eignex.skema/JsonSpec.Not) // com.eignex.skema/JsonSpec.Not.$serializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;com.eignex.skema.JsonSpec.Not){}[0]
+        }
+
+        final object Companion { // com.eignex.skema/JsonSpec.Not.Companion|null[0]
+            final val $childSerializers // com.eignex.skema/JsonSpec.Not.Companion.$childSerializers|{}$childSerializers[0]
+
+            final fun serializer(): kotlinx.serialization/KSerializer<com.eignex.skema/JsonSpec.Not> // com.eignex.skema/JsonSpec.Not.Companion.serializer|serializer(){}[0]
+        }
+    }
+
+    final class Nullable : com.eignex.skema/JsonSpec { // com.eignex.skema/JsonSpec.Nullable|null[0]
+        constructor <init>(com.eignex.skema/JsonSpec) // com.eignex.skema/JsonSpec.Nullable.<init>|<init>(com.eignex.skema.JsonSpec){}[0]
+
+        final val inner // com.eignex.skema/JsonSpec.Nullable.inner|{}inner[0]
+            final fun <get-inner>(): com.eignex.skema/JsonSpec // com.eignex.skema/JsonSpec.Nullable.inner.<get-inner>|<get-inner>(){}[0]
+
+        final fun component1(): com.eignex.skema/JsonSpec // com.eignex.skema/JsonSpec.Nullable.component1|component1(){}[0]
+        final fun copy(com.eignex.skema/JsonSpec = ...): com.eignex.skema/JsonSpec.Nullable // com.eignex.skema/JsonSpec.Nullable.copy|copy(com.eignex.skema.JsonSpec){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.eignex.skema/JsonSpec.Nullable.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.eignex.skema/JsonSpec.Nullable.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.eignex.skema/JsonSpec.Nullable.toString|toString(){}[0]
+
+        final object $serializer : kotlinx.serialization.internal/GeneratedSerializer<com.eignex.skema/JsonSpec.Nullable> { // com.eignex.skema/JsonSpec.Nullable.$serializer|null[0]
+            final val descriptor // com.eignex.skema/JsonSpec.Nullable.$serializer.descriptor|{}descriptor[0]
+                final fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // com.eignex.skema/JsonSpec.Nullable.$serializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
+
+            final fun childSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // com.eignex.skema/JsonSpec.Nullable.$serializer.childSerializers|childSerializers(){}[0]
+            final fun deserialize(kotlinx.serialization.encoding/Decoder): com.eignex.skema/JsonSpec.Nullable // com.eignex.skema/JsonSpec.Nullable.$serializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
+            final fun serialize(kotlinx.serialization.encoding/Encoder, com.eignex.skema/JsonSpec.Nullable) // com.eignex.skema/JsonSpec.Nullable.$serializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;com.eignex.skema.JsonSpec.Nullable){}[0]
+        }
+
+        final object Companion { // com.eignex.skema/JsonSpec.Nullable.Companion|null[0]
+            final val $childSerializers // com.eignex.skema/JsonSpec.Nullable.Companion.$childSerializers|{}$childSerializers[0]
+
+            final fun serializer(): kotlinx.serialization/KSerializer<com.eignex.skema/JsonSpec.Nullable> // com.eignex.skema/JsonSpec.Nullable.Companion.serializer|serializer(){}[0]
+        }
+    }
+
+    final class Num : com.eignex.skema/JsonSpec { // com.eignex.skema/JsonSpec.Num|null[0]
+        constructor <init>(kotlin/Double? = ..., kotlin/Double? = ..., kotlin/Double? = ..., kotlin/Double? = ..., kotlin/Double? = ...) // com.eignex.skema/JsonSpec.Num.<init>|<init>(kotlin.Double?;kotlin.Double?;kotlin.Double?;kotlin.Double?;kotlin.Double?){}[0]
+
+        final val exclusiveMax // com.eignex.skema/JsonSpec.Num.exclusiveMax|{}exclusiveMax[0]
+            final fun <get-exclusiveMax>(): kotlin/Double? // com.eignex.skema/JsonSpec.Num.exclusiveMax.<get-exclusiveMax>|<get-exclusiveMax>(){}[0]
+        final val exclusiveMin // com.eignex.skema/JsonSpec.Num.exclusiveMin|{}exclusiveMin[0]
+            final fun <get-exclusiveMin>(): kotlin/Double? // com.eignex.skema/JsonSpec.Num.exclusiveMin.<get-exclusiveMin>|<get-exclusiveMin>(){}[0]
+        final val max // com.eignex.skema/JsonSpec.Num.max|{}max[0]
+            final fun <get-max>(): kotlin/Double? // com.eignex.skema/JsonSpec.Num.max.<get-max>|<get-max>(){}[0]
+        final val min // com.eignex.skema/JsonSpec.Num.min|{}min[0]
+            final fun <get-min>(): kotlin/Double? // com.eignex.skema/JsonSpec.Num.min.<get-min>|<get-min>(){}[0]
+        final val multipleOf // com.eignex.skema/JsonSpec.Num.multipleOf|{}multipleOf[0]
+            final fun <get-multipleOf>(): kotlin/Double? // com.eignex.skema/JsonSpec.Num.multipleOf.<get-multipleOf>|<get-multipleOf>(){}[0]
+
+        final fun component1(): kotlin/Double? // com.eignex.skema/JsonSpec.Num.component1|component1(){}[0]
+        final fun component2(): kotlin/Double? // com.eignex.skema/JsonSpec.Num.component2|component2(){}[0]
+        final fun component3(): kotlin/Double? // com.eignex.skema/JsonSpec.Num.component3|component3(){}[0]
+        final fun component4(): kotlin/Double? // com.eignex.skema/JsonSpec.Num.component4|component4(){}[0]
+        final fun component5(): kotlin/Double? // com.eignex.skema/JsonSpec.Num.component5|component5(){}[0]
+        final fun copy(kotlin/Double? = ..., kotlin/Double? = ..., kotlin/Double? = ..., kotlin/Double? = ..., kotlin/Double? = ...): com.eignex.skema/JsonSpec.Num // com.eignex.skema/JsonSpec.Num.copy|copy(kotlin.Double?;kotlin.Double?;kotlin.Double?;kotlin.Double?;kotlin.Double?){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.eignex.skema/JsonSpec.Num.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.eignex.skema/JsonSpec.Num.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.eignex.skema/JsonSpec.Num.toString|toString(){}[0]
+
+        final object $serializer : kotlinx.serialization.internal/GeneratedSerializer<com.eignex.skema/JsonSpec.Num> { // com.eignex.skema/JsonSpec.Num.$serializer|null[0]
+            final val descriptor // com.eignex.skema/JsonSpec.Num.$serializer.descriptor|{}descriptor[0]
+                final fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // com.eignex.skema/JsonSpec.Num.$serializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
+
+            final fun childSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // com.eignex.skema/JsonSpec.Num.$serializer.childSerializers|childSerializers(){}[0]
+            final fun deserialize(kotlinx.serialization.encoding/Decoder): com.eignex.skema/JsonSpec.Num // com.eignex.skema/JsonSpec.Num.$serializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
+            final fun serialize(kotlinx.serialization.encoding/Encoder, com.eignex.skema/JsonSpec.Num) // com.eignex.skema/JsonSpec.Num.$serializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;com.eignex.skema.JsonSpec.Num){}[0]
+        }
+
+        final object Companion { // com.eignex.skema/JsonSpec.Num.Companion|null[0]
+            final fun serializer(): kotlinx.serialization/KSerializer<com.eignex.skema/JsonSpec.Num> // com.eignex.skema/JsonSpec.Num.Companion.serializer|serializer(){}[0]
+        }
+    }
+
+    final class Object : com.eignex.skema/JsonSpec { // com.eignex.skema/JsonSpec.Object|null[0]
+        constructor <init>(kotlin.collections/Map<kotlin/String, com.eignex.skema/JsonSpec> = ..., kotlin.collections/List<kotlin/String> = ..., kotlin/Boolean? = ..., com.eignex.skema/JsonSpec? = ..., kotlin/Int? = ..., kotlin/Int? = ...) // com.eignex.skema/JsonSpec.Object.<init>|<init>(kotlin.collections.Map<kotlin.String,com.eignex.skema.JsonSpec>;kotlin.collections.List<kotlin.String>;kotlin.Boolean?;com.eignex.skema.JsonSpec?;kotlin.Int?;kotlin.Int?){}[0]
+
+        final val additionalPropertiesAllowed // com.eignex.skema/JsonSpec.Object.additionalPropertiesAllowed|{}additionalPropertiesAllowed[0]
+            final fun <get-additionalPropertiesAllowed>(): kotlin/Boolean? // com.eignex.skema/JsonSpec.Object.additionalPropertiesAllowed.<get-additionalPropertiesAllowed>|<get-additionalPropertiesAllowed>(){}[0]
+        final val additionalPropertiesSpec // com.eignex.skema/JsonSpec.Object.additionalPropertiesSpec|{}additionalPropertiesSpec[0]
+            final fun <get-additionalPropertiesSpec>(): com.eignex.skema/JsonSpec? // com.eignex.skema/JsonSpec.Object.additionalPropertiesSpec.<get-additionalPropertiesSpec>|<get-additionalPropertiesSpec>(){}[0]
+        final val maxProperties // com.eignex.skema/JsonSpec.Object.maxProperties|{}maxProperties[0]
+            final fun <get-maxProperties>(): kotlin/Int? // com.eignex.skema/JsonSpec.Object.maxProperties.<get-maxProperties>|<get-maxProperties>(){}[0]
+        final val minProperties // com.eignex.skema/JsonSpec.Object.minProperties|{}minProperties[0]
+            final fun <get-minProperties>(): kotlin/Int? // com.eignex.skema/JsonSpec.Object.minProperties.<get-minProperties>|<get-minProperties>(){}[0]
+        final val properties // com.eignex.skema/JsonSpec.Object.properties|{}properties[0]
+            final fun <get-properties>(): kotlin.collections/Map<kotlin/String, com.eignex.skema/JsonSpec> // com.eignex.skema/JsonSpec.Object.properties.<get-properties>|<get-properties>(){}[0]
+        final val required // com.eignex.skema/JsonSpec.Object.required|{}required[0]
+            final fun <get-required>(): kotlin.collections/List<kotlin/String> // com.eignex.skema/JsonSpec.Object.required.<get-required>|<get-required>(){}[0]
+
+        final fun component1(): kotlin.collections/Map<kotlin/String, com.eignex.skema/JsonSpec> // com.eignex.skema/JsonSpec.Object.component1|component1(){}[0]
+        final fun component2(): kotlin.collections/List<kotlin/String> // com.eignex.skema/JsonSpec.Object.component2|component2(){}[0]
+        final fun component3(): kotlin/Boolean? // com.eignex.skema/JsonSpec.Object.component3|component3(){}[0]
+        final fun component4(): com.eignex.skema/JsonSpec? // com.eignex.skema/JsonSpec.Object.component4|component4(){}[0]
+        final fun component5(): kotlin/Int? // com.eignex.skema/JsonSpec.Object.component5|component5(){}[0]
+        final fun component6(): kotlin/Int? // com.eignex.skema/JsonSpec.Object.component6|component6(){}[0]
+        final fun copy(kotlin.collections/Map<kotlin/String, com.eignex.skema/JsonSpec> = ..., kotlin.collections/List<kotlin/String> = ..., kotlin/Boolean? = ..., com.eignex.skema/JsonSpec? = ..., kotlin/Int? = ..., kotlin/Int? = ...): com.eignex.skema/JsonSpec.Object // com.eignex.skema/JsonSpec.Object.copy|copy(kotlin.collections.Map<kotlin.String,com.eignex.skema.JsonSpec>;kotlin.collections.List<kotlin.String>;kotlin.Boolean?;com.eignex.skema.JsonSpec?;kotlin.Int?;kotlin.Int?){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.eignex.skema/JsonSpec.Object.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.eignex.skema/JsonSpec.Object.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.eignex.skema/JsonSpec.Object.toString|toString(){}[0]
+
+        final object $serializer : kotlinx.serialization.internal/GeneratedSerializer<com.eignex.skema/JsonSpec.Object> { // com.eignex.skema/JsonSpec.Object.$serializer|null[0]
+            final val descriptor // com.eignex.skema/JsonSpec.Object.$serializer.descriptor|{}descriptor[0]
+                final fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // com.eignex.skema/JsonSpec.Object.$serializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
+
+            final fun childSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // com.eignex.skema/JsonSpec.Object.$serializer.childSerializers|childSerializers(){}[0]
+            final fun deserialize(kotlinx.serialization.encoding/Decoder): com.eignex.skema/JsonSpec.Object // com.eignex.skema/JsonSpec.Object.$serializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
+            final fun serialize(kotlinx.serialization.encoding/Encoder, com.eignex.skema/JsonSpec.Object) // com.eignex.skema/JsonSpec.Object.$serializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;com.eignex.skema.JsonSpec.Object){}[0]
+        }
+
+        final object Companion { // com.eignex.skema/JsonSpec.Object.Companion|null[0]
+            final val $childSerializers // com.eignex.skema/JsonSpec.Object.Companion.$childSerializers|{}$childSerializers[0]
+
+            final fun serializer(): kotlinx.serialization/KSerializer<com.eignex.skema/JsonSpec.Object> // com.eignex.skema/JsonSpec.Object.Companion.serializer|serializer(){}[0]
+        }
+    }
+
+    final class OneOf : com.eignex.skema/JsonSpec { // com.eignex.skema/JsonSpec.OneOf|null[0]
+        constructor <init>(kotlin.collections/List<com.eignex.skema/JsonSpec>) // com.eignex.skema/JsonSpec.OneOf.<init>|<init>(kotlin.collections.List<com.eignex.skema.JsonSpec>){}[0]
+
+        final val branches // com.eignex.skema/JsonSpec.OneOf.branches|{}branches[0]
+            final fun <get-branches>(): kotlin.collections/List<com.eignex.skema/JsonSpec> // com.eignex.skema/JsonSpec.OneOf.branches.<get-branches>|<get-branches>(){}[0]
+
+        final fun component1(): kotlin.collections/List<com.eignex.skema/JsonSpec> // com.eignex.skema/JsonSpec.OneOf.component1|component1(){}[0]
+        final fun copy(kotlin.collections/List<com.eignex.skema/JsonSpec> = ...): com.eignex.skema/JsonSpec.OneOf // com.eignex.skema/JsonSpec.OneOf.copy|copy(kotlin.collections.List<com.eignex.skema.JsonSpec>){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.eignex.skema/JsonSpec.OneOf.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.eignex.skema/JsonSpec.OneOf.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.eignex.skema/JsonSpec.OneOf.toString|toString(){}[0]
+
+        final object $serializer : kotlinx.serialization.internal/GeneratedSerializer<com.eignex.skema/JsonSpec.OneOf> { // com.eignex.skema/JsonSpec.OneOf.$serializer|null[0]
+            final val descriptor // com.eignex.skema/JsonSpec.OneOf.$serializer.descriptor|{}descriptor[0]
+                final fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // com.eignex.skema/JsonSpec.OneOf.$serializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
+
+            final fun childSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // com.eignex.skema/JsonSpec.OneOf.$serializer.childSerializers|childSerializers(){}[0]
+            final fun deserialize(kotlinx.serialization.encoding/Decoder): com.eignex.skema/JsonSpec.OneOf // com.eignex.skema/JsonSpec.OneOf.$serializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
+            final fun serialize(kotlinx.serialization.encoding/Encoder, com.eignex.skema/JsonSpec.OneOf) // com.eignex.skema/JsonSpec.OneOf.$serializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;com.eignex.skema.JsonSpec.OneOf){}[0]
+        }
+
+        final object Companion { // com.eignex.skema/JsonSpec.OneOf.Companion|null[0]
+            final val $childSerializers // com.eignex.skema/JsonSpec.OneOf.Companion.$childSerializers|{}$childSerializers[0]
+
+            final fun serializer(): kotlinx.serialization/KSerializer<com.eignex.skema/JsonSpec.OneOf> // com.eignex.skema/JsonSpec.OneOf.Companion.serializer|serializer(){}[0]
+        }
+    }
+
+    final class Ref : com.eignex.skema/JsonSpec { // com.eignex.skema/JsonSpec.Ref|null[0]
+        constructor <init>(kotlin/String) // com.eignex.skema/JsonSpec.Ref.<init>|<init>(kotlin.String){}[0]
+
+        final val pointer // com.eignex.skema/JsonSpec.Ref.pointer|{}pointer[0]
+            final fun <get-pointer>(): kotlin/String // com.eignex.skema/JsonSpec.Ref.pointer.<get-pointer>|<get-pointer>(){}[0]
+
+        final fun component1(): kotlin/String // com.eignex.skema/JsonSpec.Ref.component1|component1(){}[0]
+        final fun copy(kotlin/String = ...): com.eignex.skema/JsonSpec.Ref // com.eignex.skema/JsonSpec.Ref.copy|copy(kotlin.String){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.eignex.skema/JsonSpec.Ref.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.eignex.skema/JsonSpec.Ref.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.eignex.skema/JsonSpec.Ref.toString|toString(){}[0]
+
+        final object $serializer : kotlinx.serialization.internal/GeneratedSerializer<com.eignex.skema/JsonSpec.Ref> { // com.eignex.skema/JsonSpec.Ref.$serializer|null[0]
+            final val descriptor // com.eignex.skema/JsonSpec.Ref.$serializer.descriptor|{}descriptor[0]
+                final fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // com.eignex.skema/JsonSpec.Ref.$serializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
+
+            final fun childSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // com.eignex.skema/JsonSpec.Ref.$serializer.childSerializers|childSerializers(){}[0]
+            final fun deserialize(kotlinx.serialization.encoding/Decoder): com.eignex.skema/JsonSpec.Ref // com.eignex.skema/JsonSpec.Ref.$serializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
+            final fun serialize(kotlinx.serialization.encoding/Encoder, com.eignex.skema/JsonSpec.Ref) // com.eignex.skema/JsonSpec.Ref.$serializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;com.eignex.skema.JsonSpec.Ref){}[0]
+        }
+
+        final object Companion { // com.eignex.skema/JsonSpec.Ref.Companion|null[0]
+            final fun serializer(): kotlinx.serialization/KSerializer<com.eignex.skema/JsonSpec.Ref> // com.eignex.skema/JsonSpec.Ref.Companion.serializer|serializer(){}[0]
+        }
+    }
+
+    final class Str : com.eignex.skema/JsonSpec { // com.eignex.skema/JsonSpec.Str|null[0]
+        constructor <init>(kotlin/Int? = ..., kotlin/Int? = ..., kotlin/String? = ..., kotlin/String? = ...) // com.eignex.skema/JsonSpec.Str.<init>|<init>(kotlin.Int?;kotlin.Int?;kotlin.String?;kotlin.String?){}[0]
+
+        final val format // com.eignex.skema/JsonSpec.Str.format|{}format[0]
+            final fun <get-format>(): kotlin/String? // com.eignex.skema/JsonSpec.Str.format.<get-format>|<get-format>(){}[0]
+        final val maxLength // com.eignex.skema/JsonSpec.Str.maxLength|{}maxLength[0]
+            final fun <get-maxLength>(): kotlin/Int? // com.eignex.skema/JsonSpec.Str.maxLength.<get-maxLength>|<get-maxLength>(){}[0]
+        final val minLength // com.eignex.skema/JsonSpec.Str.minLength|{}minLength[0]
+            final fun <get-minLength>(): kotlin/Int? // com.eignex.skema/JsonSpec.Str.minLength.<get-minLength>|<get-minLength>(){}[0]
+        final val pattern // com.eignex.skema/JsonSpec.Str.pattern|{}pattern[0]
+            final fun <get-pattern>(): kotlin/String? // com.eignex.skema/JsonSpec.Str.pattern.<get-pattern>|<get-pattern>(){}[0]
+
+        final fun component1(): kotlin/Int? // com.eignex.skema/JsonSpec.Str.component1|component1(){}[0]
+        final fun component2(): kotlin/Int? // com.eignex.skema/JsonSpec.Str.component2|component2(){}[0]
+        final fun component3(): kotlin/String? // com.eignex.skema/JsonSpec.Str.component3|component3(){}[0]
+        final fun component4(): kotlin/String? // com.eignex.skema/JsonSpec.Str.component4|component4(){}[0]
+        final fun copy(kotlin/Int? = ..., kotlin/Int? = ..., kotlin/String? = ..., kotlin/String? = ...): com.eignex.skema/JsonSpec.Str // com.eignex.skema/JsonSpec.Str.copy|copy(kotlin.Int?;kotlin.Int?;kotlin.String?;kotlin.String?){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.eignex.skema/JsonSpec.Str.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.eignex.skema/JsonSpec.Str.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.eignex.skema/JsonSpec.Str.toString|toString(){}[0]
+
+        final object $serializer : kotlinx.serialization.internal/GeneratedSerializer<com.eignex.skema/JsonSpec.Str> { // com.eignex.skema/JsonSpec.Str.$serializer|null[0]
+            final val descriptor // com.eignex.skema/JsonSpec.Str.$serializer.descriptor|{}descriptor[0]
+                final fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // com.eignex.skema/JsonSpec.Str.$serializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
+
+            final fun childSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // com.eignex.skema/JsonSpec.Str.$serializer.childSerializers|childSerializers(){}[0]
+            final fun deserialize(kotlinx.serialization.encoding/Decoder): com.eignex.skema/JsonSpec.Str // com.eignex.skema/JsonSpec.Str.$serializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
+            final fun serialize(kotlinx.serialization.encoding/Encoder, com.eignex.skema/JsonSpec.Str) // com.eignex.skema/JsonSpec.Str.$serializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;com.eignex.skema.JsonSpec.Str){}[0]
+        }
+
+        final object Companion { // com.eignex.skema/JsonSpec.Str.Companion|null[0]
+            final fun serializer(): kotlinx.serialization/KSerializer<com.eignex.skema/JsonSpec.Str> // com.eignex.skema/JsonSpec.Str.Companion.serializer|serializer(){}[0]
+        }
+    }
+
+    final object Bool : com.eignex.skema/JsonSpec, kotlinx.serialization.internal/SerializerFactory { // com.eignex.skema/JsonSpec.Bool|null[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.eignex.skema/JsonSpec.Bool.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.eignex.skema/JsonSpec.Bool.hashCode|hashCode(){}[0]
+        final fun serializer(): kotlinx.serialization/KSerializer<com.eignex.skema/JsonSpec.Bool> // com.eignex.skema/JsonSpec.Bool.serializer|serializer(){}[0]
+        final fun serializer(kotlin/Array<out kotlinx.serialization/KSerializer<*>>...): kotlinx.serialization/KSerializer<*> // com.eignex.skema/JsonSpec.Bool.serializer|serializer(kotlin.Array<out|kotlinx.serialization.KSerializer<*>>...){}[0]
+        final fun toString(): kotlin/String // com.eignex.skema/JsonSpec.Bool.toString|toString(){}[0]
+    }
+
+    final object Companion : kotlinx.serialization.internal/SerializerFactory { // com.eignex.skema/JsonSpec.Companion|null[0]
+        final fun serializer(): kotlinx.serialization/KSerializer<com.eignex.skema/JsonSpec> // com.eignex.skema/JsonSpec.Companion.serializer|serializer(){}[0]
+        final fun serializer(kotlin/Array<out kotlinx.serialization/KSerializer<*>>...): kotlinx.serialization/KSerializer<*> // com.eignex.skema/JsonSpec.Companion.serializer|serializer(kotlin.Array<out|kotlinx.serialization.KSerializer<*>>...){}[0]
+    }
+
+    final object Null : com.eignex.skema/JsonSpec, kotlinx.serialization.internal/SerializerFactory { // com.eignex.skema/JsonSpec.Null|null[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.eignex.skema/JsonSpec.Null.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.eignex.skema/JsonSpec.Null.hashCode|hashCode(){}[0]
+        final fun serializer(): kotlinx.serialization/KSerializer<com.eignex.skema/JsonSpec.Null> // com.eignex.skema/JsonSpec.Null.serializer|serializer(){}[0]
+        final fun serializer(kotlin/Array<out kotlinx.serialization/KSerializer<*>>...): kotlinx.serialization/KSerializer<*> // com.eignex.skema/JsonSpec.Null.serializer|serializer(kotlin.Array<out|kotlinx.serialization.KSerializer<*>>...){}[0]
+        final fun toString(): kotlin/String // com.eignex.skema/JsonSpec.Null.toString|toString(){}[0]
+    }
+}
+
+abstract class <#A: kotlin/Any> com.eignex.skema/Schema { // com.eignex.skema/Schema|null[0]
+    constructor <init>() // com.eignex.skema/Schema.<init>|<init>(){}[0]
+
+    final val entries // com.eignex.skema/Schema.entries|{}entries[0]
+        final fun <get-entries>(): kotlin.collections/Map<kotlin/String, #A> // com.eignex.skema/Schema.entries.<get-entries>|<get-entries>(){}[0]
+
+    final fun add(kotlin/String, #A) // com.eignex.skema/Schema.add|add(kotlin.String;1:0){}[0]
+    final fun addPublished(kotlin/String, #A) // com.eignex.skema/Schema.addPublished|addPublished(kotlin.String;1:0){}[0]
+    final inline fun <#A1: kotlin/Any?> register(#A, crossinline kotlin/Function1<kotlin/String, #A1>): kotlin.properties/PropertyDelegateProvider<com.eignex.skema/Schema<#A>, kotlin.properties/ReadOnlyProperty<com.eignex.skema/Schema<#A>, #A1>> // com.eignex.skema/Schema.register|register(1:0;kotlin.Function1<kotlin.String,0:0>){0§<kotlin.Any?>}[0]
+    open fun definition(): com.eignex.skema/SchemaDef<#A> // com.eignex.skema/Schema.definition|definition(){}[0]
+    open fun validate(kotlin.collections/Map<kotlin/String, #A>) // com.eignex.skema/Schema.validate|validate(kotlin.collections.Map<kotlin.String,1:0>){}[0]
+}
+
+final class <#A: kotlin/Any?> com.eignex.skema/SchemaDef { // com.eignex.skema/SchemaDef|null[0]
+    constructor <init>(kotlin.collections/Map<kotlin/String, #A>) // com.eignex.skema/SchemaDef.<init>|<init>(kotlin.collections.Map<kotlin.String,1:0>){}[0]
+
+    final val entries // com.eignex.skema/SchemaDef.entries|{}entries[0]
+        final fun <get-entries>(): kotlin.collections/Map<kotlin/String, #A> // com.eignex.skema/SchemaDef.entries.<get-entries>|<get-entries>(){}[0]
+    final val names // com.eignex.skema/SchemaDef.names|{}names[0]
+        final fun <get-names>(): kotlin.collections/Set<kotlin/String> // com.eignex.skema/SchemaDef.names.<get-names>|<get-names>(){}[0]
+    final val size // com.eignex.skema/SchemaDef.size|{}size[0]
+        final fun <get-size>(): kotlin/Int // com.eignex.skema/SchemaDef.size.<get-size>|<get-size>(){}[0]
+
+    final fun component1(): kotlin.collections/Map<kotlin/String, #A> // com.eignex.skema/SchemaDef.component1|component1(){}[0]
+    final fun copy(kotlin.collections/Map<kotlin/String, #A> = ...): com.eignex.skema/SchemaDef<#A> // com.eignex.skema/SchemaDef.copy|copy(kotlin.collections.Map<kotlin.String,1:0>){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // com.eignex.skema/SchemaDef.equals|equals(kotlin.Any?){}[0]
+    final fun get(kotlin/String): #A // com.eignex.skema/SchemaDef.get|get(kotlin.String){}[0]
+    final fun hashCode(): kotlin/Int // com.eignex.skema/SchemaDef.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // com.eignex.skema/SchemaDef.toString|toString(){}[0]
+
+    final class <#A1: kotlin/Any?> $serializer : kotlinx.serialization.internal/GeneratedSerializer<com.eignex.skema/SchemaDef<#A1>> { // com.eignex.skema/SchemaDef.$serializer|null[0]
+        constructor <init>(kotlinx.serialization/KSerializer<#A1>) // com.eignex.skema/SchemaDef.$serializer.<init>|<init>(kotlinx.serialization.KSerializer<1:0>){}[0]
+
+        final val descriptor // com.eignex.skema/SchemaDef.$serializer.descriptor|{}descriptor[0]
+            final fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // com.eignex.skema/SchemaDef.$serializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
+        final val typeSerial0 // com.eignex.skema/SchemaDef.$serializer.typeSerial0|{}typeSerial0[0]
+
+        final fun childSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // com.eignex.skema/SchemaDef.$serializer.childSerializers|childSerializers(){}[0]
+        final fun deserialize(kotlinx.serialization.encoding/Decoder): com.eignex.skema/SchemaDef<#A1> // com.eignex.skema/SchemaDef.$serializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
+        final fun serialize(kotlinx.serialization.encoding/Encoder, com.eignex.skema/SchemaDef<#A1>) // com.eignex.skema/SchemaDef.$serializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;com.eignex.skema.SchemaDef<1:0>){}[0]
+        final fun typeParametersSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // com.eignex.skema/SchemaDef.$serializer.typeParametersSerializers|typeParametersSerializers(){}[0]
+    }
+
+    final object Companion : kotlinx.serialization.internal/SerializerFactory { // com.eignex.skema/SchemaDef.Companion|null[0]
+        final val $cachedDescriptor // com.eignex.skema/SchemaDef.Companion.$cachedDescriptor|{}$cachedDescriptor[0]
+            final fun <get-$cachedDescriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // com.eignex.skema/SchemaDef.Companion.$cachedDescriptor.<get-$cachedDescriptor>|<get-$cachedDescriptor>(){}[0]
+
+        final fun <#A2: kotlin/Any?> serializer(kotlinx.serialization/KSerializer<#A2>): kotlinx.serialization/KSerializer<com.eignex.skema/SchemaDef<#A2>> // com.eignex.skema/SchemaDef.Companion.serializer|serializer(kotlinx.serialization.KSerializer<0:0>){0§<kotlin.Any?>}[0]
+        final fun serializer(kotlin/Array<out kotlinx.serialization/KSerializer<*>>...): kotlinx.serialization/KSerializer<*> // com.eignex.skema/SchemaDef.Companion.serializer|serializer(kotlin.Array<out|kotlinx.serialization.KSerializer<*>>...){}[0]
+    }
+}
+
+final class <#A: kotlin/Any?> com.eignex.skema/SchemaDiff { // com.eignex.skema/SchemaDiff|null[0]
+    constructor <init>(kotlin.collections/Map<kotlin/String, #A>, kotlin.collections/Map<kotlin/String, #A>, kotlin.collections/Map<kotlin/String, kotlin/Pair<#A, #A>>) // com.eignex.skema/SchemaDiff.<init>|<init>(kotlin.collections.Map<kotlin.String,1:0>;kotlin.collections.Map<kotlin.String,1:0>;kotlin.collections.Map<kotlin.String,kotlin.Pair<1:0,1:0>>){}[0]
+
+    final val added // com.eignex.skema/SchemaDiff.added|{}added[0]
+        final fun <get-added>(): kotlin.collections/Map<kotlin/String, #A> // com.eignex.skema/SchemaDiff.added.<get-added>|<get-added>(){}[0]
+    final val changed // com.eignex.skema/SchemaDiff.changed|{}changed[0]
+        final fun <get-changed>(): kotlin.collections/Map<kotlin/String, kotlin/Pair<#A, #A>> // com.eignex.skema/SchemaDiff.changed.<get-changed>|<get-changed>(){}[0]
+    final val isEmpty // com.eignex.skema/SchemaDiff.isEmpty|{}isEmpty[0]
+        final fun <get-isEmpty>(): kotlin/Boolean // com.eignex.skema/SchemaDiff.isEmpty.<get-isEmpty>|<get-isEmpty>(){}[0]
+    final val removed // com.eignex.skema/SchemaDiff.removed|{}removed[0]
+        final fun <get-removed>(): kotlin.collections/Map<kotlin/String, #A> // com.eignex.skema/SchemaDiff.removed.<get-removed>|<get-removed>(){}[0]
+
+    final fun component1(): kotlin.collections/Map<kotlin/String, #A> // com.eignex.skema/SchemaDiff.component1|component1(){}[0]
+    final fun component2(): kotlin.collections/Map<kotlin/String, #A> // com.eignex.skema/SchemaDiff.component2|component2(){}[0]
+    final fun component3(): kotlin.collections/Map<kotlin/String, kotlin/Pair<#A, #A>> // com.eignex.skema/SchemaDiff.component3|component3(){}[0]
+    final fun copy(kotlin.collections/Map<kotlin/String, #A> = ..., kotlin.collections/Map<kotlin/String, #A> = ..., kotlin.collections/Map<kotlin/String, kotlin/Pair<#A, #A>> = ...): com.eignex.skema/SchemaDiff<#A> // com.eignex.skema/SchemaDiff.copy|copy(kotlin.collections.Map<kotlin.String,1:0>;kotlin.collections.Map<kotlin.String,1:0>;kotlin.collections.Map<kotlin.String,kotlin.Pair<1:0,1:0>>){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // com.eignex.skema/SchemaDiff.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // com.eignex.skema/SchemaDiff.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // com.eignex.skema/SchemaDiff.toString|toString(){}[0]
+}
+
+final val com.eignex.skema/SchemaJson // com.eignex.skema/SchemaJson|{}SchemaJson[0]
+    final fun <get-SchemaJson>(): kotlinx.serialization.json/Json // com.eignex.skema/SchemaJson.<get-SchemaJson>|<get-SchemaJson>(){}[0]
+final val com.eignex.skema/schemaJsonConfig // com.eignex.skema/schemaJsonConfig|{}schemaJsonConfig[0]
+    final fun <get-schemaJsonConfig>(): kotlin/Function1<kotlinx.serialization.json/JsonBuilder, kotlin/Unit> // com.eignex.skema/schemaJsonConfig.<get-schemaJsonConfig>|<get-schemaJsonConfig>(){}[0]
+
+final fun (com.eignex.skema/JsonSpec).com.eignex.skema/toJsonSchema(): kotlinx.serialization.json/JsonObject // com.eignex.skema/toJsonSchema|toJsonSchema@com.eignex.skema.JsonSpec(){}[0]
+final fun (com.eignex.skema/SchemaDef<com.eignex.skema/JsonSpec>).com.eignex.skema/toJsonSchema(kotlin.collections/Map<kotlin/String, com.eignex.skema/JsonSpec> = ...): kotlinx.serialization.json/JsonObject // com.eignex.skema/toJsonSchema|toJsonSchema@com.eignex.skema.SchemaDef<com.eignex.skema.JsonSpec>(kotlin.collections.Map<kotlin.String,com.eignex.skema.JsonSpec>){}[0]
+final fun <#A: kotlin/Any> (com.eignex.skema/SchemaDef<#A>).com.eignex.skema/toJsonSchema(kotlin.collections/Map<kotlin/String, com.eignex.skema/JsonSpec> = ..., kotlin/Function1<#A, kotlinx.serialization.json/JsonObject>): kotlinx.serialization.json/JsonObject // com.eignex.skema/toJsonSchema|toJsonSchema@com.eignex.skema.SchemaDef<0:0>(kotlin.collections.Map<kotlin.String,com.eignex.skema.JsonSpec>;kotlin.Function1<0:0,kotlinx.serialization.json.JsonObject>){0§<kotlin.Any>}[0]
+final fun <#A: kotlin/Any?> (com.eignex.skema/SchemaDef<#A>).com.eignex.skema/diff(com.eignex.skema/SchemaDef<#A>): com.eignex.skema/SchemaDiff<#A> // com.eignex.skema/diff|diff@com.eignex.skema.SchemaDef<0:0>(com.eignex.skema.SchemaDef<0:0>){0§<kotlin.Any?>}[0]
+final fun <#A: kotlin/Any?> (com.eignex.skema/SchemaDef<#A>).com.eignex.skema/namespaced(kotlin/String, kotlin/String = ...): com.eignex.skema/SchemaDef<#A> // com.eignex.skema/namespaced|namespaced@com.eignex.skema.SchemaDef<0:0>(kotlin.String;kotlin.String){0§<kotlin.Any?>}[0]
+final fun <#A: kotlin/Any?> (com.eignex.skema/SchemaDef<#A>).com.eignex.skema/plus(com.eignex.skema/SchemaDef<#A>): com.eignex.skema/SchemaDef<#A> // com.eignex.skema/plus|plus@com.eignex.skema.SchemaDef<0:0>(com.eignex.skema.SchemaDef<0:0>){0§<kotlin.Any?>}[0]
