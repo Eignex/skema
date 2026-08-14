@@ -1,0 +1,618 @@
+public abstract interface class com/eignex/skema/JsonSpec {
+	public static final field Companion Lcom/eignex/skema/JsonSpec$Companion;
+}
+
+public final class com/eignex/skema/JsonSpec$AllOf : com/eignex/skema/JsonSpec {
+	public static final field Companion Lcom/eignex/skema/JsonSpec$AllOf$Companion;
+	public fun <init> (Ljava/util/List;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun copy (Ljava/util/List;)Lcom/eignex/skema/JsonSpec$AllOf;
+	public static synthetic fun copy$default (Lcom/eignex/skema/JsonSpec$AllOf;Ljava/util/List;ILjava/lang/Object;)Lcom/eignex/skema/JsonSpec$AllOf;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBranches ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class com/eignex/skema/JsonSpec$AllOf$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lcom/eignex/skema/JsonSpec$AllOf$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lcom/eignex/skema/JsonSpec$AllOf;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lcom/eignex/skema/JsonSpec$AllOf;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$AllOf$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Annotated : com/eignex/skema/JsonSpec {
+	public static final field Companion Lcom/eignex/skema/JsonSpec$Annotated$Companion;
+	public fun <init> (Lcom/eignex/skema/JsonSpec;Ljava/lang/String;Ljava/lang/String;Lkotlinx/serialization/json/JsonElement;Ljava/util/List;Ljava/lang/Boolean;Ljava/lang/Boolean;Ljava/lang/Boolean;Ljava/lang/String;)V
+	public synthetic fun <init> (Lcom/eignex/skema/JsonSpec;Ljava/lang/String;Ljava/lang/String;Lkotlinx/serialization/json/JsonElement;Ljava/util/List;Ljava/lang/Boolean;Ljava/lang/Boolean;Ljava/lang/Boolean;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lcom/eignex/skema/JsonSpec;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Lkotlinx/serialization/json/JsonElement;
+	public final fun component5 ()Ljava/util/List;
+	public final fun component6 ()Ljava/lang/Boolean;
+	public final fun component7 ()Ljava/lang/Boolean;
+	public final fun component8 ()Ljava/lang/Boolean;
+	public final fun component9 ()Ljava/lang/String;
+	public final fun copy (Lcom/eignex/skema/JsonSpec;Ljava/lang/String;Ljava/lang/String;Lkotlinx/serialization/json/JsonElement;Ljava/util/List;Ljava/lang/Boolean;Ljava/lang/Boolean;Ljava/lang/Boolean;Ljava/lang/String;)Lcom/eignex/skema/JsonSpec$Annotated;
+	public static synthetic fun copy$default (Lcom/eignex/skema/JsonSpec$Annotated;Lcom/eignex/skema/JsonSpec;Ljava/lang/String;Ljava/lang/String;Lkotlinx/serialization/json/JsonElement;Ljava/util/List;Ljava/lang/Boolean;Ljava/lang/Boolean;Ljava/lang/Boolean;Ljava/lang/String;ILjava/lang/Object;)Lcom/eignex/skema/JsonSpec$Annotated;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getComment ()Ljava/lang/String;
+	public final fun getDefault ()Lkotlinx/serialization/json/JsonElement;
+	public final fun getDeprecated ()Ljava/lang/Boolean;
+	public final fun getDescription ()Ljava/lang/String;
+	public final fun getExamples ()Ljava/util/List;
+	public final fun getInner ()Lcom/eignex/skema/JsonSpec;
+	public final fun getReadOnly ()Ljava/lang/Boolean;
+	public final fun getTitle ()Ljava/lang/String;
+	public final fun getWriteOnly ()Ljava/lang/Boolean;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class com/eignex/skema/JsonSpec$Annotated$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lcom/eignex/skema/JsonSpec$Annotated$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lcom/eignex/skema/JsonSpec$Annotated;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lcom/eignex/skema/JsonSpec$Annotated;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Annotated$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$AnyOf : com/eignex/skema/JsonSpec {
+	public static final field Companion Lcom/eignex/skema/JsonSpec$AnyOf$Companion;
+	public fun <init> (Ljava/util/List;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun copy (Ljava/util/List;)Lcom/eignex/skema/JsonSpec$AnyOf;
+	public static synthetic fun copy$default (Lcom/eignex/skema/JsonSpec$AnyOf;Ljava/util/List;ILjava/lang/Object;)Lcom/eignex/skema/JsonSpec$AnyOf;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBranches ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class com/eignex/skema/JsonSpec$AnyOf$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lcom/eignex/skema/JsonSpec$AnyOf$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lcom/eignex/skema/JsonSpec$AnyOf;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lcom/eignex/skema/JsonSpec$AnyOf;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$AnyOf$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Array : com/eignex/skema/JsonSpec {
+	public static final field Companion Lcom/eignex/skema/JsonSpec$Array$Companion;
+	public fun <init> ()V
+	public fun <init> (Lcom/eignex/skema/JsonSpec;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Boolean;)V
+	public synthetic fun <init> (Lcom/eignex/skema/JsonSpec;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Boolean;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lcom/eignex/skema/JsonSpec;
+	public final fun component2 ()Ljava/util/List;
+	public final fun component3 ()Ljava/lang/Integer;
+	public final fun component4 ()Ljava/lang/Integer;
+	public final fun component5 ()Ljava/lang/Boolean;
+	public final fun copy (Lcom/eignex/skema/JsonSpec;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Boolean;)Lcom/eignex/skema/JsonSpec$Array;
+	public static synthetic fun copy$default (Lcom/eignex/skema/JsonSpec$Array;Lcom/eignex/skema/JsonSpec;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Boolean;ILjava/lang/Object;)Lcom/eignex/skema/JsonSpec$Array;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getItems ()Lcom/eignex/skema/JsonSpec;
+	public final fun getMaxItems ()Ljava/lang/Integer;
+	public final fun getMinItems ()Ljava/lang/Integer;
+	public final fun getPrefixItems ()Ljava/util/List;
+	public final fun getUniqueItems ()Ljava/lang/Boolean;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class com/eignex/skema/JsonSpec$Array$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lcom/eignex/skema/JsonSpec$Array$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lcom/eignex/skema/JsonSpec$Array;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lcom/eignex/skema/JsonSpec$Array;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Array$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Bool : com/eignex/skema/JsonSpec {
+	public static final field INSTANCE Lcom/eignex/skema/JsonSpec$Bool;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/eignex/skema/JsonSpec$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Const : com/eignex/skema/JsonSpec {
+	public static final field Companion Lcom/eignex/skema/JsonSpec$Const$Companion;
+	public fun <init> (Lkotlinx/serialization/json/JsonElement;)V
+	public final fun component1 ()Lkotlinx/serialization/json/JsonElement;
+	public final fun copy (Lkotlinx/serialization/json/JsonElement;)Lcom/eignex/skema/JsonSpec$Const;
+	public static synthetic fun copy$default (Lcom/eignex/skema/JsonSpec$Const;Lkotlinx/serialization/json/JsonElement;ILjava/lang/Object;)Lcom/eignex/skema/JsonSpec$Const;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getValue ()Lkotlinx/serialization/json/JsonElement;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class com/eignex/skema/JsonSpec$Const$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lcom/eignex/skema/JsonSpec$Const$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lcom/eignex/skema/JsonSpec$Const;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lcom/eignex/skema/JsonSpec$Const;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Const$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Enum : com/eignex/skema/JsonSpec {
+	public static final field Companion Lcom/eignex/skema/JsonSpec$Enum$Companion;
+	public fun <init> (Ljava/util/List;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun copy (Ljava/util/List;)Lcom/eignex/skema/JsonSpec$Enum;
+	public static synthetic fun copy$default (Lcom/eignex/skema/JsonSpec$Enum;Ljava/util/List;ILjava/lang/Object;)Lcom/eignex/skema/JsonSpec$Enum;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getValues ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class com/eignex/skema/JsonSpec$Enum$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lcom/eignex/skema/JsonSpec$Enum$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lcom/eignex/skema/JsonSpec$Enum;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lcom/eignex/skema/JsonSpec$Enum;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Enum$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$IfThenElse : com/eignex/skema/JsonSpec {
+	public static final field Companion Lcom/eignex/skema/JsonSpec$IfThenElse$Companion;
+	public fun <init> (Lcom/eignex/skema/JsonSpec;Lcom/eignex/skema/JsonSpec;Lcom/eignex/skema/JsonSpec;)V
+	public synthetic fun <init> (Lcom/eignex/skema/JsonSpec;Lcom/eignex/skema/JsonSpec;Lcom/eignex/skema/JsonSpec;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lcom/eignex/skema/JsonSpec;
+	public final fun component2 ()Lcom/eignex/skema/JsonSpec;
+	public final fun component3 ()Lcom/eignex/skema/JsonSpec;
+	public final fun copy (Lcom/eignex/skema/JsonSpec;Lcom/eignex/skema/JsonSpec;Lcom/eignex/skema/JsonSpec;)Lcom/eignex/skema/JsonSpec$IfThenElse;
+	public static synthetic fun copy$default (Lcom/eignex/skema/JsonSpec$IfThenElse;Lcom/eignex/skema/JsonSpec;Lcom/eignex/skema/JsonSpec;Lcom/eignex/skema/JsonSpec;ILjava/lang/Object;)Lcom/eignex/skema/JsonSpec$IfThenElse;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCondition ()Lcom/eignex/skema/JsonSpec;
+	public final fun getOtherwise ()Lcom/eignex/skema/JsonSpec;
+	public final fun getThen ()Lcom/eignex/skema/JsonSpec;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class com/eignex/skema/JsonSpec$IfThenElse$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lcom/eignex/skema/JsonSpec$IfThenElse$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lcom/eignex/skema/JsonSpec$IfThenElse;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lcom/eignex/skema/JsonSpec$IfThenElse;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$IfThenElse$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Int : com/eignex/skema/JsonSpec {
+	public static final field Companion Lcom/eignex/skema/JsonSpec$Int$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;)V
+	public synthetic fun <init> (Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/Integer;
+	public final fun component2 ()Ljava/lang/Integer;
+	public final fun component3 ()Ljava/lang/Integer;
+	public final fun component4 ()Ljava/lang/Integer;
+	public final fun component5 ()Ljava/lang/Integer;
+	public final fun copy (Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;)Lcom/eignex/skema/JsonSpec$Int;
+	public static synthetic fun copy$default (Lcom/eignex/skema/JsonSpec$Int;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;ILjava/lang/Object;)Lcom/eignex/skema/JsonSpec$Int;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getExclusiveMax ()Ljava/lang/Integer;
+	public final fun getExclusiveMin ()Ljava/lang/Integer;
+	public final fun getMax ()Ljava/lang/Integer;
+	public final fun getMin ()Ljava/lang/Integer;
+	public final fun getMultipleOf ()Ljava/lang/Integer;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class com/eignex/skema/JsonSpec$Int$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lcom/eignex/skema/JsonSpec$Int$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lcom/eignex/skema/JsonSpec$Int;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lcom/eignex/skema/JsonSpec$Int;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Int$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Long : com/eignex/skema/JsonSpec {
+	public static final field Companion Lcom/eignex/skema/JsonSpec$Long$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Long;Ljava/lang/Long;Ljava/lang/Long;Ljava/lang/Long;Ljava/lang/Long;)V
+	public synthetic fun <init> (Ljava/lang/Long;Ljava/lang/Long;Ljava/lang/Long;Ljava/lang/Long;Ljava/lang/Long;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/Long;
+	public final fun component2 ()Ljava/lang/Long;
+	public final fun component3 ()Ljava/lang/Long;
+	public final fun component4 ()Ljava/lang/Long;
+	public final fun component5 ()Ljava/lang/Long;
+	public final fun copy (Ljava/lang/Long;Ljava/lang/Long;Ljava/lang/Long;Ljava/lang/Long;Ljava/lang/Long;)Lcom/eignex/skema/JsonSpec$Long;
+	public static synthetic fun copy$default (Lcom/eignex/skema/JsonSpec$Long;Ljava/lang/Long;Ljava/lang/Long;Ljava/lang/Long;Ljava/lang/Long;Ljava/lang/Long;ILjava/lang/Object;)Lcom/eignex/skema/JsonSpec$Long;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getExclusiveMax ()Ljava/lang/Long;
+	public final fun getExclusiveMin ()Ljava/lang/Long;
+	public final fun getMax ()Ljava/lang/Long;
+	public final fun getMin ()Ljava/lang/Long;
+	public final fun getMultipleOf ()Ljava/lang/Long;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class com/eignex/skema/JsonSpec$Long$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lcom/eignex/skema/JsonSpec$Long$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lcom/eignex/skema/JsonSpec$Long;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lcom/eignex/skema/JsonSpec$Long;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Long$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Not : com/eignex/skema/JsonSpec {
+	public static final field Companion Lcom/eignex/skema/JsonSpec$Not$Companion;
+	public fun <init> (Lcom/eignex/skema/JsonSpec;)V
+	public final fun component1 ()Lcom/eignex/skema/JsonSpec;
+	public final fun copy (Lcom/eignex/skema/JsonSpec;)Lcom/eignex/skema/JsonSpec$Not;
+	public static synthetic fun copy$default (Lcom/eignex/skema/JsonSpec$Not;Lcom/eignex/skema/JsonSpec;ILjava/lang/Object;)Lcom/eignex/skema/JsonSpec$Not;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getSpec ()Lcom/eignex/skema/JsonSpec;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class com/eignex/skema/JsonSpec$Not$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lcom/eignex/skema/JsonSpec$Not$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lcom/eignex/skema/JsonSpec$Not;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lcom/eignex/skema/JsonSpec$Not;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Not$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Null : com/eignex/skema/JsonSpec {
+	public static final field INSTANCE Lcom/eignex/skema/JsonSpec$Null;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/eignex/skema/JsonSpec$Nullable : com/eignex/skema/JsonSpec {
+	public static final field Companion Lcom/eignex/skema/JsonSpec$Nullable$Companion;
+	public fun <init> (Lcom/eignex/skema/JsonSpec;)V
+	public final fun component1 ()Lcom/eignex/skema/JsonSpec;
+	public final fun copy (Lcom/eignex/skema/JsonSpec;)Lcom/eignex/skema/JsonSpec$Nullable;
+	public static synthetic fun copy$default (Lcom/eignex/skema/JsonSpec$Nullable;Lcom/eignex/skema/JsonSpec;ILjava/lang/Object;)Lcom/eignex/skema/JsonSpec$Nullable;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getInner ()Lcom/eignex/skema/JsonSpec;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class com/eignex/skema/JsonSpec$Nullable$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lcom/eignex/skema/JsonSpec$Nullable$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lcom/eignex/skema/JsonSpec$Nullable;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lcom/eignex/skema/JsonSpec$Nullable;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Nullable$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Num : com/eignex/skema/JsonSpec {
+	public static final field Companion Lcom/eignex/skema/JsonSpec$Num$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;)V
+	public synthetic fun <init> (Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/Double;
+	public final fun component2 ()Ljava/lang/Double;
+	public final fun component3 ()Ljava/lang/Double;
+	public final fun component4 ()Ljava/lang/Double;
+	public final fun component5 ()Ljava/lang/Double;
+	public final fun copy (Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;)Lcom/eignex/skema/JsonSpec$Num;
+	public static synthetic fun copy$default (Lcom/eignex/skema/JsonSpec$Num;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;Ljava/lang/Double;ILjava/lang/Object;)Lcom/eignex/skema/JsonSpec$Num;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getExclusiveMax ()Ljava/lang/Double;
+	public final fun getExclusiveMin ()Ljava/lang/Double;
+	public final fun getMax ()Ljava/lang/Double;
+	public final fun getMin ()Ljava/lang/Double;
+	public final fun getMultipleOf ()Ljava/lang/Double;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class com/eignex/skema/JsonSpec$Num$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lcom/eignex/skema/JsonSpec$Num$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lcom/eignex/skema/JsonSpec$Num;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lcom/eignex/skema/JsonSpec$Num;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Num$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Object : com/eignex/skema/JsonSpec {
+	public static final field Companion Lcom/eignex/skema/JsonSpec$Object$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/util/Map;Ljava/util/List;Ljava/lang/Boolean;Lcom/eignex/skema/JsonSpec;Ljava/lang/Integer;Ljava/lang/Integer;)V
+	public synthetic fun <init> (Ljava/util/Map;Ljava/util/List;Ljava/lang/Boolean;Lcom/eignex/skema/JsonSpec;Ljava/lang/Integer;Ljava/lang/Integer;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/util/Map;
+	public final fun component2 ()Ljava/util/List;
+	public final fun component3 ()Ljava/lang/Boolean;
+	public final fun component4 ()Lcom/eignex/skema/JsonSpec;
+	public final fun component5 ()Ljava/lang/Integer;
+	public final fun component6 ()Ljava/lang/Integer;
+	public final fun copy (Ljava/util/Map;Ljava/util/List;Ljava/lang/Boolean;Lcom/eignex/skema/JsonSpec;Ljava/lang/Integer;Ljava/lang/Integer;)Lcom/eignex/skema/JsonSpec$Object;
+	public static synthetic fun copy$default (Lcom/eignex/skema/JsonSpec$Object;Ljava/util/Map;Ljava/util/List;Ljava/lang/Boolean;Lcom/eignex/skema/JsonSpec;Ljava/lang/Integer;Ljava/lang/Integer;ILjava/lang/Object;)Lcom/eignex/skema/JsonSpec$Object;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAdditionalPropertiesAllowed ()Ljava/lang/Boolean;
+	public final fun getAdditionalPropertiesSpec ()Lcom/eignex/skema/JsonSpec;
+	public final fun getMaxProperties ()Ljava/lang/Integer;
+	public final fun getMinProperties ()Ljava/lang/Integer;
+	public final fun getProperties ()Ljava/util/Map;
+	public final fun getRequired ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class com/eignex/skema/JsonSpec$Object$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lcom/eignex/skema/JsonSpec$Object$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lcom/eignex/skema/JsonSpec$Object;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lcom/eignex/skema/JsonSpec$Object;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Object$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$OneOf : com/eignex/skema/JsonSpec {
+	public static final field Companion Lcom/eignex/skema/JsonSpec$OneOf$Companion;
+	public fun <init> (Ljava/util/List;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun copy (Ljava/util/List;)Lcom/eignex/skema/JsonSpec$OneOf;
+	public static synthetic fun copy$default (Lcom/eignex/skema/JsonSpec$OneOf;Ljava/util/List;ILjava/lang/Object;)Lcom/eignex/skema/JsonSpec$OneOf;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBranches ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class com/eignex/skema/JsonSpec$OneOf$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lcom/eignex/skema/JsonSpec$OneOf$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lcom/eignex/skema/JsonSpec$OneOf;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lcom/eignex/skema/JsonSpec$OneOf;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$OneOf$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Ref : com/eignex/skema/JsonSpec {
+	public static final field Companion Lcom/eignex/skema/JsonSpec$Ref$Companion;
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lcom/eignex/skema/JsonSpec$Ref;
+	public static synthetic fun copy$default (Lcom/eignex/skema/JsonSpec$Ref;Ljava/lang/String;ILjava/lang/Object;)Lcom/eignex/skema/JsonSpec$Ref;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPointer ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class com/eignex/skema/JsonSpec$Ref$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lcom/eignex/skema/JsonSpec$Ref$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lcom/eignex/skema/JsonSpec$Ref;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lcom/eignex/skema/JsonSpec$Ref;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Ref$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Str : com/eignex/skema/JsonSpec {
+	public static final field Companion Lcom/eignex/skema/JsonSpec$Str$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/Integer;
+	public final fun component2 ()Ljava/lang/Integer;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/String;Ljava/lang/String;)Lcom/eignex/skema/JsonSpec$Str;
+	public static synthetic fun copy$default (Lcom/eignex/skema/JsonSpec$Str;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lcom/eignex/skema/JsonSpec$Str;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFormat ()Ljava/lang/String;
+	public final fun getMaxLength ()Ljava/lang/Integer;
+	public final fun getMinLength ()Ljava/lang/Integer;
+	public final fun getPattern ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class com/eignex/skema/JsonSpec$Str$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public static final field INSTANCE Lcom/eignex/skema/JsonSpec$Str$$serializer;
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lcom/eignex/skema/JsonSpec$Str;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lcom/eignex/skema/JsonSpec$Str;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpec$Str$Companion {
+	public final fun serializer ()Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/JsonSpecKt {
+	public static final fun toJsonSchema (Lcom/eignex/skema/JsonSpec;)Lkotlinx/serialization/json/JsonObject;
+	public static final fun toJsonSchema (Lcom/eignex/skema/SchemaDef;Ljava/util/Map;)Lkotlinx/serialization/json/JsonObject;
+	public static final fun toJsonSchema (Lcom/eignex/skema/SchemaDef;Ljava/util/Map;Lkotlin/jvm/functions/Function1;)Lkotlinx/serialization/json/JsonObject;
+	public static synthetic fun toJsonSchema$default (Lcom/eignex/skema/SchemaDef;Ljava/util/Map;ILjava/lang/Object;)Lkotlinx/serialization/json/JsonObject;
+	public static synthetic fun toJsonSchema$default (Lcom/eignex/skema/SchemaDef;Ljava/util/Map;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)Lkotlinx/serialization/json/JsonObject;
+}
+
+public abstract class com/eignex/skema/Schema {
+	public fun <init> ()V
+	protected final fun add (Ljava/lang/String;Ljava/lang/Object;)V
+	public final fun addPublished (Ljava/lang/String;Ljava/lang/Object;)V
+	public fun definition ()Lcom/eignex/skema/SchemaDef;
+	public final fun getEntries ()Ljava/util/Map;
+	protected final fun register (Ljava/lang/Object;Lkotlin/jvm/functions/Function1;)Lkotlin/properties/PropertyDelegateProvider;
+	protected fun validate (Ljava/util/Map;)V
+}
+
+public final class com/eignex/skema/SchemaComposition {
+	public static final fun namespaced (Lcom/eignex/skema/SchemaDef;Ljava/lang/String;)Lcom/eignex/skema/SchemaDef;
+	public static final fun namespaced (Lcom/eignex/skema/SchemaDef;Ljava/lang/String;Ljava/lang/String;)Lcom/eignex/skema/SchemaDef;
+	public static synthetic fun namespaced$default (Lcom/eignex/skema/SchemaDef;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lcom/eignex/skema/SchemaDef;
+	public static final fun plus (Lcom/eignex/skema/SchemaDef;Lcom/eignex/skema/SchemaDef;)Lcom/eignex/skema/SchemaDef;
+}
+
+public final class com/eignex/skema/SchemaDef {
+	public static final field Companion Lcom/eignex/skema/SchemaDef$Companion;
+	public fun <init> (Ljava/util/Map;)V
+	public final fun component1 ()Ljava/util/Map;
+	public final fun copy (Ljava/util/Map;)Lcom/eignex/skema/SchemaDef;
+	public static synthetic fun copy$default (Lcom/eignex/skema/SchemaDef;Ljava/util/Map;ILjava/lang/Object;)Lcom/eignex/skema/SchemaDef;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun get (Ljava/lang/String;)Ljava/lang/Object;
+	public final fun getEntries ()Ljava/util/Map;
+	public final fun getNames ()Ljava/util/Set;
+	public final fun getSize ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final synthetic class com/eignex/skema/SchemaDef$$serializer : kotlinx/serialization/internal/GeneratedSerializer {
+	public fun <init> (Lkotlinx/serialization/KSerializer;)V
+	public final fun childSerializers ()[Lkotlinx/serialization/KSerializer;
+	public final fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Lcom/eignex/skema/SchemaDef;
+	public synthetic fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public final fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun serialize (Lkotlinx/serialization/encoding/Encoder;Lcom/eignex/skema/SchemaDef;)V
+	public synthetic fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+	public final fun typeParametersSerializers ()[Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/SchemaDef$Companion {
+	public final fun serializer (Lkotlinx/serialization/KSerializer;)Lkotlinx/serialization/KSerializer;
+}
+
+public final class com/eignex/skema/SchemaDiff {
+	public fun <init> (Ljava/util/Map;Ljava/util/Map;Ljava/util/Map;)V
+	public final fun component1 ()Ljava/util/Map;
+	public final fun component2 ()Ljava/util/Map;
+	public final fun component3 ()Ljava/util/Map;
+	public final fun copy (Ljava/util/Map;Ljava/util/Map;Ljava/util/Map;)Lcom/eignex/skema/SchemaDiff;
+	public static synthetic fun copy$default (Lcom/eignex/skema/SchemaDiff;Ljava/util/Map;Ljava/util/Map;Ljava/util/Map;ILjava/lang/Object;)Lcom/eignex/skema/SchemaDiff;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAdded ()Ljava/util/Map;
+	public final fun getChanged ()Ljava/util/Map;
+	public final fun getRemoved ()Ljava/util/Map;
+	public fun hashCode ()I
+	public final fun isEmpty ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/eignex/skema/SchemaDiffs {
+	public static final fun diff (Lcom/eignex/skema/SchemaDef;Lcom/eignex/skema/SchemaDef;)Lcom/eignex/skema/SchemaDiff;
+}
+
+public final class com/eignex/skema/SchemaJsonKt {
+	public static final fun getSchemaJson ()Lkotlinx/serialization/json/Json;
+	public static final fun getSchemaJsonConfig ()Lkotlin/jvm/functions/Function1;
+}
+
