@@ -19,7 +19,7 @@ A Kotlin Multiplatform library for schemas that work two ways at once. Declare a
 
 If you only need typed access, write a data class. If you only need wire data, write a sealed Serializable interface. skema is for the case where both are required.
 
-Used by [kumulant](https://github.com/Eignex/kumulant) (streaming statistics), [klause](https://github.com/Eignex/klause) (constraint solver), and [combo](https://github.com/Eignex/combo) (multi-armed bandit), but not coupled to any of them; the library is generic plumbing.
+Used by [kumulant](https://github.com/Eignex/kumulant) (streaming statistics), [klause](https://github.com/Eignex/klause) (constraint solver), and [combo](https://github.com/Eignex/combo) (Bayesian optimization), but not coupled to any of them; the library is generic plumbing.
 
 ## A complete example
 
