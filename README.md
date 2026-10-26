@@ -15,99 +15,90 @@
 [![codecov](https://codecov.io/gh/eignex/skema/branch/main/graph/badge.svg)](https://codecov.io/gh/eignex/skema)
 [![License](https://img.shields.io/github/license/eignex/skema)](https://github.com/eignex/skema/blob/main/LICENSE)
 
-A Kotlin Multiplatform library for schemas that work two ways at once. Declare a schema as a singleton object on the producer side and you get typed compile-time access to every field; serialize the same definition to JSON, YAML, ProtoBuf, or any other kotlinx-serialization format, and a downstream consumer that doesn't share your Kotlin code can decode the schema and walk it by name. Both paths share the same SchemaDef wire shape, so producers and consumers mix and match without reinventing either side.
+A Kotlin Multiplatform library for typed schema declarations and serializable definitions.
+`Schema<C>` builds declarations; `SchemaDef<C>` carries named configuration entries
+through kotlinx.serialization to consumers in other processes.
 
-If you only need typed access, write a data class. If you only need wire data, write a sealed Serializable interface. skema is for the case where both are required.
+Used by [kumulant](https://github.com/Eignex/kumulant),
+[klause](https://github.com/Eignex/klause), and [combo](https://github.com/Eignex/combo).
 
-Used by [kumulant](https://github.com/Eignex/kumulant) (streaming statistics), [klause](https://github.com/Eignex/klause) (constraint solver), and [combo](https://github.com/Eignex/combo) (Bayesian optimization), but not coupled to any of them; the library is generic plumbing.
-
-## A complete example
+## Getting started
 
 ```kotlin
 implementation("com.eignex:skema:0.3.0")
 ```
 
-Define a vocabulary of config types and a base schema with name-taking declarators. The convention is borrowed directly from JetBrains' [Exposed](https://github.com/JetBrains/Exposed):
+Define serializable configuration types and declarators that return typed handles:
 
 ```kotlin
 @Serializable sealed interface FormField
 @Serializable @SerialName("Bool") data object BoolField : FormField
-@Serializable @SerialName("Int")  data class IntField(val min: Int, val max: Int) : FormField
+@Serializable @SerialName("Int") data class IntField(val min: Int, val max: Int) : FormField
 
-sealed interface FieldKey { val name: String }
-data class BoolKey(override val name: String) : FieldKey
-data class IntKey(override val name: String, val min: Int, val max: Int) : FieldKey
+data class BoolKey(val name: String)
+data class IntKey(val name: String, val min: Int, val max: Int)
 
 abstract class FormSchema : Schema<FormField>() {
     protected fun bool(name: String): BoolKey {
         add(name, BoolField)
         return BoolKey(name)
     }
-    protected fun int(name: String, min: Int, max: Int): IntKey {
-        add(name, IntField(min, max))
-        return IntKey(name, min, max)
-    }
 
-    protected fun bool() = register(BoolField, ::BoolKey)
-    protected fun int(min: Int, max: Int) = register(IntField(min, max)) { IntKey(it, min, max) }
+    protected fun int(min: Int, max: Int) =
+        register(IntField(min, max)) { IntKey(it, min, max) }
 }
-```
 
-A concrete schema is a singleton object. Mix-and-match assignment and delegation per property; both produce the same wire entry:
-
-```kotlin
 object SignupFormSchema : FormSchema() {
     val acceptsTos = bool("acceptsTos")
-    val age       by int(13, 120)  // delegate: name from the property
+    val age by int(13, 120)
 }
-
-data class SignupResponse(val acceptsTos: Boolean, val age: Int)
-
-val response = SignupResponse(acceptsTos = true, age = 27)
-response.age  // typed Int
-
-val wire: String = SchemaJson.encodeToString(SchemaDef.serializer(FormField.serializer()), SignupFormSchema.definition())
-// {"entries":{
-//   "acceptsTos":{"$type":"Bool"},
-//   "age":{"$type":"Int","min":13,"max":120}
-// }}
 ```
 
-Pick whichever form suits each entry: assignment makes the wire name explicit and survives property renames without changing the schema; the delegate form keeps the call site terse when the property name is the wire name. Schemas are plain singletons either way.
+`add` uses an explicit wire name; `register` takes the property name. Explicit names
+stay stable across property renames. Both forms register the same configuration data.
 
-A downstream consumer (different process, no SignupFormSchema class) decodes the same wire string and walks the entries by name:
+Serialize the definition with `SchemaJson`, which uses a `$type` discriminator and
+omits defaults and nulls:
 
 ```kotlin
-val def = SchemaJson.decodeFromString(SchemaDef.serializer(FormField.serializer()), wire)
+val serializer = SchemaDef.serializer(FormField.serializer())
+val wire = SchemaJson.encodeToString(serializer, SignupFormSchema.definition())
+// {"entries":{"acceptsTos":{"$type":"Bool"},"age":{"$type":"Int","min":13,"max":120}}}
+```
+
+A consumer shares the `FormField` vocabulary and reads entries by name without
+needing `SignupFormSchema`:
+
+```kotlin
+val def = SchemaJson.decodeFromString(serializer, wire)
 for ((name, config) in def.entries) when (config) {
     is BoolField -> renderCheckbox(name)
-    is IntField  -> renderSlider(name, config.min, config.max)
+    is IntField -> renderSlider(name, config.min, config.max)
 }
 ```
 
-The same schema serves both sides without the consumer needing the producer's Kotlin code. That's the win.
-
-The default wire wraps entries under a field called `entries`. To ship under a different root name, or to add adjunct fields (klause carries `vars` plus `constraints`, for example), define a Serializable wrapper and expose it as a separate method:
+Use a serializable wrapper for a different root field or additional metadata:
 
 ```kotlin
 @Serializable data class SignupForm(val fields: Map<String, FormField>)
 
-object SignupFormSchema : FormSchema() {
-    val acceptsTos = bool("acceptsTos")
-    val age        by int(13, 120)
-    fun signupDef() = SignupForm(entries)
-}
-
-SchemaJson.encodeToString(SignupForm.serializer(), SignupFormSchema.signupDef())
+val form = SignupForm(SignupFormSchema.definition().entries)
+SchemaJson.encodeToString(SignupForm.serializer(), form)
 // {"fields":{"acceptsTos":{"$type":"Bool"},"age":{"$type":"Int","min":13,"max":120}}}
 ```
 
-## Compact JSON vocabularies
+## Compact JSON
 
-Domain vocabularies can opt into compact JSON with `com.eignex.skema.serialization`.
-`CompactSerializer` represents a node with named fields as `{"offset":{"amount":2.0}}`,
-an empty payload as `"input"`, a single operand as `{"negate":"input"}`, and positional
-operands as `{"plus":["input",2.0]}`. Numeric literal nodes encode directly as numbers.
+Opt a vocabulary into `com.eignex.skema.serialization.CompactSerializer` to encode
+nodes with operator keys:
+
+| Shape | JSON |
+|---|---|
+| Named fields | `{"offset":{"amount":2.0}}` |
+| Empty payload | `"input"` |
+| Numeric literal | `2.0` |
+| Single operand | `{"negate":"input"}` |
+| Positional operands | `{"plus":["input",2.0]}` |
 
 ```kotlin
 @Serializable(with = ExprSerializer::class)
@@ -134,77 +125,53 @@ val wire = SchemaJson.encodeToString<Expr>(Plus(Input, Literal(2.0)))
 val decoded = SchemaJson.decodeFromString<Expr>(wire)
 ```
 
-Use a stable, unique descriptor name for each vocabulary. Recursive references within a
-vocabulary work directly. For references to other compact vocabularies, share an explicit
-`JsonNodeCatalog` whose lazy supplier lists their serializers. Catalogs are independent;
-there is no global registration. A catalog can also supply a resolver for implementations
-that share an operator key. The resolver receives the candidate nodes, payload, and JSON path.
+Give each vocabulary a stable descriptor name. Share a lazy `JsonNodeCatalog` for
+cross-vocabulary references; its optional resolver handles shared operator names.
+Catalogs are independent, with no global registration.
 
-Supply a `JsonPayloadMapping` on individual nodes for domain-specific field transformations.
-Its `encode` and `decode` functions map between ordinary serialized fields and the compact
-payload; `fieldPath` maps validation errors back to that payload. Node body serializers must
-describe objects. Pass an explicit body serializer to `jsonNode` when generated inference
-does not supply the required generic arguments.
+Body serializers must describe objects. Built-in literal and operand shapes must
+cover every body field and emit operand defaults and nulls; literals must be non-null
+numbers. Named-field defaults and nested nodes follow the caller's JSON settings.
+For other payload layouts, use `JsonPayloadMapping` and its `fieldPath` function.
+Pass an explicit body serializer to `jsonNode` when generic arguments require it.
 
-Built-in literal and operand shapes must cover every body field; use named fields or a
-custom mapping for nodes with additional options. Their operands always encode default and
-null values, while nested nodes retain the caller's JSON settings. Literal fields must be
-non-null numeric values. Compact decoding validates each node as it is consumed, including
-numeric ranges, and retains error paths through nested records, lists and maps.
-
-Compact decoding rejects unknown fields and malformed operands even with lenient JSON
-settings, and reports paths such as `$.plus[1].offset.amount`. Ordinary `Json` and `SchemaJson`
-both use the format; `encodeDefaults` controls whether default fields are emitted. Non-JSON
-formats use the sealed-class representation. Existing vocabularies retain their own serializers
-unless they explicitly opt in.
+Decoding rejects unknown fields, malformed operands and out-of-range integers even
+with lenient JSON settings, reporting paths such as `$.plus[1].offset.amount`.
+Both `Json` and `SchemaJson` use compact encoding; non-JSON formats retain the
+sealed-class representation.
 
 ## Diff and composition
 
-`SchemaDef.diff(other)` reports per-entry adds, removes, and changes between two schemas. Use it to detect drift between producer and consumer versions, or to gate a schema migration:
+`SchemaDef.diff(other)` reports added, removed and changed entries:
 
 ```kotlin
-val current = SignupFormSchema.definition()
-val incoming = SchemaJson.decodeFromString(SchemaDef.serializer(FormField.serializer()), wire)
-val diff = current.diff(incoming)
-if (!diff.isEmpty) error("Schema drifted: added=${diff.added.keys}, removed=${diff.removed.keys}, changed=${diff.changed.keys}")
+val incoming = SchemaJson.decodeFromString(serializer, wire)
+val diff = SignupFormSchema.definition().diff(incoming)
+if (!diff.isEmpty) error("Schema changed: $diff")
 ```
 
-Two schemas combine with `+`, with names prefixed via `namespaced(prefix)`. The combination throws on overlap, so plugin-style modules can compose without silent collisions:
+Combine definitions with `+`; overlapping names throw. `namespaced` prefixes names
+with a dot-separated namespace:
 
 ```kotlin
-val users   = userFieldsSchema.namespaced("user")     // user.email, user.phone
-val billing = billingFieldsSchema.namespaced("billing") // billing.address, ...
-val app     = users + billing
+val users = userFieldsSchema.definition().namespaced("user")       // user.email
+val billing = billingFieldsSchema.definition().namespaced("billing") // billing.address
+val app = users + billing
 ```
 
 ## JSON Schema
 
-Schemas describe data, so the obvious next question is whether you can hand a consumer a [json-schema.org](https://json-schema.org) document instead of skema's own wire form. You can, but skema can only do it automatically when it knows the vocabulary. The descriptor for `IntField(min, max)` says "object with two ints"; nothing about it implies "the validated value is an integer between those bounds." That mapping is semantic, not structural, and has to come from somewhere.
-
-skema ships a built-in vocabulary called JsonSpec that mirrors JSON Schema draft 2020-12. It is opt-in by type. A schema whose config parameter is JsonSpec gets toJsonSchema for free, and schemas with other config types fall back to the mapper overload that takes a per-entry lambda. The variants cover the JSON Schema surface:
-
-- Primitives: Bool, Null, Int, Long, Num, Str, Enum, Const. Numeric variants carry the usual `min`, `max`, `exclusiveMin`, `exclusiveMax`, and `multipleOf`; strings carry `minLength`, `maxLength`, `pattern`, and a free-form `format` annotation for things like date-time, email, or uuid.
-- Compound shapes: Array (with `items`, `prefixItems`, `minItems`, `maxItems`, `uniqueItems`) and Object (with `properties`, `required`, the additional-properties pair, and property-count bounds).
-- Composition: OneOf, AnyOf, AllOf, Not, with Nullable as ergonomic sugar for "this spec or null".
-- Conditional: IfThenElse with a condition and optional then/otherwise branches.
-- References: Ref paired with a `defs` parameter on toJsonSchema that populates the root `$defs` block.
-- Annotations: Annotated decorates any variant with title, description, default, examples, deprecated, readOnly, writeOnly, and comment, none of which change the values the spec accepts.
-
-A schema whose entries are JsonSpec values gets a JSON Schema for free:
+`JsonSpec` represents JSON Schema draft 2020-12: primitives, arrays, objects,
+composition, conditionals, references and annotations. Definitions using this
+vocabulary export directly with `toJsonSchema()`:
 
 ```kotlin
-abstract class FormSchema : Schema<JsonSpec>() {
-    protected fun bool() = register(JsonSpec.Bool, ::BoolKey)
-    protected fun int(min: Int, max: Int) =
-        register(JsonSpec.Int(min, max)) { IntKey(it, min, max) }
-}
+val form = SchemaDef<JsonSpec>(mapOf(
+    "acceptsTos" to JsonSpec.Bool,
+    "age" to JsonSpec.Int(min = 13, max = 120),
+))
 
-object SignupFormSchema : FormSchema() {
-    val acceptsTos by bool()
-    val age        by int(13, 120)
-}
-
-SignupFormSchema.definition().toJsonSchema()
+form.toJsonSchema()
 // {
 //   "$schema": "https://json-schema.org/draft/2020-12/schema",
 //   "type": "object",
@@ -217,35 +184,33 @@ SignupFormSchema.definition().toJsonSchema()
 // }
 ```
 
-Compound shapes nest naturally. The recursion is plain data and serializes to the same wire bytes as every other SchemaDef, so a consumer that prefers JsonSpec over the rendered JSON Schema document gets a structured tree it can walk instead of parsing JSON Schema by hand. The example below assembles a user record from the variants above, wrapping the display name with a description and allowing the email to be null:
+Nest variants to describe structured data:
 
 ```kotlin
 val user = JsonSpec.Object(
     properties = mapOf(
-        "id"    to JsonSpec.Long(min = 1L),
-        "name"  to JsonSpec.Annotated(JsonSpec.Str(minLength = 1), description = "Display name"),
+        "id" to JsonSpec.Long(min = 1L),
+        "name" to JsonSpec.Annotated(JsonSpec.Str(minLength = 1), description = "Display name"),
         "email" to JsonSpec.Nullable(JsonSpec.Str(format = "email")),
-        "tags"  to JsonSpec.Array(items = JsonSpec.Str(), uniqueItems = true),
+        "tags" to JsonSpec.Array(items = JsonSpec.Str(), uniqueItems = true),
     ),
     required = listOf("id", "name"),
 )
 ```
 
-Shared and recursive sub-schemas live in `$defs`. Pass them to toJsonSchema and refer to them from anywhere in the tree with a Ref pointer like `#/$defs/User`; the resulting document is a single self-contained JSON Schema that a consumer can resolve without out-of-band knowledge.
+Use `JsonSpec.Ref("#/\$defs/User")` for shared or recursive types and pass
+`defs = mapOf("User" to user)` to `toJsonSchema()` to populate `$defs`.
+
+Other vocabularies supply a per-entry mapper: serialization descriptors describe
+configuration fields, so they cannot infer the validation rules those fields imply.
 
 ```kotlin
-mySchema.definition().toJsonSchema(
-    defs = mapOf("User" to user),
-)
-```
-
-For a domain-specific vocabulary, supply a per-entry mapper. The no-arg form on a non-JsonSpec schema is a compile error, not a runtime throw, so you can't forget; mixed hierarchies that carry a JsonSpec alongside custom variants reuse the built-in branch inside the mapper, and you only write JSON Schema for the parts skema doesn't already know.
-
-```kotlin
-mySchema.definition().toJsonSchema { config -> when (config) {
-    BoolField   -> JsonSpec.Bool.toJsonSchema()
+SignupFormSchema.definition().toJsonSchema { config -> when (config) {
+    BoolField -> JsonSpec.Bool.toJsonSchema()
     is IntField -> JsonSpec.Int(config.min, config.max).toJsonSchema()
 }}
 ```
 
-JSON Schema is the only schema dialect skema ships. Protobuf wire output is already covered by kotlinx-serialization-protobuf since SchemaDef is `@Serializable`, and generating .proto IDL would need a different vocabulary (field numbers, proto-specific primitives) and so is not in scope here.
+`SchemaDef` also supports other kotlinx.serialization formats, including CBOR and
+ProtoBuf. Generating `.proto` definitions requires a separate vocabulary and is
+outside this library's scope.
