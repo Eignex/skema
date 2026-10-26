@@ -12,7 +12,7 @@ import kotlin.properties.ReadOnlyProperty
 abstract class Schema<C : Any> {
     private val mutableEntries = LinkedHashMap<String, C>()
 
-    /** Registered entries keyed by name, in declaration order. */
+    /** Read-only view of registered entries, in declaration order. See [definition] for a snapshot. */
     val entries: Map<String, C> get() = mutableEntries
 
     protected fun add(name: String, config: C) {
@@ -51,8 +51,9 @@ abstract class Schema<C : Any> {
     protected open fun validate(entries: Map<String, C>) {}
 
     /**
-     * Pure-data, serializable view of this schema. Override to ship under
-     * a different root field name or to add adjunct fields.
+     * Validates the entries and returns a shallow snapshot in serializable form.
+     * For a different root field name or adjunct fields, expose a separate method
+     * returning your own serializable wrapper.
      */
     open fun definition(): SchemaDef<C> {
         validate(mutableEntries)

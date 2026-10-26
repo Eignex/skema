@@ -1,10 +1,12 @@
 package com.eignex.skema
 
-import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -534,15 +536,65 @@ class JsonSpecTest {
             ),
             required = listOf("id"),
         )
-        val json = Json {
-            classDiscriminator = "\$type"
-            encodeDefaults = false
-            explicitNulls = false
-        }
-        val wire = json.encodeToString(JsonSpec.serializer(), original)
-        val decoded = json.decodeFromString(JsonSpec.serializer(), wire)
+        val wire = SchemaJson.encodeToString(JsonSpec.serializer(), original)
+        val decoded = SchemaJson.decodeFromString(JsonSpec.serializer(), wire)
         assertEquals(original, decoded)
         assertEquals(original.toJsonSchema(), decoded.toJsonSchema())
+    }
+
+    @Test
+    fun `every JsonSpec variant preserves its wire name and payload`() {
+        val variants = listOf(
+            "Bool" to JsonSpec.Bool,
+            "Null" to JsonSpec.Null,
+            "Int" to JsonSpec.Int(min = 1, max = 10, exclusiveMin = 0, exclusiveMax = 11, multipleOf = 2),
+            "Long" to JsonSpec.Long(min = 1L, max = 10L, exclusiveMin = 0L, exclusiveMax = 11L, multipleOf = 2L),
+            "Number" to JsonSpec.Num(min = 0.0, max = 10.0, exclusiveMin = -1.0, exclusiveMax = 11.0, multipleOf = 0.5),
+            "String" to JsonSpec.Str(minLength = 1, maxLength = 10, pattern = "[a-z]", format = "email"),
+            "Enum" to JsonSpec.Enum(listOf("a", "b")),
+            "Object" to JsonSpec.Object(
+                properties = mapOf("flag" to JsonSpec.Bool),
+                required = listOf("flag"),
+                additionalPropertiesAllowed = false,
+                minProperties = 1,
+                maxProperties = 2,
+            ),
+            "Array" to JsonSpec.Array(
+                items = JsonSpec.Str(),
+                prefixItems = listOf(JsonSpec.Int()),
+                minItems = 1,
+                maxItems = 3,
+                uniqueItems = true,
+            ),
+            "Const" to JsonSpec.Const(JsonNull),
+            "Ref" to JsonSpec.Ref("#/\$defs/User"),
+            "OneOf" to JsonSpec.OneOf(listOf(JsonSpec.Bool, JsonSpec.Null)),
+            "AnyOf" to JsonSpec.AnyOf(listOf(JsonSpec.Bool, JsonSpec.Null)),
+            "AllOf" to JsonSpec.AllOf(listOf(JsonSpec.Int(min = 0), JsonSpec.Int(max = 10))),
+            "Not" to JsonSpec.Not(JsonSpec.Null),
+            "IfThenElse" to JsonSpec.IfThenElse(JsonSpec.Bool, then = JsonSpec.Int(), otherwise = JsonSpec.Str()),
+            "Nullable" to JsonSpec.Nullable(JsonSpec.Null),
+            "Annotated" to JsonSpec.Annotated(
+                JsonSpec.Int(),
+                title = "Age",
+                description = "Years",
+                default = JsonNull,
+                examples = listOf(JsonNull, JsonPrimitive(42)),
+                deprecated = false,
+                readOnly = true,
+                writeOnly = false,
+                comment = "note",
+            ),
+        )
+
+        for ((wireName, spec) in variants) {
+            val wire = SchemaJson.encodeToString(JsonSpec.serializer(), spec)
+            val encoded = SchemaJson.parseToJsonElement(wire) as JsonObject
+            assertEquals(wireName, encoded["\$type"]?.jsonPrimitive?.contentOrNull, wireName)
+            val decoded = SchemaJson.decodeFromString(JsonSpec.serializer(), wire)
+            assertEquals(spec, decoded, wireName)
+            assertEquals(spec.toJsonSchema(), decoded.toJsonSchema(), wireName)
+        }
     }
 
     @Test

@@ -2,7 +2,6 @@ package com.eignex.skema
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -73,20 +72,45 @@ class SchemaTest {
                 """}}""",
             encoded,
         )
+        assertEquals(def, SchemaJson.decodeFromString(SchemaDef.serializer(FormField.serializer()), encoded))
     }
 
     @Test
-    fun `subclass can override definition for a custom root field name`() {
+    fun `subclass can expose a separate wrapper for a custom root field name`() {
         @Serializable data class FormSchemaDef(val fields: Map<String, FormField>)
 
         val custom = object : FormSchema() {
             init {
                 add("flag", BoolField)
             }
-            fun customDef() = FormSchemaDef(entries)
+            fun customDef() = FormSchemaDef(definition().entries)
         }
         val encoded = SchemaJson.encodeToString(FormSchemaDef.serializer(), custom.customDef())
         assertEquals("""{"fields":{"flag":{"${'$'}type":"Bool"}}}""", encoded)
+    }
+
+    @Test
+    fun `definition is a snapshot of the registered entries`() {
+        val schema = object : Schema<FormField>() {
+            fun flag(name: String) = add(name, BoolField)
+        }
+        schema.flag("first")
+        val before = schema.definition()
+        schema.flag("second")
+
+        assertEquals(listOf("first"), before.entries.keys.toList())
+        assertEquals(listOf("first", "second"), schema.definition().entries.keys.toList())
+    }
+
+    @Test
+    fun `delegate rejects a name already registered by assignment`() {
+        val ex = assertFailsWith<IllegalArgumentException> {
+            object : FormSchema() {
+                val assigned = bool("flag")
+                val flag by bool()
+            }
+        }
+        assertTrue(ex.message!!.contains("flag"))
     }
 
     @Test
@@ -123,18 +147,6 @@ class SchemaTest {
         assertTrue(ex.message!!.contains("missing"))
         assertTrue(ex.message!!.contains("a"))
         assertTrue(ex.message!!.contains("b"))
-    }
-
-    @Test
-    fun `SchemaDef is a data class with structural equality and copy`() {
-        val a = SchemaDef<FormField>(mapOf("x" to BoolField))
-        val b = SchemaDef<FormField>(mapOf("x" to BoolField))
-        val empty = SchemaDef<FormField>(emptyMap())
-        assertEquals(a, b)
-        assertEquals(a.hashCode(), b.hashCode())
-        assertTrue(a != empty)
-        assertTrue(!a.equals("not a SchemaDef"))
-        assertEquals(empty, a.copy(entries = emptyMap()))
     }
 
     // diff
