@@ -33,6 +33,8 @@ kotlin {
         commonTest.dependencies {
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-core")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json")
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor")
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf")
         }
     }
 }

@@ -616,3 +616,51 @@ public final class com/eignex/skema/SchemaJsonKt {
 	public static final fun getSchemaJsonConfig ()Lkotlin/jvm/functions/Function1;
 }
 
+public class com/eignex/skema/serialization/CompactSerializer : kotlinx/serialization/KSerializer {
+	public fun <init> (Ljava/lang/String;Lkotlin/reflect/KClass;Lcom/eignex/skema/serialization/JsonNodeCatalog;Lkotlin/jvm/functions/Function0;)V
+	public synthetic fun <init> (Ljava/lang/String;Lkotlin/reflect/KClass;Lcom/eignex/skema/serialization/JsonNodeCatalog;Lkotlin/jvm/functions/Function0;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun deserialize (Lkotlinx/serialization/encoding/Decoder;)Ljava/lang/Object;
+	public fun getDescriptor ()Lkotlinx/serialization/descriptors/SerialDescriptor;
+	public final fun getNodes ()Ljava/util/List;
+	public final fun getSerialName ()Ljava/lang/String;
+	public final fun selectNode (Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;)Lcom/eignex/skema/serialization/JsonNode;
+	public static synthetic fun selectNode$default (Lcom/eignex/skema/serialization/CompactSerializer;Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;ILjava/lang/Object;)Lcom/eignex/skema/serialization/JsonNode;
+	public fun serialize (Lkotlinx/serialization/encoding/Encoder;Ljava/lang/Object;)V
+}
+
+public final class com/eignex/skema/serialization/JsonNode {
+	public fun <init> (Lkotlin/reflect/KClass;Ljava/lang/String;Lcom/eignex/skema/serialization/JsonNodeShape;Ljava/util/List;Lcom/eignex/skema/serialization/JsonPayloadMapping;Lkotlin/jvm/functions/Function0;)V
+	public synthetic fun <init> (Lkotlin/reflect/KClass;Ljava/lang/String;Lcom/eignex/skema/serialization/JsonNodeShape;Ljava/util/List;Lcom/eignex/skema/serialization/JsonPayloadMapping;Lkotlin/jvm/functions/Function0;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getMapping ()Lcom/eignex/skema/serialization/JsonPayloadMapping;
+	public final fun getName ()Ljava/lang/String;
+	public final fun getOperands ()Ljava/util/List;
+	public final fun getShape ()Lcom/eignex/skema/serialization/JsonNodeShape;
+	public final fun getType ()Lkotlin/reflect/KClass;
+}
+
+public final class com/eignex/skema/serialization/JsonNodeCatalog {
+	public fun <init> ()V
+	public fun <init> (Lkotlin/jvm/functions/Function3;Lkotlin/jvm/functions/Function0;)V
+	public synthetic fun <init> (Lkotlin/jvm/functions/Function3;Lkotlin/jvm/functions/Function0;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+}
+
+public final class com/eignex/skema/serialization/JsonNodeShape : java/lang/Enum {
+	public static final field Fields Lcom/eignex/skema/serialization/JsonNodeShape;
+	public static final field Literal Lcom/eignex/skema/serialization/JsonNodeShape;
+	public static final field Operand Lcom/eignex/skema/serialization/JsonNodeShape;
+	public static final field Operands Lcom/eignex/skema/serialization/JsonNodeShape;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/eignex/skema/serialization/JsonNodeShape;
+	public static fun values ()[Lcom/eignex/skema/serialization/JsonNodeShape;
+}
+
+public abstract interface class com/eignex/skema/serialization/JsonPayloadMapping {
+	public abstract fun decode (Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;)Lkotlinx/serialization/json/JsonObject;
+	public abstract fun encode (Lkotlinx/serialization/json/JsonObject;)Lkotlinx/serialization/json/JsonElement;
+	public fun fieldPath (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+}
+
+public final class com/eignex/skema/serialization/JsonPayloadMapping$DefaultImpls {
+	public static fun fieldPath (Lcom/eignex/skema/serialization/JsonPayloadMapping;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+}
+

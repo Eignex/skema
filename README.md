@@ -102,6 +102,56 @@ SchemaJson.encodeToString(SignupForm.serializer(), SignupFormSchema.signupDef())
 // {"fields":{"acceptsTos":{"$type":"Bool"},"age":{"$type":"Int","min":13,"max":120}}}
 ```
 
+## Compact JSON vocabularies
+
+Domain vocabularies can opt into compact JSON with `com.eignex.skema.serialization`.
+`CompactSerializer` represents a node with named fields as `{"offset":{"amount":2.0}}`,
+an empty payload as `"input"`, a single operand as `{"negate":"input"}`, and positional
+operands as `{"plus":["input",2.0]}`. Numeric literal nodes encode directly as numbers.
+
+```kotlin
+@Serializable(with = ExprSerializer::class)
+sealed interface Expr
+
+@Serializable data object Input : Expr
+@Serializable data class Literal(val value: Double) : Expr
+@Serializable data class Plus(val left: Expr, val right: Expr) : Expr
+
+object ExprSerializer : CompactSerializer<Expr>(
+    "example.Expr",
+    Expr::class,
+    nodes = {
+        listOf(
+            jsonNode<Input>("input"),
+            jsonNode<Literal>("literal", JsonNodeShape.Literal, "value"),
+            jsonNode<Plus>("plus", JsonNodeShape.Operands, "left", "right"),
+        )
+    },
+)
+
+val wire = SchemaJson.encodeToString<Expr>(Plus(Input, Literal(2.0)))
+// {"plus":["input",2.0]}
+val decoded = SchemaJson.decodeFromString<Expr>(wire)
+```
+
+Use a stable, unique descriptor name for each vocabulary. Recursive references within a
+vocabulary work directly. For references to other compact vocabularies, share an explicit
+`JsonNodeCatalog` whose lazy supplier lists their serializers. Catalogs are independent;
+there is no global registration. A catalog can also supply a resolver for implementations
+that share an operator key. The resolver receives the candidate nodes, payload, and JSON path.
+
+Supply a `JsonPayloadMapping` on individual nodes for domain-specific field transformations.
+Its `encode` and `decode` functions map between ordinary serialized fields and the compact
+payload; `fieldPath` maps validation errors back to that payload. Node body serializers must
+describe objects. Pass an explicit body serializer to `jsonNode` when generated inference
+does not supply the required generic arguments.
+
+Compact decoding rejects unknown fields and malformed operands even with lenient JSON
+settings, and reports paths such as `$.plus[1].offset.amount`. Ordinary `Json` and `SchemaJson`
+both use the format; `encodeDefaults` controls whether default fields are emitted. Non-JSON
+formats use the sealed-class representation. Existing vocabularies retain their own serializers
+unless they explicitly opt in.
+
 ## Diff and composition
 
 `SchemaDef.diff(other)` reports per-entry adds, removes, and changes between two schemas. Use it to detect drift between producer and consumer versions, or to gate a schema migration:
