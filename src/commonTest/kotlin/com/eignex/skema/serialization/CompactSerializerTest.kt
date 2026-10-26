@@ -36,6 +36,46 @@ private data class Plus(val left: Expression, val right: Expression) : Expressio
 private data class Offset(val amount: Double = 1.5) : Expression
 
 @Serializable
+private data class DefaultOperand(val value: Expression = Input) : Expression
+
+@Serializable
+private data class DefaultOperands(val left: Expression = Input, val right: Expression = Input) : Expression
+
+@Serializable
+private data class DefaultLiteral(val value: Int = 7) : Expression
+
+@Serializable
+private data class NullableOperand(val value: Expression? = null) : Expression
+
+@Serializable
+private data class Flagged(val name: String, val negated: Boolean = false) : Expression
+
+@Serializable
+private data class Counted(val value: Expression) : Expression
+
+@Serializable
+private data class Wrapped(val children: List<Map<String, Expression?>>) : Expression
+
+@Serializable
+private data class PrimitiveRecord(val values: List<Map<String, PrimitiveValues>>) : Expression
+
+@Serializable
+private data class PrimitiveValues(val byte: Byte, val short: Short, val int: Int, val long: Long, val char: Char)
+
+private object CountingMapping : JsonPayloadMapping {
+    var calls: Int = 0
+
+    override fun encode(body: JsonObject): JsonElement = body.getValue("value")
+
+    override fun decode(payload: JsonElement, path: String): JsonObject {
+        calls++
+        return JsonObject(mapOf("value" to payload))
+    }
+
+    override fun fieldPath(field: String, path: String): String = path
+}
+
+@Serializable
 private data class Configured(val options: Options, val inner: Expression) : Expression
 
 @Serializable
@@ -52,6 +92,13 @@ private object ExpressionSerializer : CompactSerializer<Expression>("Expression"
         jsonNode<Plus>("plus", JsonNodeShape.Operands, "left", "right"),
         jsonNode<Offset>("offset"),
         jsonNode<Configured>("configured"),
+        jsonNode<DefaultOperand>("defaultOperand", JsonNodeShape.Operand, "value"),
+        jsonNode<DefaultOperands>("defaultOperands", JsonNodeShape.Operands, "left", "right"),
+        jsonNode<NullableOperand>("nullable", JsonNodeShape.Operand, "value"),
+        jsonNode<Flagged>("flagged"),
+        jsonNode<Counted>("counted", mapping = CountingMapping),
+        jsonNode<Wrapped>("wrapped"),
+        jsonNode<PrimitiveRecord>("primitives"),
     )
 })
 
@@ -140,6 +187,116 @@ class CompactSerializerTest {
         assertEquals("\"offset\"", Json.encodeToString(expression))
         assertEquals("""{"offset":{"amount":1.5}}""", defaults.encodeToString(expression))
         assertEquals(expression, Json.decodeFromString<Expression>(defaults.encodeToString(expression)))
+    }
+
+    @Test
+    fun `built-in operands retain defaults and nulls under suppressed JSON defaults`() {
+        val cases = listOf(
+            DefaultOperand() to """{"defaultOperand":"input"}""",
+            DefaultOperand(Offset()) to """{"defaultOperand":"offset"}""",
+            DefaultOperands() to """{"defaultOperands":["input","input"]}""",
+            DefaultLiteral() to "7",
+            NullableOperand() to """{"nullable":null}""",
+        )
+
+        for ((value, expected) in cases) {
+            val serializer = if (value is DefaultLiteral) {
+                CompactSerializer("DefaultLiteral", Expression::class) {
+                    listOf(jsonNode<DefaultLiteral>("defaultLiteral", JsonNodeShape.Literal, "value"))
+                }
+            } else {
+                ExpressionSerializer
+            }
+            val encoded = SchemaJson.encodeToString(serializer, value)
+            assertEquals(expected, encoded)
+            assertEquals(value, SchemaJson.decodeFromString(serializer, encoded))
+        }
+    }
+
+    @Test
+    fun `built-in operand declarations reject uncovered and unknown body fields`() {
+        val cases = listOf(
+            jsonNode<Flagged>("flagged", JsonNodeShape.Operand, "name"),
+            jsonNode<Flagged>("flagged", JsonNodeShape.Operands, "name"),
+            jsonNode<Flagged>("flagged", JsonNodeShape.Operands, "name", "missing"),
+        )
+
+        for (node in cases) {
+            val serializer = CompactSerializer("InvalidFields", Expression::class) { listOf(node) }
+            val error = assertFailsWith<IllegalArgumentException> {
+                SchemaJson.encodeToString(serializer, Flagged("enabled", true))
+            }
+            assertTrue("operands must cover every body field" in error.message.orEmpty(), error.message)
+        }
+    }
+
+    @Test
+    fun `recursive mappings decode once per node`() {
+        for (depth in listOf(8, 16, 32)) {
+            var value: Expression = Input
+            repeat(depth) { value = Counted(value) }
+            val encoded = SchemaJson.encodeToString(ExpressionSerializer, value)
+            CountingMapping.calls = 0
+
+            val decoded = SchemaJson.decodeFromString(ExpressionSerializer, encoded)
+
+            assertEquals(value, decoded)
+            assertEquals(depth, CountingMapping.calls)
+        }
+    }
+
+    @Test
+    fun `compact paths cross record list map and nullable boundaries`() {
+        val error = assertFailsWith<SerializationException> {
+            SchemaJson.decodeFromString<Expression>(
+                """{"wrapped":{"children":[{"item":{"negate":{"offset":{"amount":"2"}}}}]}}""",
+            )
+        }
+
+        assertTrue("$.wrapped.children[0].item.negate.offset.amount" in error.message.orEmpty(), error.message)
+    }
+
+    @Test
+    fun `out of range primitives retain their compact paths under lenient settings`() {
+        val lenient = Json {
+            coerceInputValues = true
+            ignoreUnknownKeys = true
+        }
+        val values = mapOf("byte" to "0", "short" to "0", "int" to "0", "long" to "0", "char" to "\"a\"")
+        val cases = listOf(
+            "byte" to "128", "byte" to "-129",
+            "short" to "32768", "short" to "-32769",
+            "int" to "2147483648", "int" to "-2147483649",
+            "long" to "9223372036854775808", "long" to "-9223372036854775809",
+            "char" to "\"\"", "char" to "\"ab\"",
+        )
+
+        for ((field, value) in cases) {
+            val fields = (values + (field to value)).entries.joinToString(
+                ",",
+            ) { (name, literal) -> "\"$name\":$literal" }
+            val error = assertFailsWith<SerializationException> {
+                lenient.decodeFromString<Expression>(
+                    """{"plus":["input",{"primitives":{"values":[{"item":{$fields}}]}}]}""",
+                )
+            }
+            assertTrue("$.plus[1].primitives.values[0].item.$field" in error.message.orEmpty(), error.message)
+        }
+    }
+
+    @Test
+    fun `primitive boundary values round trip`() {
+        val values = listOf(
+            PrimitiveValues(Byte.MIN_VALUE, Short.MIN_VALUE, Int.MIN_VALUE, Long.MIN_VALUE, '\u0000'),
+            PrimitiveValues(Byte.MAX_VALUE, Short.MAX_VALUE, Int.MAX_VALUE, Long.MAX_VALUE, '\uffff'),
+        )
+        for (value in values) {
+            val expression: Expression = PrimitiveRecord(listOf(mapOf("item" to value)))
+
+            val encoded = SchemaJson.encodeToString(expression)
+
+            assertEquals(expression, SchemaJson.decodeFromString<Expression>(encoded))
+        }
     }
 
     @Test

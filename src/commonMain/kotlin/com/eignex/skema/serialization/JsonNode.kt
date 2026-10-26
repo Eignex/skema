@@ -1,6 +1,9 @@
 package com.eignex.skema.serialization
 
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.StructureKind
 import kotlinx.serialization.json.*
 import kotlinx.serialization.serializer
 import kotlin.reflect.KClass
@@ -47,7 +50,17 @@ class JsonNode(
     serializer: () -> KSerializer<*>,
 ) {
     @Suppress("UNCHECKED_CAST")
-    internal val serializer: KSerializer<Any> by lazy { serializer() as KSerializer<Any> }
+    internal val serializer: KSerializer<Any> by lazy {
+        (serializer() as KSerializer<Any>).also { validateDescriptor(it.descriptor) }
+    }
+
+    internal val encodingSerializer: KSerializer<Any> by lazy {
+        if (mapping == null && shape != JsonNodeShape.Fields) {
+            JsonOperandSerializer(this.serializer)
+        } else {
+            this.serializer
+        }
+    }
 
     init {
         require(name.isNotEmpty()) { "A JSON node must have a name" }
@@ -55,6 +68,30 @@ class JsonNode(
             "Literal and single-operand nodes require one field"
         }
         require(operands.distinct().size == operands.size) { "Operand fields must be distinct" }
+    }
+
+    private fun validateDescriptor(descriptor: SerialDescriptor) {
+        require(descriptor.kind == StructureKind.CLASS || descriptor.kind == StructureKind.OBJECT) {
+            "JSON node '$name' requires an object body serializer"
+        }
+        if (mapping != null || shape == JsonNodeShape.Fields) return
+        val fields = (0 until descriptor.elementsCount).map { descriptor.getElementName(it) }
+        require(operands.toSet() == fields.toSet()) {
+            "JSON node '$name' operands must cover every body field: $fields"
+        }
+        if (shape == JsonNodeShape.Literal) {
+            val literal = descriptor.getElementDescriptor(0)
+            require(
+                !literal.isNullable && literal.kind in listOf(
+                    PrimitiveKind.BYTE,
+                    PrimitiveKind.SHORT,
+                    PrimitiveKind.INT,
+                    PrimitiveKind.LONG,
+                    PrimitiveKind.FLOAT,
+                    PrimitiveKind.DOUBLE,
+                ),
+            ) { "JSON literal node '$name' requires a non-null numeric field" }
+        }
     }
 
     internal fun encode(body: JsonObject): JsonElement = mapping?.encode(body) ?: when (shape) {

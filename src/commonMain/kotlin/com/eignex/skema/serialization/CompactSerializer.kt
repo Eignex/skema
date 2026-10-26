@@ -41,10 +41,6 @@ open class CompactSerializer<T : Any>(
     /** Selects the concrete node for a compact value, applying the catalog's ambiguity resolver. */
     fun selectNode(element: JsonElement, path: String = "$"): JsonNode = select(element, path).first
 
-    internal fun validate(element: JsonElement, path: String) {
-        JsonShape(this, catalog).validateJson(descriptor, element, path)
-    }
-
     internal fun select(element: JsonElement, path: String): Pair<JsonNode, JsonElement> {
         if (element is JsonPrimitive && !element.isString && element.doubleOrNull != null) {
             val literal = nodes.singleOrNull { it.shape == JsonNodeShape.Literal }
@@ -74,7 +70,7 @@ open class CompactSerializer<T : Any>(
         }
         val node = nodes.singleOrNull { it.type == value::class }
             ?: invalid("$", "unsupported $serialName implementation")
-        val body = encoder.json.encodeToJsonElement(node.serializer, value).jsonObject
+        val body = encoder.json.encodeToJsonElement(node.encodingSerializer, value).jsonObject
         val payload = node.encode(body)
         encoder.encodeJsonElement(
             when {
@@ -88,11 +84,18 @@ open class CompactSerializer<T : Any>(
     override fun deserialize(decoder: Decoder): T {
         if (decoder !is JsonDecoder) return decoder.decodeSerializableValue(legacy)
         val element = decoder.decodeJsonElement()
-        validate(element, "$")
-        val (node, payload) = select(element, "$")
-        val path = node.pathAt("$")
+        val parentPath = (decoder as? JsonPathDecoder)?.path ?: "$"
+        val (node, payload) = select(element, parentPath)
+        val path = node.pathAt(parentPath)
+        val body = node.decode(payload, path)
+        JsonShape(this, catalog).validateRecord(node.serializer.descriptor, body, path) { field ->
+            node.fieldPath(field, path)
+        }
         try {
-            return decoder.json.decodeFromJsonElement(node.serializer, node.decode(payload, path)) as T
+            val serializer = JsonPathSerializer(node.serializer, body, path) { field -> node.fieldPath(field, path) }
+            return decoder.json.decodeFromJsonElement(serializer, body) as T
+        } catch (error: SerializationException) {
+            throw error
         } catch (error: IllegalArgumentException) {
             throw SerializationException("$path: ${error.message}", error)
         }
