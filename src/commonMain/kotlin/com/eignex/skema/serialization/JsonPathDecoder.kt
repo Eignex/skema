@@ -6,6 +6,7 @@
 package com.eignex.skema.serialization
 
 import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.StructureKind
 import kotlinx.serialization.encoding.CompositeDecoder
@@ -20,9 +21,13 @@ internal class JsonPathSerializer<T>(
 ) : DeserializationStrategy<T> {
     override val descriptor: SerialDescriptor get() = body.descriptor
 
-    override fun deserialize(decoder: Decoder): T = body.deserialize(
-        JsonPathDecoder(decoder as JsonDecoder, element, path, fieldPath),
-    )
+    override fun deserialize(decoder: Decoder): T = try {
+        body.deserialize(JsonPathDecoder(decoder as JsonDecoder, element, path, fieldPath))
+    } catch (error: SerializationException) {
+        throw error
+    } catch (error: IllegalArgumentException) {
+        throw SerializationException("$path: ${error.message}", error)
+    }
 }
 
 internal class JsonPathDecoder(
