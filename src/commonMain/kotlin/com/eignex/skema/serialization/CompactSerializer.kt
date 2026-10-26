@@ -21,7 +21,7 @@ open class CompactSerializer<T : Any>(
     /** Stable descriptor name, shared with the ordinary sealed serializer. */
     val serialName: String,
     base: KClass<T>,
-    private val catalog: JsonNodeCatalog = JsonNodeCatalog(),
+    internal val catalog: JsonNodeCatalog = JsonNodeCatalog(),
     nodes: () -> List<JsonNode>,
 ) : KSerializer<T> {
     /** Concrete nodes, evaluated lazily to support recursive vocabularies. */
@@ -88,11 +88,14 @@ open class CompactSerializer<T : Any>(
         val (node, payload) = select(element, parentPath)
         val path = node.pathAt(parentPath)
         val body = node.decode(payload, path)
-        JsonShape(this, catalog).validateRecord(node.serializer.descriptor, body, path) { field ->
+        val shape = JsonShape(this, catalog)
+        shape.validateRecord(node.serializer.descriptor, body, path) { field ->
             node.fieldPath(field, path)
         }
         try {
-            val serializer = JsonPathSerializer(node.serializer, body, path) { field -> node.fieldPath(field, path) }
+            val serializer = JsonPathSerializer(node.serializer, body, path, shape) { field ->
+                node.fieldPath(field, path)
+            }
             return decoder.json.decodeFromJsonElement(serializer, body) as T
         } catch (error: SerializationException) {
             throw error

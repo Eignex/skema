@@ -125,6 +125,18 @@ val wire = SchemaJson.encodeToString<Expr>(Plus(Input, Literal(2.0)))
 val decoded = SchemaJson.decodeFromString<Expr>(wire)
 ```
 
+Export a JSON Schema for the compact vocabulary or a whole schema document:
+
+```kotlin
+val expressionSpec = ExprSerializer.toJsonSchema()
+val catalog = JsonNodeCatalog { listOf(ExprSerializer) }
+val documentSpec = SchemaDef.serializer(ExprSerializer).toJsonSchema(catalog)
+```
+
+These specifications describe the serialized JSON, including recursive operands and
+strict field layouts. Custom payload mappings implement `jsonSchema(node, body)` to
+describe their wire format. Constructor invariants require explicit schema constraints.
+
 Give each vocabulary a stable descriptor name. Share a lazy `JsonNodeCatalog` for
 cross-vocabulary references; its optional resolver handles shared operator names.
 Catalogs are independent, with no global registration.
@@ -138,7 +150,8 @@ Pass an explicit body serializer to `jsonNode` when generic arguments require it
 Decoding rejects unknown fields, malformed operands and out-of-range integers even
 with lenient JSON settings, reporting paths such as `$.plus[1].offset.amount`.
 Both `Json` and `SchemaJson` use compact encoding; non-JSON formats retain the
-sealed-class representation.
+sealed-class representation. Compact nodes can contain ordinary sealed values such as
+`JsonSpec`; mixed trees retain their configured discriminators.
 
 ## Diff and composition
 
