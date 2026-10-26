@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package com.eignex.skema.serialization
 
 import kotlinx.serialization.SerializationException
@@ -6,6 +8,8 @@ import kotlinx.serialization.json.*
 
 internal class JsonShape(private val owner: CompactSerializer<*>, private val catalog: JsonNodeCatalog) {
     fun validateJson(descriptor: SerialDescriptor, element: JsonElement, path: String) {
+        val name = descriptor.serialName.removeSuffix("?")
+        if (name == JsonElement.serializer().descriptor.serialName) return
         if (element == JsonNull) {
             if (!descriptor.isNullable) invalid(path, "null is not allowed")
             return
@@ -14,11 +18,13 @@ internal class JsonShape(private val owner: CompactSerializer<*>, private val ca
             validateJson(descriptor.getElementDescriptor(0), element, path)
             return
         }
-        val name = descriptor.serialName.removeSuffix("?")
         val serializer = if (name == owner.serialName) owner else catalog.find(descriptor)
         // Compact children validate their own bodies when decoded, retaining the caller's path.
         if (serializer != null) return
         when (descriptor.kind) {
+            // Polymorphic serializers validate the selected subtype during decoding.
+            is PolymorphicKind -> Unit
+
             StructureKind.CLASS, StructureKind.OBJECT -> validateRecord(descriptor, element.objectAt(path), path)
 
             StructureKind.LIST -> {

@@ -33,6 +33,10 @@ interface JsonPayloadMapping {
 
     /** Location of a serialized field in the compact payload. */
     fun fieldPath(field: String, path: String): String = "$path.$field"
+
+    /** JSON Schema for the complete compact [node], given its ordinary [body] schema. */
+    fun jsonSchema(node: JsonNode, body: JsonObject): JsonObject =
+        error("JSON node '${node.name}' requires an explicit schema for its payload mapping")
 }
 
 /** One concrete implementation in a compact polymorphic vocabulary. */
