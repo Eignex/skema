@@ -22,7 +22,8 @@ fun <C> SchemaDef<C>.diff(other: SchemaDef<C>): SchemaDiff<C> {
     val added = other.entries.filterKeys { it !in entries }
     val removed = entries.filterKeys { it !in other.entries }
     val changed = entries.mapNotNull { (name, oldConfig) ->
-        val newConfig = other.entries[name] ?: return@mapNotNull null
+        if (name !in other.entries) return@mapNotNull null
+        val newConfig = other.entries.getValue(name)
         if (oldConfig == newConfig) null else name to (oldConfig to newConfig)
     }.toMap()
     return SchemaDiff(added, removed, changed)

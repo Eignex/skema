@@ -88,6 +88,7 @@ class CompactJsonSpecTest {
             JsonSpec.Not(JsonSpec.Null),
             JsonSpec.IfThenElse(JsonSpec.Bool, then = JsonSpec.Int(), otherwise = JsonSpec.Str()),
             JsonSpec.Nullable(JsonSpec.Int()),
+            JsonSpec.Annotated(JsonSpec.Null, default = JsonNull),
             JsonSpec.Annotated(
                 JsonSpec.Int(),
                 title = "Age",

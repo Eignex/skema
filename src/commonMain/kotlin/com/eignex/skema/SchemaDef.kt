@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 /**
  * Pure-data, serializable form of a [Schema]. The default root field name
  * is `entries`; for a different name or adjunct fields, define your own
- * Serializable wrapper and override [Schema.definition].
+ * Serializable wrapper and expose it through a separate method.
  */
 @Serializable
 data class SchemaDef<C>(
@@ -19,6 +19,9 @@ data class SchemaDef<C>(
     val names: Set<String> get() = entries.keys
 
     /** Returns the entry for [name], or throws if no such entry exists. */
-    operator fun get(name: String): C =
-        entries[name] ?: error("SchemaDef has no entry named '$name'. Available: ${entries.keys}")
+    operator fun get(name: String): C = if (name in entries) {
+        entries.getValue(name)
+    } else {
+        error("SchemaDef has no entry named '$name'. Available: ${entries.keys}")
+    }
 }

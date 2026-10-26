@@ -1,8 +1,16 @@
 package com.eignex.skema
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.nullable
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
@@ -15,6 +23,10 @@ import kotlinx.serialization.json.putJsonObject
  * [Schema] to get [toJsonSchema] without writing a mapper. For domain-specific
  * configs, define your own sealed type and use the [SchemaDef.toJsonSchema]
  * overload that takes a per-entry mapper lambda.
+ *
+ * This vocabulary renders schemas; it does not validate schema constraints or
+ * instance data. Callers must supply valid draft 2020-12 keyword values.
+ * Variants containing [JsonElement] values require the JSON serialization format.
  */
 @Serializable
 sealed interface JsonSpec {
@@ -124,16 +136,19 @@ sealed interface JsonSpec {
     ) : JsonSpec
 
     /**
-     * Array of values. [items] constrains every element; [prefixItems] constrains
-     * the first N positionally (tuple-style); set both for a tuple with a trailing
-     * homogeneous tail.
+     * Array of values. [prefixItems] constrains the first N elements positionally;
+     * [items] constrains the remaining elements, or every element when no prefix
+     * is supplied. Set both for a tuple with a homogeneous tail.
      */
     @Serializable
     @SerialName("Array")
     data class Array(
-        /** Spec for every element, or `null` for unconstrained. */
+        /**
+         * Spec for elements after [prefixItems], or all elements without a prefix.
+         * `null` leaves them unconstrained.
+         */
         val items: JsonSpec? = null,
-        /** Positional specs for leading elements. */
+        /** Non-empty list of positional specs for leading elements, or `null` for no prefix. */
         val prefixItems: List<JsonSpec>? = null,
         /** Minimum array length. */
         val minItems: kotlin.Int? = null,
@@ -167,7 +182,7 @@ sealed interface JsonSpec {
     @Serializable
     @SerialName("OneOf")
     data class OneOf(
-        /** Branches; exactly one must match. */
+        /** Non-empty list of branches; exactly one must match. */
         val branches: List<JsonSpec>,
     ) : JsonSpec
 
@@ -175,7 +190,7 @@ sealed interface JsonSpec {
     @Serializable
     @SerialName("AnyOf")
     data class AnyOf(
-        /** Branches; at least one must match. */
+        /** Non-empty list of branches; at least one must match. */
         val branches: List<JsonSpec>,
     ) : JsonSpec
 
@@ -183,7 +198,7 @@ sealed interface JsonSpec {
     @Serializable
     @SerialName("AllOf")
     data class AllOf(
-        /** Branches; all must match. */
+        /** Non-empty list of branches; all must match. */
         val branches: List<JsonSpec>,
     ) : JsonSpec
 
@@ -212,8 +227,8 @@ sealed interface JsonSpec {
 
     /**
      * Wraps a [JsonSpec] so the value may also be null. Renders as
-     * `{"anyOf":[<inner>, {"type":"null"}]}`. Equivalent to `OneOf(inner, Null)`
-     * but spells the intent out.
+     * `{"anyOf":[<inner>, {"type":"null"}]}`. Uses [AnyOf] so null remains
+     * accepted even when [inner] already accepts it.
      */
     @Serializable
     @SerialName("Nullable")
@@ -235,7 +250,10 @@ sealed interface JsonSpec {
         val title: String? = null,
         /** Longer human-readable explanation. */
         val description: String? = null,
-        /** Default value, used by generators and form-renderers. */
+        /** Default value; Kotlin `null` omits the annotation, while [JsonNull] specifies a JSON null default. */
+        @OptIn(ExperimentalSerializationApi::class)
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
+        @Serializable(with = JsonAnnotationDefaultSerializer::class)
         val default: JsonElement? = null,
         /** Example values, used by documentation. */
         val examples: List<JsonElement>? = null,
@@ -248,6 +266,18 @@ sealed interface JsonSpec {
         /** Non-validating comment, ignored by validators. */
         val comment: String? = null,
     ) : JsonSpec
+}
+
+// The standard nullable serializer collapses an explicit JSON null into Kotlin null.
+// Handle null ourselves so a present annotation always decodes as a JsonElement.
+private object JsonAnnotationDefaultSerializer : KSerializer<JsonElement?> {
+    override val descriptor: SerialDescriptor = JsonElement.serializer().descriptor.nullable
+
+    override fun serialize(encoder: Encoder, value: JsonElement?) {
+        encoder.encodeSerializableValue(JsonElement.serializer(), value ?: JsonNull)
+    }
+
+    override fun deserialize(decoder: Decoder): JsonElement = decoder.decodeSerializableValue(JsonElement.serializer())
 }
 
 /** JSON Schema fragment describing the value this primitive validates. */
