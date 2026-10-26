@@ -16,17 +16,8 @@ internal class JsonShape(private val owner: CompactSerializer<*>, private val ca
         }
         val name = descriptor.serialName.removeSuffix("?")
         val serializer = if (name == owner.serialName) owner else catalog.find(descriptor)
-        if (serializer != null) {
-            if (serializer !== owner) {
-                serializer.validate(element, path)
-                return
-            }
-            val (node, payload) = serializer.select(element, path)
-            val nodePath = node.pathAt(path)
-            val body = node.decode(payload, nodePath)
-            validateRecord(node.serializer.descriptor, body, nodePath) { field -> node.fieldPath(field, nodePath) }
-            return
-        }
+        // Compact children validate their own bodies when decoded, retaining the caller's path.
+        if (serializer != null) return
         when (descriptor.kind) {
             StructureKind.CLASS, StructureKind.OBJECT -> validateRecord(descriptor, element.objectAt(path), path)
 
@@ -50,7 +41,7 @@ internal class JsonShape(private val owner: CompactSerializer<*>, private val ca
         }
     }
 
-    private fun validateRecord(
+    fun validateRecord(
         descriptor: SerialDescriptor,
         body: JsonObject,
         path: String,
@@ -74,19 +65,20 @@ internal class JsonShape(private val owner: CompactSerializer<*>, private val ca
         val primitive = element as? JsonPrimitive ?: invalid(path, "expected ${descriptor.kind}")
         val valid = when (descriptor.kind) {
             PrimitiveKind.BOOLEAN -> !primitive.isString && primitive.booleanOrNull != null
-
-            PrimitiveKind.BYTE, PrimitiveKind.SHORT, PrimitiveKind.INT, PrimitiveKind.LONG ->
-                !primitive.isString && primitive.longOrNull != null
-
+            PrimitiveKind.BYTE -> primitive.integerIn(Byte.MIN_VALUE.toLong()..Byte.MAX_VALUE.toLong())
+            PrimitiveKind.SHORT -> primitive.integerIn(Short.MIN_VALUE.toLong()..Short.MAX_VALUE.toLong())
+            PrimitiveKind.INT -> primitive.integerIn(Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong())
+            PrimitiveKind.LONG -> !primitive.isString && primitive.longOrNull != null
             PrimitiveKind.FLOAT, PrimitiveKind.DOUBLE -> !primitive.isString && primitive.doubleOrNull != null
-
-            PrimitiveKind.CHAR, PrimitiveKind.STRING -> primitive.isString
-
+            PrimitiveKind.CHAR -> primitive.isString && primitive.content.length == 1
+            PrimitiveKind.STRING -> primitive.isString
             else -> true
         }
         if (!valid) invalid(path, "expected ${descriptor.kind}")
     }
 }
+
+private fun JsonPrimitive.integerIn(range: LongRange): Boolean = !isString && longOrNull?.let { it in range } == true
 
 internal fun JsonElement.objectAt(path: String): JsonObject = this as? JsonObject ?: invalid(path, "expected an object")
 

@@ -146,6 +146,12 @@ payload; `fieldPath` maps validation errors back to that payload. Node body seri
 describe objects. Pass an explicit body serializer to `jsonNode` when generated inference
 does not supply the required generic arguments.
 
+Built-in literal and operand shapes must cover every body field; use named fields or a
+custom mapping for nodes with additional options. Their operands always encode default and
+null values, while nested nodes retain the caller's JSON settings. Literal fields must be
+non-null numeric values. Compact decoding validates each node as it is consumed, including
+numeric ranges, and retains error paths through nested records, lists and maps.
+
 Compact decoding rejects unknown fields and malformed operands even with lenient JSON
 settings, and reports paths such as `$.plus[1].offset.amount`. Ordinary `Json` and `SchemaJson`
 both use the format; `encodeDefaults` controls whether default fields are emitted. Non-JSON
