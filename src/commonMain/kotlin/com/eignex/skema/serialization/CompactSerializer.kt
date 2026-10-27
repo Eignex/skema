@@ -28,11 +28,12 @@ open class CompactSerializer<T : Any>(
     val nodes: List<JsonNode> by lazy(nodes)
 
     private val legacy by lazy {
+        val implementations = this.nodes.distinctBy { it.type }
         SealedClassSerializer(
             serialName,
             base,
-            this.nodes.map { it.type as KClass<out T> }.toTypedArray(),
-            this.nodes.map { it.serializer as KSerializer<out T> }.toTypedArray(),
+            implementations.map { it.type as KClass<out T> }.toTypedArray(),
+            implementations.map { it.serializer as KSerializer<out T> }.toTypedArray(),
         )
     }
 
@@ -68,8 +69,14 @@ open class CompactSerializer<T : Any>(
             encoder.encodeSerializableValue(legacy, value)
             return
         }
-        val node = nodes.singleOrNull { it.type == value::class }
-            ?: invalid("$", "unsupported $serialName implementation")
+        val candidates = nodes.filter { it.type == value::class }
+        if (candidates.isEmpty()) invalid("$", "unsupported $serialName implementation")
+        val node = candidates.singleOrNull()?.takeIf { it.fixed.isEmpty() } ?: run {
+            val fields = candidates.flatMapTo(mutableSetOf()) { it.fixed.keys }
+            val values = candidates.first().fieldValues(value, encoder.json, fields)
+            candidates.singleOrNull { candidate -> candidate.fixed.all { (field, fixed) -> values[field] == fixed } }
+                ?: invalid("$", "no unique $serialName node matches the fixed fields")
+        }
         val body = encoder.json.encodeToJsonElement(node.encodingSerializer, value).jsonObject
         val payload = node.encode(body)
         encoder.encodeJsonElement(
