@@ -14,7 +14,7 @@ fun CompactSerializer<*>.toJsonSchema(json: Json = SchemaJson): JsonObject =
 /**
  * JSON Schema draft 2020-12 for a serialized document. [catalog] must list its compact
  * vocabularies, including those nested in records, collections and schema definitions.
- * Custom payload mappings supply [JsonPayloadMapping.jsonSchema]. Constructor invariants
+ * Custom payload mappings supply [JsonPayloadMapping.payloadSchema]. Constructor invariants
  * and domain validation rules are not inferred.
  */
 fun KSerializer<*>.toJsonSchema(catalog: JsonNodeCatalog, json: Json = SchemaJson): JsonObject =
@@ -148,29 +148,21 @@ private class JsonSchemaGenerator(
         val schemas = serializer.nodes.map { node ->
             val descriptor = node.serializer.descriptor
             val body = record(descriptor, serializer).withoutFields(node.fixed.keys)
-            if (node.mapping != null) return@map node.mapping.jsonSchema(node, body)
             val properties = body.getValue("properties").jsonObject
-            when (node.shape) {
-                JsonNodeShape.Fields -> {
-                    val named = operator(node.name, body)
-                    if (body["required"] == null) alternatives(listOf(named, constant(node.name))) else named
-                }
-
-                JsonNodeShape.Literal -> properties.getValue(node.operands.single()).jsonObject
-
-                JsonNodeShape.Operand -> {
-                    val field = node.operands.single()
-                    val named = operator(node.name, properties.getValue(field).jsonObject)
-                    val index = (0 until descriptor.elementsCount).single { descriptor.getElementName(it) == field }
-                    if (acceptsEmptyObject(descriptor.getElementDescriptor(index), serializer)) {
-                        alternatives(listOf(named, constant(node.name)))
-                    } else {
-                        named
-                    }
-                }
-
-                JsonNodeShape.Operands -> operator(node.name, tuple(node.operands.map { properties.getValue(it) }))
+            val payload = node.mapping?.payloadSchema(body) ?: when (node.shape) {
+                JsonNodeShape.Fields -> body
+                JsonNodeShape.Literal, JsonNodeShape.Operand -> properties.getValue(node.operands.single()).jsonObject
+                JsonNodeShape.Operands -> tuple(node.operands.map { properties.getValue(it) })
             }
+            if (node.shape == JsonNodeShape.Literal) return@map payload
+            val shorthand = if (node.mapping == null && node.shape == JsonNodeShape.Operand) {
+                val index = descriptor.getElementIndex(node.operands.single())
+                acceptsEmptyObject(descriptor.getElementDescriptor(index), serializer)
+            } else {
+                admitsEmptyObject(payload)
+            }
+            val named = operator(node.name, payload)
+            if (shorthand) alternatives(listOf(named, constant(node.name))) else named
         }
         return alternatives(schemas)
     }
@@ -236,6 +228,19 @@ private fun JsonObject.withoutFields(fields: Set<String>): JsonObject {
         if (required.isNotEmpty()) put("required", JsonArray(required))
     }
 }
+
+// Only inline object schemas qualify, so a payload behind a reference or extra keywords keeps the operator form.
+private fun admitsEmptyObject(schema: JsonObject): Boolean {
+    if (schema.keys == setOf("anyOf")) {
+        return schema.getValue("anyOf").jsonArray.any { it is JsonObject && admitsEmptyObject(it) }
+    }
+    val type = schema["type"] ?: return schema.isEmpty()
+    return type == JsonPrimitive("object") && objectKeywords.containsAll(schema.keys) &&
+        schema["required"]?.jsonArray.isNullOrEmpty()
+}
+
+private val objectKeywords =
+    setOf("type", "properties", "required", "additionalProperties", "propertyNames", "title", "description")
 
 private fun typed(type: String): JsonObject = buildJsonObject { put("type", type) }
 

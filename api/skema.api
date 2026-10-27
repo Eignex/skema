@@ -663,12 +663,12 @@ public abstract interface class com/eignex/skema/serialization/JsonPayloadMappin
 	public abstract fun decode (Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;)Lkotlinx/serialization/json/JsonObject;
 	public abstract fun encode (Lkotlinx/serialization/json/JsonObject;)Lkotlinx/serialization/json/JsonElement;
 	public fun fieldPath (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
-	public fun jsonSchema (Lcom/eignex/skema/serialization/JsonNode;Lkotlinx/serialization/json/JsonObject;)Lkotlinx/serialization/json/JsonObject;
+	public fun payloadSchema (Lkotlinx/serialization/json/JsonObject;)Lkotlinx/serialization/json/JsonObject;
 }
 
 public final class com/eignex/skema/serialization/JsonPayloadMapping$DefaultImpls {
 	public static fun fieldPath (Lcom/eignex/skema/serialization/JsonPayloadMapping;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
-	public static fun jsonSchema (Lcom/eignex/skema/serialization/JsonPayloadMapping;Lcom/eignex/skema/serialization/JsonNode;Lkotlinx/serialization/json/JsonObject;)Lkotlinx/serialization/json/JsonObject;
+	public static fun payloadSchema (Lcom/eignex/skema/serialization/JsonPayloadMapping;Lkotlinx/serialization/json/JsonObject;)Lkotlinx/serialization/json/JsonObject;
 }
 
 public final class com/eignex/skema/serialization/JsonSchemaKt {

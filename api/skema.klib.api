@@ -23,7 +23,7 @@ abstract interface com.eignex.skema.serialization/JsonPayloadMapping { // com.ei
     abstract fun decode(kotlinx.serialization.json/JsonElement, kotlin/String): kotlinx.serialization.json/JsonObject // com.eignex.skema.serialization/JsonPayloadMapping.decode|decode(kotlinx.serialization.json.JsonElement;kotlin.String){}[0]
     abstract fun encode(kotlinx.serialization.json/JsonObject): kotlinx.serialization.json/JsonElement // com.eignex.skema.serialization/JsonPayloadMapping.encode|encode(kotlinx.serialization.json.JsonObject){}[0]
     open fun fieldPath(kotlin/String, kotlin/String): kotlin/String // com.eignex.skema.serialization/JsonPayloadMapping.fieldPath|fieldPath(kotlin.String;kotlin.String){}[0]
-    open fun jsonSchema(com.eignex.skema.serialization/JsonNode, kotlinx.serialization.json/JsonObject): kotlinx.serialization.json/JsonObject // com.eignex.skema.serialization/JsonPayloadMapping.jsonSchema|jsonSchema(com.eignex.skema.serialization.JsonNode;kotlinx.serialization.json.JsonObject){}[0]
+    open fun payloadSchema(kotlinx.serialization.json/JsonObject): kotlinx.serialization.json/JsonObject // com.eignex.skema.serialization/JsonPayloadMapping.payloadSchema|payloadSchema(kotlinx.serialization.json.JsonObject){}[0]
 }
 
 sealed interface com.eignex.skema/JsonSpec { // com.eignex.skema/JsonSpec|null[0]
