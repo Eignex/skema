@@ -114,6 +114,8 @@ private enum class Mode { Fast, Accurate }
 
 private val expressionCatalog = JsonNodeCatalog { listOf(EnvelopeSerializer) }
 
+private val rootCatalog = JsonNodeCatalog { listOf(ExpressionSerializer, EnvelopeSerializer) }
+
 private object ExpressionSerializer : CompactSerializer<Expression>(
     "Expression",
     Expression::class,
@@ -274,6 +276,38 @@ class CompactSerializerTest {
 
         assertEquals("""{"entries":{"result":{"plus":["input",2.5]}}}""", encoded)
         assertEquals(definition, SchemaJson.decodeFromString(serializer, encoded))
+    }
+
+    @Test
+    fun `root decoding preserves schema definition entries`() {
+        val definition = SchemaDef<Expression>(mapOf("result" to Plus(Input, NumberLiteral(2.5))))
+        val serializer = SchemaDef.serializer(ExpressionSerializer)
+        val element = SchemaJson.encodeToJsonElement(serializer, definition)
+
+        val decoded = SchemaJson.decodeFromJsonElement(serializer, element, rootCatalog)
+
+        assertEquals(definition, decoded)
+    }
+
+    @Test
+    fun `root decoding reports compact paths below ordinary records`() {
+        val cases = listOf(
+            """{"entries":{"result":{"plus":["input"]}}}""" to "$.entries.result.plus:",
+            """{"entries":{"result":{"negate":{"offset":{"amount":"2"}}}}}""" to
+                "$.entries.result.negate.offset.amount:",
+            """{"entries":{},"extra":1}""" to "$.extra: unknown field",
+        )
+
+        for ((payload, path) in cases) {
+            val error = assertFailsWith<SerializationException>(payload) {
+                SchemaJson.decodeFromJsonElement(
+                    SchemaDef.serializer(ExpressionSerializer),
+                    Json.parseToJsonElement(payload),
+                    rootCatalog,
+                )
+            }
+            assertTrue(error.message.orEmpty().startsWith(path), error.message)
+        }
     }
 
     @Test

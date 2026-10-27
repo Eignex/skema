@@ -15,6 +15,21 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.internal.AbstractPolymorphicSerializer
 import kotlinx.serialization.json.*
 
+/**
+ * Decodes [element] as a document root with strict validation, reporting errors at their
+ * paths from the root through records, collections and maps. [catalog] must list the compact
+ * vocabularies nested in the document.
+ */
+fun <T> Json.decodeFromJsonElement(
+    deserializer: DeserializationStrategy<T>,
+    element: JsonElement,
+    catalog: JsonNodeCatalog,
+): T {
+    val shape = JsonShape(deserializer as? CompactSerializer<*>, catalog)
+    shape.validateJson(deserializer.descriptor, element, "$")
+    return decodeFromJsonElement(JsonPathSerializer(deserializer, element, "$", shape), element)
+}
+
 internal class JsonPathSerializer<T>(
     private val body: DeserializationStrategy<T>,
     private val element: JsonElement,
