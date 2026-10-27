@@ -45,22 +45,66 @@ private object SchemaMapping : JsonPayloadMapping {
     override fun decode(payload: JsonElement, path: String): JsonObject =
         JsonObject(mapOf("name" to payload.jsonArray[0], "negated" to payload.jsonArray[1]))
 
-    override fun jsonSchema(node: JsonNode, body: JsonObject): JsonObject = buildJsonObject {
+    override fun payloadSchema(body: JsonObject): JsonObject {
         val fields = body.getValue("properties").jsonObject
-        put("type", "object")
-        putJsonObject("properties") {
-            putJsonObject(node.name) {
-                put("type", "array")
-                put("prefixItems", JsonArray(listOf(fields.getValue("name"), fields.getValue("negated"))))
-                put("minItems", 2)
-                put("maxItems", 2)
-                put("items", false)
-            }
+        return buildJsonObject {
+            put("type", "array")
+            put("prefixItems", JsonArray(listOf(fields.getValue("name"), fields.getValue("negated"))))
+            put("minItems", 2)
+            put("maxItems", 2)
+            put("items", false)
         }
-        put("required", JsonArray(listOf(JsonPrimitive(node.name))))
-        put("additionalProperties", false)
     }
 }
+
+@Serializable private data class SchemaDecimal(val value: Double) : SchemaWire
+
+@Serializable private data class SchemaTuned(val rate: Double = 0.5) : SchemaWire
+
+private object DecimalMapping : JsonPayloadMapping {
+    override fun encode(body: JsonObject): JsonElement = body.getValue("value")
+
+    override fun decode(payload: JsonElement, path: String): JsonObject = JsonObject(mapOf("value" to payload))
+
+    override fun fieldPath(field: String, path: String): String = path
+
+    override fun payloadSchema(body: JsonObject): JsonObject =
+        body.getValue("properties").jsonObject.getValue("value").jsonObject
+}
+
+private object TunedMapping : JsonPayloadMapping {
+    override fun encode(body: JsonObject): JsonElement = JsonObject(body.mapKeys { "r" })
+
+    override fun decode(payload: JsonElement, path: String): JsonObject {
+        val fields = payload.objectAt(path)
+        fields.keys.firstOrNull { it != "r" }?.let { invalid("$path.$it", "unknown field '$it'") }
+        return JsonObject(fields.mapKeys { "rate" })
+    }
+
+    override fun fieldPath(field: String, path: String): String = "$path.r"
+
+    override fun payloadSchema(body: JsonObject): JsonObject {
+        val rate = body.getValue("properties").jsonObject.getValue("rate")
+        return JsonObject(body + ("properties" to JsonObject(mapOf("r" to rate))))
+    }
+}
+
+private object FieldsMapping : JsonPayloadMapping {
+    override fun encode(body: JsonObject): JsonElement = body
+
+    override fun decode(payload: JsonElement, path: String): JsonObject = payload.objectAt(path)
+
+    override fun payloadSchema(body: JsonObject): JsonObject = body
+}
+
+private object MappedWireSerializer : CompactSerializer<SchemaWire>("MappedWire", SchemaWire::class, nodes = {
+    listOf(
+        jsonNode<SchemaDecimal>("decimal", JsonNodeShape.Literal, "value", mapping = DecimalMapping),
+        jsonNode<SchemaTuned>("tuned", mapping = TunedMapping),
+        jsonNode<SchemaMapped>("ref", mapping = FieldsMapping, fixed = mapOf("negated" to JsonPrimitive(false))),
+        jsonNode<SchemaMapped>("notRef", mapping = FieldsMapping, fixed = mapOf("negated" to JsonPrimitive(true))),
+    )
+})
 
 private object SchemaWireSerializer : CompactSerializer<SchemaWire>("SchemaWire", SchemaWire::class, nodes = {
     listOf(
@@ -281,7 +325,60 @@ class JsonSchemaTest {
     }
 
     @Test
-    fun `mappings without schema declarations fail explicitly`() {
+    fun `mapped payload schemas receive the operator wrapper`() {
+        val document = SchemaWireSerializer.toJsonSchema()
+        val mapped = resolve(document, document).getValue("anyOf").jsonArray.map { it.jsonObject }
+            .single { it["properties"]?.jsonObject?.containsKey("mapped") == true }
+
+        assertEquals(JsonPrimitive("object"), mapped["type"])
+        assertEquals(JsonArray(listOf(JsonPrimitive("mapped"))), mapped["required"])
+        assertEquals(JsonPrimitive(false), mapped["additionalProperties"])
+    }
+
+    @Test
+    fun `mapped literal payloads keep their bare number schema`() {
+        val document = MappedWireSerializer.toJsonSchema()
+        val branches = resolve(document, document).getValue("anyOf").jsonArray
+
+        assertTrue(buildJsonObject { put("type", "number") } in branches)
+        assertEquals("2.5", SchemaJson.encodeToString(MappedWireSerializer, SchemaDecimal(2.5)))
+        assertEquals(SchemaDecimal(2.5), SchemaJson.decodeFromString(MappedWireSerializer, "2.5"))
+    }
+
+    @Test
+    fun `mapped payloads admitting the empty object include the name shorthand`() {
+        val document = MappedWireSerializer.toJsonSchema()
+        val shorthand = buildJsonObject { put("const", "tuned") }
+        val tuned = resolve(document, document).getValue("anyOf").jsonArray.map { it.jsonObject }
+            .single { branch -> branch["anyOf"]?.jsonArray?.contains(shorthand) == true }
+        val payload = tuned.getValue("anyOf").jsonArray[0].jsonObject
+            .getValue("properties").jsonObject.getValue("tuned").jsonObject
+
+        assertEquals(setOf("r"), payload.getValue("properties").jsonObject.keys)
+        assertEquals("\"tuned\"", SchemaJson.encodeToString(MappedWireSerializer, SchemaTuned()))
+        assertEquals(SchemaTuned(), SchemaJson.decodeFromString(MappedWireSerializer, "\"tuned\""))
+        assertEquals(SchemaTuned(0.25), SchemaJson.decodeFromString(MappedWireSerializer, """{"tuned":{"r":0.25}}"""))
+    }
+
+    @Test
+    fun `mapped payload schemas omit fixed fields and require their operands`() {
+        val document = MappedWireSerializer.toJsonSchema()
+        val branches = resolve(document, document).getValue("anyOf").jsonArray.map { it.jsonObject }
+        val ref = branches.single { it["properties"]?.jsonObject?.containsKey("ref") == true }
+            .getValue("properties").jsonObject.getValue("ref").jsonObject
+
+        assertEquals(setOf("name"), ref.getValue("properties").jsonObject.keys)
+        assertEquals(JsonArray(listOf(JsonPrimitive("name"))), ref["required"])
+        val shorthands = branches.flatMap { it["anyOf"]?.jsonArray.orEmpty() }.mapNotNull { it.jsonObject["const"] }
+        assertEquals(listOf(JsonPrimitive("tuned")), shorthands)
+        assertEquals(
+            """{"notRef":{"name":"a"}}""",
+            SchemaJson.encodeToString(MappedWireSerializer, SchemaMapped("a", true)),
+        )
+    }
+
+    @Test
+    fun `mappings without payload schemas fail explicitly`() {
         val mapping = object : JsonPayloadMapping {
             override fun encode(body: JsonObject): JsonElement = body
             override fun decode(payload: JsonElement, path: String): JsonObject = payload.jsonObject
@@ -292,7 +389,7 @@ class JsonSchemaTest {
 
         val error = assertFailsWith<IllegalStateException> { serializer.toJsonSchema() }
 
-        assertTrue("requires an explicit schema" in error.message.orEmpty(), error.message)
+        assertTrue("explicit payload schema" in error.message.orEmpty(), error.message)
     }
 
     private fun resolve(schema: JsonObject, document: JsonObject): JsonObject {
