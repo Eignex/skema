@@ -16,6 +16,8 @@ import kotlin.reflect.KClass
  * Opt-in polymorphic serializer using operator keys, empty-object names and numeric literals
  * in JSON. Other formats retain the ordinary sealed-class representation. JSON decoding
  * validates the compact shape, including nested catalog types, regardless of lenient settings.
+ * As in JSON Schema's `integer`, integer fields accept any integral number token within their
+ * range, such as `2.0` or `1e2`, and encode it as a plain integer token.
  */
 open class CompactSerializer<T : Any>(
     /** Stable descriptor name, shared with the ordinary sealed serializer. */
@@ -94,9 +96,8 @@ open class CompactSerializer<T : Any>(
         val parentPath = (decoder as? JsonPathDecoder)?.path ?: "$"
         val (node, payload) = select(element, parentPath)
         val path = node.pathAt(parentPath)
-        val body = node.decode(payload, path)
         val shape = JsonShape(this, catalog)
-        shape.validateRecord(node.serializer.descriptor, body, path) { field ->
+        val body = shape.validateRecord(node.serializer.descriptor, node.decode(payload, path), path) { field ->
             node.fieldPath(field, path)
         }
         try {
