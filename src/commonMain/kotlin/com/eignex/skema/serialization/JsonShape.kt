@@ -117,7 +117,9 @@ private const val LONG_DIGITS = 19
  */
 private fun JsonPrimitive.integerOrNull(range: LongRange): Long? {
     if (isString) return null
-    val (sign, whole, fraction, exponent) = NUMBER.matchEntire(content)?.destructured ?: return null
+    val groups = NUMBER.matchEntire(content)?.groupValues ?: return null
+    val (sign, whole, fraction) = groups.subList(1, 4)
+    val exponent = groups[4]
     val digits = (whole + fraction).trimStart('0')
     if (digits.isEmpty()) return 0L.takeIf { it in range }
     // Unparseable exponents exceed Int; any such shift leaves the range or the integers.
