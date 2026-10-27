@@ -86,6 +86,8 @@ the original schema object. Applications handle field values and input validatio
 Definitions also support [diffs](src/commonMain/kotlin/com/eignex/skema/SchemaDiff.kt),
 [composition and namespaces](src/commonMain/kotlin/com/eignex/skema/SchemaComposition.kt),
 and [JSON Schema export](src/commonMain/kotlin/com/eignex/skema/JsonSpec.kt).
+Namespacing renames entry keys only; references embedded in configurations keep
+their old names, so rewrite them with the owning library's traversal.
 [Compact JSON](src/commonMain/kotlin/com/eignex/skema/serialization/CompactSerializer.kt)
 and [serializer-derived JSON Schema](src/commonMain/kotlin/com/eignex/skema/serialization/JsonSchema.kt)
 are available in source but not yet in the 0.3.0 release.
