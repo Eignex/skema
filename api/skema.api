@@ -655,6 +655,10 @@ public final class com/eignex/skema/serialization/JsonNodeShape : java/lang/Enum
 	public static fun values ()[Lcom/eignex/skema/serialization/JsonNodeShape;
 }
 
+public final class com/eignex/skema/serialization/JsonPathDecoderKt {
+	public static final fun decodeFromJsonElement (Lkotlinx/serialization/json/Json;Lkotlinx/serialization/DeserializationStrategy;Lkotlinx/serialization/json/JsonElement;Lcom/eignex/skema/serialization/JsonNodeCatalog;)Ljava/lang/Object;
+}
+
 public abstract interface class com/eignex/skema/serialization/JsonPayloadMapping {
 	public abstract fun decode (Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;)Lkotlinx/serialization/json/JsonObject;
 	public abstract fun encode (Lkotlinx/serialization/json/JsonObject;)Lkotlinx/serialization/json/JsonElement;

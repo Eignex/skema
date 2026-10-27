@@ -6,7 +6,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.json.*
 
-internal class JsonShape(private val owner: CompactSerializer<*>, private val catalog: JsonNodeCatalog) {
+internal class JsonShape(private val owner: CompactSerializer<*>?, private val catalog: JsonNodeCatalog) {
     fun validateJson(descriptor: SerialDescriptor, element: JsonElement, path: String) {
         val name = descriptor.serialName.removeSuffix("?")
         if (name == JsonElement.serializer().descriptor.serialName) return
@@ -18,7 +18,7 @@ internal class JsonShape(private val owner: CompactSerializer<*>, private val ca
             validateJson(descriptor.getElementDescriptor(0), element, path)
             return
         }
-        val serializer = if (name == owner.serialName) owner else catalog.find(descriptor)
+        val serializer = if (name == owner?.serialName) owner else catalog.find(descriptor)
         // Compact children validate their own bodies when decoded, retaining the caller's path.
         if (serializer != null) return
         when (descriptor.kind) {
