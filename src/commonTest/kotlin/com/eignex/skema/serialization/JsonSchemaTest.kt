@@ -7,6 +7,7 @@ import com.eignex.skema.SchemaDef
 import com.eignex.skema.SchemaJson
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.nullable
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import kotlin.test.Test
@@ -228,6 +229,25 @@ class JsonSchemaTest {
             JsonPrimitive("integer"),
             number.getValue("properties").jsonObject.getValue("value").jsonObject["type"],
         )
+    }
+
+    @Test
+    fun `decoding accepts exactly the integer values the generated schema admits`() {
+        val serializer = SchemaBox.serializer(Int.serializer())
+        val document = serializer.toJsonSchema(JsonNodeCatalog())
+        val value = resolve(document, document).getValue("properties").jsonObject.getValue("value").jsonObject
+        val admitted = listOf("2147483647", "2147483647.0", "2.147483647e9", "-2.147483648E+9", "100e-2", "-0.0")
+        val refused = listOf("2147483648", "2.147483648e9", "-2147483649.0", "2.5", "1e-1", "\"2\"")
+
+        val accepted = (admitted + refused).filter { token ->
+            val element = SchemaJson.parseToJsonElement("""{"value":$token}""")
+            runCatching { SchemaJson.decodeFromJsonElement(serializer, element, JsonNodeCatalog()) }.isSuccess
+        }
+
+        assertEquals(JsonPrimitive("integer"), value["type"])
+        assertEquals(JsonPrimitive(Int.MIN_VALUE.toLong()), value["minimum"])
+        assertEquals(JsonPrimitive(Int.MAX_VALUE.toLong()), value["maximum"])
+        assertEquals(admitted, accepted)
     }
 
     @Test

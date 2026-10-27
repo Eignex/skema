@@ -18,7 +18,8 @@ import kotlinx.serialization.json.*
 /**
  * Decodes [element] as a document root with strict validation, reporting errors at their
  * paths from the root through records, collections and maps. [catalog] must list the compact
- * vocabularies nested in the document.
+ * vocabularies nested in the document. Integer fields accept integral number tokens by value,
+ * as their generated JSON Schema does.
  */
 fun <T> Json.decodeFromJsonElement(
     deserializer: DeserializationStrategy<T>,
@@ -26,8 +27,8 @@ fun <T> Json.decodeFromJsonElement(
     catalog: JsonNodeCatalog,
 ): T {
     val shape = JsonShape(deserializer as? CompactSerializer<*>, catalog)
-    shape.validateJson(deserializer.descriptor, element, "$")
-    return decodeFromJsonElement(JsonPathSerializer(deserializer, element, "$", shape), element)
+    val checked = shape.validateJson(deserializer.descriptor, element, "$")
+    return decodeFromJsonElement(JsonPathSerializer(deserializer, checked, "$", shape), checked)
 }
 
 internal class JsonPathSerializer<T>(
@@ -91,8 +92,8 @@ internal class JsonPathDecoder(
         val name = (type as? JsonPrimitive)?.contentOrNull
         val selected = deserializer.findPolymorphicSerializerOrNull(this, name)
             ?: invalid(typePath, "unknown polymorphic type '${name ?: "<missing>"}'")
-        shape.validateJson(selected.descriptor, body, bodyPath)
-        return json.decodeFromJsonElement(JsonPathSerializer(selected, body, bodyPath, shape), body)
+        val checked = shape.validateJson(selected.descriptor, body, bodyPath)
+        return json.decodeFromJsonElement(JsonPathSerializer(selected, checked, bodyPath, shape), checked)
     }
 
     override fun <T : Any> decodeNullableSerializableValue(deserializer: DeserializationStrategy<T?>): T? =
