@@ -194,6 +194,42 @@ private object ChoiceSerializer : CompactSerializer<Choice>("Choice", Choice::cl
     listOf(jsonNode<TextChoice>("choice"), jsonNode<NumericChoice>("choice"))
 })
 
+@Serializable(with = ComparisonSerializer::class)
+private sealed interface Comparison
+
+@Serializable
+private data class Bound(val value: Int) : Comparison
+
+@Serializable
+private data class Compare(val left: Comparison, val op: CompareOp, val right: Comparison) : Comparison
+
+@Serializable
+private data class Reference(val name: String, val negated: Boolean = false) : Comparison
+
+@Serializable
+private data class Interval(val low: Int, val high: Int, val closed: Boolean = true) : Comparison
+
+@Serializable
+private enum class CompareOp { Less, Greater, Equal }
+
+private object ComparisonSerializer : CompactSerializer<Comparison>("Comparison", Comparison::class, nodes = {
+    listOf(
+        jsonNode<Bound>("bound", JsonNodeShape.Literal, "value"),
+        jsonNode<Compare>("lt", JsonNodeShape.Operands, "left", "right", fixed = mapOf("op" to JsonPrimitive("Less"))),
+        jsonNode<Compare>(
+            "gt",
+            JsonNodeShape.Operands,
+            "left",
+            "right",
+            fixed = mapOf("op" to JsonPrimitive("Greater")),
+        ),
+        jsonNode<Reference>("ref", JsonNodeShape.Operand, "name", fixed = mapOf("negated" to JsonPrimitive(false))),
+        jsonNode<Reference>("notRef", JsonNodeShape.Operand, "name", fixed = mapOf("negated" to JsonPrimitive(true))),
+        jsonNode<Interval>("closed", fixed = mapOf("closed" to JsonPrimitive(true))),
+        jsonNode<Interval>("open", fixed = mapOf("closed" to JsonPrimitive(false))),
+    )
+})
+
 @Serializable(with = EnvelopeSerializer::class)
 private sealed interface Envelope
 
@@ -710,6 +746,70 @@ class CompactSerializerTest {
         assertEquals(serializer.nodes, receivedNodes)
         assertEquals(payload, receivedPayload)
         assertEquals("$.entries.result.choice", receivedPath)
+    }
+
+    @Test
+    fun `fixed fields select operator keys for one implementation`() {
+        val cases = listOf(
+            Compare(Bound(1), CompareOp.Less, Reference("x")) to """{"lt":[1,{"ref":"x"}]}""",
+            Compare(Bound(1), CompareOp.Greater, Bound(2)) to """{"gt":[1,2]}""",
+            Reference("x", negated = true) to """{"notRef":"x"}""",
+            Interval(1, 2) to """{"closed":{"low":1,"high":2}}""",
+            Interval(1, 2, closed = false) to """{"open":{"low":1,"high":2}}""",
+        )
+
+        for ((comparison, expected) in cases) {
+            assertEquals(expected, SchemaJson.encodeToString<Comparison>(comparison))
+            assertEquals(comparison, SchemaJson.decodeFromString<Comparison>(expected))
+        }
+    }
+
+    @Test
+    fun `encoding rejects values without a matching fixed node`() {
+        val error = assertFailsWith<SerializationException> {
+            SchemaJson.encodeToString<Comparison>(Compare(Bound(1), CompareOp.Equal, Bound(2)))
+        }
+
+        assertTrue("no unique Comparison node matches the fixed fields" in error.message.orEmpty(), error.message)
+    }
+
+    @Test
+    fun `fixed fields are rejected inside payloads`() {
+        val error = assertFailsWith<SerializationException> {
+            SchemaJson.decodeFromString<Comparison>("""{"closed":{"low":1,"high":2,"closed":false}}""")
+        }
+
+        assertTrue(error.message.orEmpty().startsWith("$.closed.closed: unknown field"), error.message)
+    }
+
+    @Test
+    fun `fixed declarations reject operand and unknown fields`() {
+        assertFailsWith<IllegalArgumentException> {
+            jsonNode<Reference>("ref", JsonNodeShape.Operand, "name", fixed = mapOf("name" to JsonPrimitive("x")))
+        }
+        val serializer = CompactSerializer("UnknownFixed", Comparison::class) {
+            listOf(jsonNode<Bound>("bound", JsonNodeShape.Literal, "value", fixed = mapOf("missing" to JsonNull)))
+        }
+
+        val error = assertFailsWith<IllegalArgumentException> { SchemaJson.encodeToString(serializer, Bound(1)) }
+
+        assertTrue("fixes unknown fields" in error.message.orEmpty(), error.message)
+    }
+
+    @Test
+    fun `binary formats retain one sealed tag per fixed implementation`() {
+        val comparisons = listOf(
+            Compare(Bound(1), CompareOp.Equal, Reference("x", negated = true)),
+            Interval(1, 2, closed = false),
+        )
+
+        for (comparison in comparisons) {
+            val cbor = Cbor.encodeToByteArray(ComparisonSerializer, comparison)
+            val proto = ProtoBuf.encodeToByteArray(ComparisonSerializer, comparison)
+
+            assertEquals(comparison, Cbor.decodeFromByteArray(ComparisonSerializer, cbor))
+            assertEquals(comparison, ProtoBuf.decodeFromByteArray(ComparisonSerializer, proto))
+        }
     }
 
     @Test

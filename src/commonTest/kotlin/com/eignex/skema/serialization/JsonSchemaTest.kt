@@ -255,6 +255,32 @@ class JsonSchemaTest {
     }
 
     @Test
+    fun `fixed fields are omitted from payload schemas`() {
+        val serializer = CompactSerializer("Fixed", SchemaWire::class) {
+            listOf(
+                jsonNode<SchemaMapped>(
+                    "ref",
+                    JsonNodeShape.Operand,
+                    "name",
+                    fixed = mapOf("negated" to JsonPrimitive(false)),
+                ),
+                jsonNode<SchemaMapped>("notRef", fixed = mapOf("negated" to JsonPrimitive(true))),
+            )
+        }
+
+        val document = serializer.toJsonSchema()
+
+        val branches = resolve(document, document).getValue("anyOf").jsonArray.map {
+            it.jsonObject.getValue("properties").jsonObject
+        }
+        val ref = branches.single { "ref" in it }.getValue("ref").jsonObject
+        val notRef = branches.single { "notRef" in it }.getValue("notRef").jsonObject
+        assertEquals(JsonPrimitive("string"), ref["type"])
+        assertEquals(setOf("name"), notRef.getValue("properties").jsonObject.keys)
+        assertEquals(JsonArray(listOf(JsonPrimitive("name"))), notRef["required"])
+    }
+
+    @Test
     fun `mappings without schema declarations fail explicitly`() {
         val mapping = object : JsonPayloadMapping {
             override fun encode(body: JsonObject): JsonElement = body

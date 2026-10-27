@@ -51,6 +51,11 @@ class JsonNode(
     val operands: List<String> = emptyList(),
     /** Optional domain-specific payload mapping. */
     val mapping: JsonPayloadMapping? = null,
+    /**
+     * Serialized field values implied by [name] and omitted from its payload. Encoding selects
+     * among nodes sharing a [type] by these values, including default ones.
+     */
+    val fixed: Map<String, JsonElement> = emptyMap(),
     serializer: () -> KSerializer<*>,
 ) {
     @Suppress("UNCHECKED_CAST")
@@ -72,19 +77,21 @@ class JsonNode(
             "Literal and single-operand nodes require one field"
         }
         require(operands.distinct().size == operands.size) { "Operand fields must be distinct" }
+        require(operands.none { it in fixed }) { "Fixed fields cannot be operands" }
     }
 
     private fun validateDescriptor(descriptor: SerialDescriptor) {
         require(descriptor.kind == StructureKind.CLASS || descriptor.kind == StructureKind.OBJECT) {
             "JSON node '$name' requires an object body serializer"
         }
-        if (mapping != null || shape == JsonNodeShape.Fields) return
         val fields = (0 until descriptor.elementsCount).map { descriptor.getElementName(it) }
-        require(operands.toSet() == fields.toSet()) {
+        require(fields.containsAll(fixed.keys)) { "JSON node '$name' fixes unknown fields: ${fixed.keys - fields}" }
+        if (mapping != null || shape == JsonNodeShape.Fields) return
+        require(operands.toSet() + fixed.keys == fields.toSet()) {
             "JSON node '$name' operands must cover every body field: $fields"
         }
         if (shape == JsonNodeShape.Literal) {
-            val literal = descriptor.getElementDescriptor(0)
+            val literal = descriptor.getElementDescriptor(descriptor.getElementIndex(operands.single()))
             require(
                 !literal.isNullable && literal.kind in listOf(
                     PrimitiveKind.BYTE,
@@ -98,25 +105,33 @@ class JsonNode(
         }
     }
 
-    internal fun encode(body: JsonObject): JsonElement = mapping?.encode(body) ?: when (shape) {
-        JsonNodeShape.Fields -> body
-        JsonNodeShape.Literal, JsonNodeShape.Operand -> body.getValue(operands.single())
-        JsonNodeShape.Operands -> JsonArray(operands.map { body.getValue(it) })
+    internal fun fieldValues(value: Any, json: Json, fields: Set<String>): Map<String, JsonElement> =
+        FieldCaptureEncoder(json, fields).also { it.encodeSerializableValue(serializer, value) }.values
+
+    internal fun encode(body: JsonObject): JsonElement {
+        val fields = if (fixed.isEmpty()) body else JsonObject(body - fixed.keys)
+        return mapping?.encode(fields) ?: when (shape) {
+            JsonNodeShape.Fields -> fields
+            JsonNodeShape.Literal, JsonNodeShape.Operand -> fields.getValue(operands.single())
+            JsonNodeShape.Operands -> JsonArray(operands.map { fields.getValue(it) })
+        }
     }
 
-    internal fun decode(payload: JsonElement, path: String): JsonObject = mapping?.decode(
-        payload,
-        path,
-    ) ?: when (shape) {
-        JsonNodeShape.Fields -> payload.objectAt(path)
+    internal fun decode(payload: JsonElement, path: String): JsonObject {
+        val body = mapping?.decode(payload, path) ?: when (shape) {
+            JsonNodeShape.Fields -> payload.objectAt(path)
 
-        JsonNodeShape.Literal, JsonNodeShape.Operand -> JsonObject(mapOf(operands.single() to payload))
+            JsonNodeShape.Literal, JsonNodeShape.Operand -> JsonObject(mapOf(operands.single() to payload))
 
-        JsonNodeShape.Operands -> {
-            val array = payload as? JsonArray ?: invalid(path, "expected an operand array")
-            if (array.size != operands.size) invalid(path, "expected ${operands.size} operands")
-            JsonObject(operands.zip(array).toMap())
+            JsonNodeShape.Operands -> {
+                val array = payload as? JsonArray ?: invalid(path, "expected an operand array")
+                if (array.size != operands.size) invalid(path, "expected ${operands.size} operands")
+                JsonObject(operands.zip(array).toMap())
+            }
         }
+        if (fixed.isEmpty()) return body
+        body.keys.firstOrNull { it in fixed }?.let { invalid(fieldPath(it, path), "unknown field '$it'") }
+        return JsonObject(body + fixed)
     }
 
     internal fun fieldPath(field: String, path: String): String = mapping?.fieldPath(field, path) ?: when (shape) {
@@ -134,7 +149,8 @@ inline fun <reified T : Any> jsonNode(
     shape: JsonNodeShape = JsonNodeShape.Fields,
     vararg operands: String,
     mapping: JsonPayloadMapping? = null,
-): JsonNode = JsonNode(T::class, name, shape, operands.toList(), mapping) { serializer<T>() }
+    fixed: Map<String, JsonElement> = emptyMap(),
+): JsonNode = JsonNode(T::class, name, shape, operands.toList(), mapping, fixed) { serializer<T>() }
 
 /** Declares a node with an explicitly supplied body serializer. */
 inline fun <reified T : Any> jsonNode(name: String, noinline serializer: () -> KSerializer<T>): JsonNode =

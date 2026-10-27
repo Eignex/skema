@@ -147,7 +147,7 @@ private class JsonSchemaGenerator(
         require(serializer.nodes.isNotEmpty()) { "Cannot generate an empty vocabulary: ${serializer.serialName}" }
         val schemas = serializer.nodes.map { node ->
             val descriptor = node.serializer.descriptor
-            val body = record(descriptor, serializer)
+            val body = record(descriptor, serializer).withoutFields(node.fixed.keys)
             if (node.mapping != null) return@map node.mapping.jsonSchema(node, body)
             val properties = body.getValue("properties").jsonObject
             when (node.shape) {
@@ -222,6 +222,18 @@ private class JsonSchemaGenerator(
             }
         }
         return alternatives(schemas)
+    }
+}
+
+private fun JsonObject.withoutFields(fields: Set<String>): JsonObject {
+    if (fields.isEmpty()) return this
+    val properties = getValue("properties").jsonObject - fields
+    val required = this["required"]?.jsonArray.orEmpty().filter { it.jsonPrimitive.content !in fields }
+    val rest = this - "properties" - "required"
+    return buildJsonObject {
+        rest.forEach { (name, value) -> put(name, value) }
+        put("properties", JsonObject(properties))
+        if (required.isNotEmpty()) put("required", JsonArray(required))
     }
 }
 
