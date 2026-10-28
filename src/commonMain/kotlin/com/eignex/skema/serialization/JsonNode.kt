@@ -4,6 +4,7 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.StructureKind
+import kotlinx.serialization.descriptors.elementNames
 import kotlinx.serialization.json.*
 import kotlinx.serialization.serializer
 import kotlin.reflect.KClass
@@ -92,7 +93,7 @@ class JsonNode(
         require(descriptor.kind == StructureKind.CLASS || descriptor.kind == StructureKind.OBJECT) {
             "JSON node '$name' requires an object body serializer"
         }
-        val fields = (0 until descriptor.elementsCount).map { descriptor.getElementName(it) }
+        val fields = descriptor.elementNames.toList()
         require(fields.containsAll(fixed.keys)) { "JSON node '$name' fixes unknown fields: ${fixed.keys - fields}" }
         if (mapping != null || shape == JsonNodeShape.Fields) return
         require(operands.toSet() + fixed.keys == fields.toSet()) {

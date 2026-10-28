@@ -8,7 +8,6 @@ package com.eignex.skema.serialization
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SealedClassSerializer
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
@@ -52,11 +51,7 @@ open class CompactSerializer<T : Any>(
     internal fun select(element: JsonElement, path: String): Pair<JsonNode, JsonElement> {
         if (element is JsonPrimitive && !element.isString && element.doubleOrNull != null) {
             val candidates = nodes.filter { it.shape == JsonNodeShape.Literal }
-            val literal = when (candidates.size) {
-                0 -> invalid(path, "expected an operator object")
-                1 -> candidates.single()
-                else -> catalog.resolve(candidates, element, path)
-            }
+            val literal = catalog.select(candidates, element, path, "expected an operator object")
             return literal to element
         }
         val obj = if (element is JsonPrimitive && element.isString) {
@@ -67,11 +62,7 @@ open class CompactSerializer<T : Any>(
         if (obj.size != 1) invalid(path, "expected exactly one operator")
         val (operator, payload) = obj.entries.single()
         val candidates = nodes.filter { it.name == operator && it.shape != JsonNodeShape.Literal }
-        val node = when (candidates.size) {
-            0 -> invalid("$path.$operator", "unknown operator or reference '$operator'")
-            1 -> candidates.single()
-            else -> catalog.resolve(candidates, payload, "$path.$operator")
-        }
+        val node = catalog.select(candidates, payload, "$path.$operator", "unknown operator or reference '$operator'")
         return node to payload
     }
 
@@ -115,18 +106,11 @@ open class CompactSerializer<T : Any>(
         val (node, payload) = select(element, parentPath)
         val path = node.pathAt(parentPath)
         val shape = JsonShape(this, catalog)
-        val body = shape.validateRecord(node.serializer.descriptor, node.decode(payload, path), path) { field ->
-            node.fieldPath(field, path)
-        }
-        try {
-            val serializer = JsonPathSerializer(node.serializer, body, path, shape) { field ->
-                node.fieldPath(field, path)
-            }
-            return decoder.json.decodeFromJsonElement(serializer, body) as T
-        } catch (error: SerializationException) {
-            throw error
-        } catch (error: IllegalArgumentException) {
-            throw SerializationException("$path: ${error.message}", error)
+        val fieldPath: (String) -> String = { node.fieldPath(it, path) }
+        val body = shape.validateRecord(node.serializer.descriptor, node.decode(payload, path), path, fieldPath)
+        return withJsonPath(path) {
+            val serializer = JsonPathSerializer(node.serializer, body, path, shape, fieldPath)
+            decoder.json.decodeFromJsonElement(serializer, body) as T
         }
     }
 }

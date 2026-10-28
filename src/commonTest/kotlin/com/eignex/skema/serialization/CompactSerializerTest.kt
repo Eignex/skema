@@ -299,14 +299,13 @@ class CompactSerializerTest {
         )
 
         for ((payload, path) in cases) {
-            val error = assertFailsWith<SerializationException>(payload) {
+            assertSerializationFails(path, payload) {
                 SchemaJson.decodeFromJsonElement(
                     SchemaDef.serializer(ExpressionSerializer),
                     Json.parseToJsonElement(payload),
                     rootCatalog,
                 )
             }
-            assertTrue(error.message.orEmpty().startsWith(path), error.message)
         }
     }
 
@@ -541,9 +540,7 @@ class CompactSerializerTest {
         )
 
         for ((payload, path) in cases) {
-            val error = assertFailsWith<SerializationException> { lenient.decodeFromString<Expression>(payload) }
-
-            assertTrue(error.message.orEmpty().startsWith("$path:"), error.message)
+            assertSerializationFails("$path:") { lenient.decodeFromString<Expression>(payload) }
         }
     }
 
@@ -552,11 +549,9 @@ class CompactSerializerTest {
         val payloads = listOf("null", "{}", "\"input\"", "[]", "[\"input\"]", "[\"input\",\"input\",\"input\"]")
 
         for (payload in payloads) {
-            val error = assertFailsWith<SerializationException> {
+            assertSerializationFails("$.plus:") {
                 SchemaJson.decodeFromString<Expression>("""{"plus":$payload}""")
             }
-
-            assertTrue(error.message.orEmpty().startsWith("$.plus:"), error.message)
         }
     }
 
@@ -565,9 +560,7 @@ class CompactSerializerTest {
         val payloads = listOf("{}", "[]", "true", "false", "null", """{"input":{},"offset":{}}""")
 
         for (payload in payloads) {
-            val error = assertFailsWith<SerializationException> { SchemaJson.decodeFromString<Expression>(payload) }
-
-            assertTrue(error.message.orEmpty().startsWith("$:"), error.message)
+            assertSerializationFails("$:") { SchemaJson.decodeFromString<Expression>(payload) }
         }
     }
 
@@ -777,11 +770,9 @@ class CompactSerializerTest {
             listOf(jsonNode<Flagged>("flag", mapping = FlaggedMapping))
         }
 
-        val error = assertFailsWith<SerializationException> {
+        assertSerializationFails("$.flag[1]:") {
             SchemaJson.decodeFromString(serializer, """{"flag":["enabled","false"]}""")
         }
-
-        assertTrue(error.message.orEmpty().startsWith("$.flag[1]:"), error.message)
     }
 
     @Test
@@ -865,11 +856,9 @@ class CompactSerializerTest {
 
     @Test
     fun `fixed fields are rejected inside payloads`() {
-        val error = assertFailsWith<SerializationException> {
+        assertSerializationFails("$.closed.closed: unknown field") {
             SchemaJson.decodeFromString<Comparison>("""{"closed":{"low":1,"high":2,"closed":false}}""")
         }
-
-        assertTrue(error.message.orEmpty().startsWith("$.closed.closed: unknown field"), error.message)
     }
 
     @Test
@@ -936,15 +925,15 @@ class CompactSerializerTest {
         assertTrue("$.box.expression.negate.offset.amount" in error.message.orEmpty(), error.message)
     }
 
+    private val binaryExpressions = listOf(
+        Input, NumberLiteral(2.5), Negate(Input), Plus(Input, NumberLiteral(2.5)),
+        DefaultOperand(), DefaultOperands(), NullableOperand(), NullableOperands(),
+        Flagged("enabled", true), InlineWrapped(InlineExpression(Input)), Enveloped(Box(Input)),
+    )
+
     @Test
     fun `CBOR retains the sealed representation`() {
-        val expressions = listOf(
-            Input, NumberLiteral(2.5), Negate(Input), Plus(Input, NumberLiteral(2.5)),
-            DefaultOperand(), DefaultOperands(), NullableOperand(), NullableOperands(),
-            Flagged("enabled", true), InlineWrapped(InlineExpression(Input)), Enveloped(Box(Input)),
-        )
-
-        for (expression in expressions) {
+        for (expression in binaryExpressions) {
             val encoded = Cbor.encodeToByteArray(ExpressionSerializer, expression)
 
             assertEquals(expression, Cbor.decodeFromByteArray(ExpressionSerializer, encoded))
@@ -953,13 +942,7 @@ class CompactSerializerTest {
 
     @Test
     fun `ProtoBuf retains the sealed representation`() {
-        val expressions = listOf(
-            Input, NumberLiteral(2.5), Negate(Input), Plus(Input, NumberLiteral(2.5)),
-            DefaultOperand(), DefaultOperands(), NullableOperand(), NullableOperands(),
-            Flagged("enabled", true), InlineWrapped(InlineExpression(Input)), Enveloped(Box(Input)),
-        )
-
-        for (expression in expressions) {
+        for (expression in binaryExpressions) {
             val encoded = ProtoBuf.encodeToByteArray(ExpressionSerializer, expression)
 
             assertEquals(expression, ProtoBuf.decodeFromByteArray(ExpressionSerializer, encoded))
