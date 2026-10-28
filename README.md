@@ -94,15 +94,3 @@ encodes nodes as operator objects, names, or numeric literals.
 and [strict decoding](src/commonMain/kotlin/com/eignex/skema/serialization/JsonPathDecoder.kt)
 use a `JsonNodeCatalog` for nested compact vocabularies. Compact JSON requires the default
 polymorphic discriminator mode and no JSON naming strategy.
-
-## Validation
-
-Run `./gradlew check lintDocs` for the multiplatform tests, API checks, and documentation
-lint. CI also validates generated JSON Schemas against the encoder and decoder examples
-using an independent draft 2020-12 validator. To run that check locally after `jvmTest`:
-
-```sh
-python3 -m venv /tmp/skema-schema-tests
-/tmp/skema-schema-tests/bin/pip install -r scripts/requirements-schema-tests.txt
-/tmp/skema-schema-tests/bin/python scripts/check-json-schemas.py
-```
