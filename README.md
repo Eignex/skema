@@ -16,8 +16,7 @@
 [![License](https://img.shields.io/github/license/eignex/skema)](https://github.com/eignex/skema/blob/main/LICENSE)
 
 A Kotlin Multiplatform library for declaring typed schemas and sharing them as
-serializable data. Used by [kumulant](https://github.com/Eignex/kumulant),
-[klause](https://github.com/Eignex/klause), and [combo](https://github.com/Eignex/combo).
+serializable data.
 
 ## Installation
 
