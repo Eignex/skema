@@ -16,11 +16,10 @@ import kotlinx.serialization.internal.AbstractPolymorphicSerializer
 import kotlinx.serialization.json.*
 
 /**
- * Decodes [element] as a document root with strict validation, reporting errors at their
- * paths from the root through records, collections and maps. [catalog] must list the compact
- * vocabularies nested in the document. Integer fields accept integral number tokens by value,
- * as their generated JSON Schema does. Integer map keys use decimal digits, optionally prefixed
- * with a minus sign for signed types, and must fit the key type's range.
+ * Strictly decodes [element], reporting errors at paths from the document root.
+ * [catalog] must include all nested compact vocabularies. Integer fields accept integral
+ * tokens by value; integer map keys require decimal digits within the key type's range,
+ * with an optional minus sign for signed types.
  */
 fun <T> Json.decodeFromJsonElement(
     deserializer: DeserializationStrategy<T>,
@@ -60,8 +59,7 @@ internal class JsonPathDecoder(
         if (deserializer is AbstractPolymorphicSerializer<*>) {
             decodePolymorphic(deserializer) as T
         } else if (deserializer.descriptor.kind == SerialKind.CONTEXTUAL) {
-            // ContextualSerializer resolves its module, fallback and generic arguments itself.
-            // Validate the resolved serializer before it reads the value, as with polymorphism.
+            // Let ContextualSerializer resolve the type, then validate before decoding.
             deserializer.deserialize(object : JsonDecoder by this {
                 override fun <V> decodeSerializableValue(deserializer: DeserializationStrategy<V>): V {
                     val checked = if (mapKey) {

@@ -13,7 +13,6 @@ data class SchemaDiff<C>(
     /** Changed configs as (old, new) pairs. */
     val changed: Map<String, Pair<C, C>>,
 ) {
-    /** Whether the schemas are equal. */
     val isEmpty: Boolean get() = added.isEmpty() && removed.isEmpty() && changed.isEmpty()
 }
 

@@ -15,13 +15,10 @@ import kotlinx.serialization.json.*
 import kotlin.reflect.KClass
 
 /**
- * Encodes JSON with operator keys, names for empty objects, and numeric literals.
- * Other formats use the sealed-class representation. Compact JSON is validated
- * even when the caller uses lenient settings.
- * Integer fields accept any integral number token in range, such as `2.0` or `1e2`,
- * and encode it as a plain integer token.
- * JSON naming strategies and non-polymorphic discriminator modes are unsupported and rejected
- * before encoding or decoding a compact value.
+ * Encodes JSON as operator objects, names for empty objects, or numeric literals;
+ * other formats use sealed-class serialization. Decoding is strict regardless of caller settings.
+ * Integer fields accept integral tokens in range (`2.0`, `1e2`) and encode as plain integers.
+ * Requires polymorphic class discriminators and no JSON naming strategy.
  */
 open class CompactSerializer<T : Any>(
     /** Stable descriptor name, shared with the ordinary sealed serializer. */
