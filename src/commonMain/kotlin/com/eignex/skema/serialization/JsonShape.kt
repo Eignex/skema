@@ -61,7 +61,7 @@ internal class JsonShape(private val owner: CompactSerializer<*>?, private val c
 
             SerialKind.ENUM -> {
                 val literal = element as? JsonPrimitive
-                val names = (0 until descriptor.elementsCount).map { descriptor.getElementName(it) }
+                val names = descriptor.elementNames.toList()
                 if (literal?.isString != true || literal.content !in names) invalid(path, "expected one of $names")
                 element
             }
@@ -123,15 +123,14 @@ internal class JsonShape(private val owner: CompactSerializer<*>?, private val c
     }
 }
 
-internal fun SerialDescriptor.acceptsJsonNull(): Boolean = isNullable || when (serialName.removeSuffix("?")) {
-    JsonElement.serializer().descriptor.serialName,
-    JsonPrimitive.serializer().descriptor.serialName,
-    JsonNull.serializer().descriptor.serialName,
-    -> true
-
-    else -> isInline && getElementDescriptor(0).acceptsJsonNull()
-}
-
 internal fun JsonElement.objectAt(path: String): JsonObject = this as? JsonObject ?: invalid(path, "expected an object")
 
 internal fun invalid(path: String, message: String): Nothing = throw SerializationException("$path: $message")
+
+internal inline fun <T> withJsonPath(path: String, block: () -> T): T = try {
+    block()
+} catch (error: SerializationException) {
+    throw error
+} catch (error: IllegalArgumentException) {
+    throw SerializationException("$path: ${error.message}", error)
+}

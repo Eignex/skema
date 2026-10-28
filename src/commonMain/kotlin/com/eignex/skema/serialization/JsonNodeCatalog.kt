@@ -21,7 +21,14 @@ class JsonNodeCatalog(
     internal fun find(descriptor: SerialDescriptor): CompactSerializer<*>? =
         entries[descriptor.serialName.removeSuffix("?")]
 
-    internal fun resolve(candidates: List<JsonNode>, payload: JsonElement, path: String): JsonNode {
+    internal fun select(candidates: List<JsonNode>, payload: JsonElement, path: String, missing: String): JsonNode =
+        when (candidates.size) {
+            0 -> invalid(path, missing)
+            1 -> candidates.single()
+            else -> resolve(candidates, payload, path)
+        }
+
+    private fun resolve(candidates: List<JsonNode>, payload: JsonElement, path: String): JsonNode {
         val node = resolve?.invoke(candidates, payload, path) ?: invalid(path, "ambiguous operator")
         if (node !in candidates) invalid(path, "resolver selected an unsupported node")
         return node

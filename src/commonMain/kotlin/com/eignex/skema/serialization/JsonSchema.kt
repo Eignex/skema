@@ -3,6 +3,7 @@
 package com.eignex.skema.serialization
 
 import com.eignex.skema.SchemaJson
+import com.eignex.skema.typedSchema
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.json.*
@@ -55,18 +56,17 @@ private class JsonSchemaGenerator(
         val name = descriptor.serialName.removeSuffix("?")
         if (name == JsonElement.serializer().descriptor.serialName) return buildJsonObject {}
         if (descriptor.isNullable && !nonNull) {
-            return alternatives(listOf(schema(descriptor, owner, true), typed("null")))
+            return alternatives(listOf(schema(descriptor, owner, true), typedSchema("null")))
         }
         when (name) {
-            JsonNull.serializer().descriptor.serialName -> return typed("null")
+            JsonNull.serializer().descriptor.serialName -> return typedSchema("null")
 
             JsonPrimitive.serializer().descriptor.serialName -> return buildJsonObject {
                 put("type", JsonArray(listOf("string", "number", "boolean", "null").map(::JsonPrimitive)))
             }
         }
         descriptor.integerBounds()?.let { bounds ->
-            return buildJsonObject {
-                put("type", "integer")
+            return typedSchema("integer") {
                 put("minimum", JsonUnquotedLiteral(bounds.minimum))
                 put("maximum", JsonUnquotedLiteral(bounds.maximum))
             }
@@ -81,13 +81,11 @@ private class JsonSchemaGenerator(
         return when (descriptor.kind) {
             StructureKind.CLASS, StructureKind.OBJECT -> reference(descriptor, owner) { record(descriptor, owner) }
 
-            StructureKind.LIST -> buildJsonObject {
-                put("type", "array")
+            StructureKind.LIST -> typedSchema("array") {
                 put("items", schema(descriptor.getElementDescriptor(0), owner))
             }
 
-            StructureKind.MAP -> buildJsonObject {
-                put("type", "object")
+            StructureKind.MAP -> typedSchema("object") {
                 put("additionalProperties", schema(descriptor.getElementDescriptor(1), owner))
                 val keySchema = mapKeySchema(descriptor.getElementDescriptor(0))
                 if (keySchema.isNotEmpty()) put("propertyNames", keySchema)
@@ -97,23 +95,21 @@ private class JsonSchemaGenerator(
 
             SerialKind.ENUM -> enumeration(descriptor)
 
-            PrimitiveKind.BOOLEAN -> typed("boolean")
+            PrimitiveKind.BOOLEAN -> typedSchema("boolean")
 
-            PrimitiveKind.FLOAT, PrimitiveKind.DOUBLE -> buildJsonObject {
+            PrimitiveKind.FLOAT, PrimitiveKind.DOUBLE -> typedSchema("number") {
                 val maximum = descriptor.numberBounds()!!.maximum
-                put("type", "number")
                 put("minimum", JsonUnquotedLiteral("-$maximum"))
                 put("maximum", JsonUnquotedLiteral(maximum))
             }
 
-            PrimitiveKind.CHAR -> buildJsonObject {
-                put("type", "string")
+            PrimitiveKind.CHAR -> typedSchema("string") {
                 put("minLength", 1)
                 put("maxLength", 1)
-                put("pattern", "^[\\u0000-\\uFFFF](?![\\s\\S])")
+                put("pattern", CHAR_PATTERN)
             }
 
-            PrimitiveKind.STRING -> typed("string")
+            PrimitiveKind.STRING -> typedSchema("string")
 
             else -> error("Cannot derive JSON Schema for '${descriptor.serialName}'")
         }
@@ -138,8 +134,7 @@ private class JsonSchemaGenerator(
         return buildJsonObject { put("\$ref", "#/\$defs/$name") }
     }
 
-    private fun record(descriptor: SerialDescriptor, owner: CompactSerializer<*>?): JsonObject = buildJsonObject {
-        put("type", "object")
+    private fun record(descriptor: SerialDescriptor, owner: CompactSerializer<*>?): JsonObject = typedSchema("object") {
         val properties = buildJsonObject {
             for (index in 0 until descriptor.elementsCount) {
                 put(descriptor.getElementName(index), schema(descriptor.getElementDescriptor(index), owner))
@@ -192,7 +187,7 @@ private class JsonSchemaGenerator(
                 put("enum", JsonArray(listOf(JsonPrimitive("true"), JsonPrimitive("false"))))
             }
 
-            PrimitiveKind.CHAR -> buildJsonObject { put("pattern", "^[\\u0000-\\uFFFF](?![\\s\\S])") }
+            PrimitiveKind.CHAR -> buildJsonObject { put("pattern", CHAR_PATTERN) }
 
             else -> error("Map keys require an explicit JSON Schema: ${descriptor.serialName}")
         }
@@ -226,8 +221,7 @@ private class JsonSchemaGenerator(
             json.serializersModule.getPolymorphicDescriptors(descriptor)
         }
         require(subtypes.isNotEmpty()) { "No declared subtypes for '${descriptor.serialName}'" }
-        val discriminator = descriptor.annotations.filterIsInstance<JsonClassDiscriminator>()
-            .firstOrNull()?.discriminator ?: json.configuration.classDiscriminator
+        val discriminator = descriptor.classDiscriminator(json)
         val schemas = subtypes.map { subtype ->
             if (json.configuration.useArrayPolymorphism) {
                 tuple(listOf(constant(subtype.serialName), schema(subtype, owner)))
@@ -304,24 +298,21 @@ private fun admitsEmptyObject(
     return true
 }
 
-private fun typed(type: String): JsonObject = buildJsonObject { put("type", type) }
+private const val CHAR_PATTERN = "^[\\u0000-\\uFFFF](?![\\s\\S])"
 
-private fun enumeration(descriptor: SerialDescriptor): JsonObject = buildJsonObject {
-    put("type", "string")
-    put("enum", JsonArray((0 until descriptor.elementsCount).map { JsonPrimitive(descriptor.getElementName(it)) }))
+private fun enumeration(descriptor: SerialDescriptor): JsonObject = typedSchema("string") {
+    put("enum", JsonArray(descriptor.elementNames.map(::JsonPrimitive)))
 }
 
 private fun constant(value: String): JsonObject = buildJsonObject { put("const", value) }
 
-private fun operator(name: String, payload: JsonObject): JsonObject = buildJsonObject {
-    put("type", "object")
+private fun operator(name: String, payload: JsonObject): JsonObject = typedSchema("object") {
     put("properties", buildJsonObject { put(name, payload) })
     put("required", JsonArray(listOf(JsonPrimitive(name))))
     put("additionalProperties", false)
 }
 
-private fun tuple(items: List<JsonElement>): JsonObject = buildJsonObject {
-    put("type", "array")
+private fun tuple(items: List<JsonElement>): JsonObject = typedSchema("array") {
     if (items.isNotEmpty()) put("prefixItems", JsonArray(items))
     put("minItems", items.size)
     put("maxItems", items.size)

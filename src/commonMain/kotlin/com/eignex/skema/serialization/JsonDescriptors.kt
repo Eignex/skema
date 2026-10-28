@@ -1,0 +1,19 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
+package com.eignex.skema.serialization
+
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.json.*
+
+internal fun SerialDescriptor.classDiscriminator(json: Json): String =
+    annotations.filterIsInstance<JsonClassDiscriminator>().firstOrNull()?.discriminator
+        ?: json.configuration.classDiscriminator
+
+internal fun SerialDescriptor.acceptsJsonNull(): Boolean = isNullable || when (serialName.removeSuffix("?")) {
+    JsonElement.serializer().descriptor.serialName,
+    JsonPrimitive.serializer().descriptor.serialName,
+    JsonNull.serializer().descriptor.serialName,
+    -> true
+
+    else -> isInline && getElementDescriptor(0).acceptsJsonNull()
+}

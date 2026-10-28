@@ -12,6 +12,7 @@ import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -235,52 +236,28 @@ private object JsonAnnotationDefaultSerializer : KSerializer<JsonElement?> {
 
 /** Renders this spec as a JSON Schema fragment. */
 fun JsonSpec.toJsonSchema(): JsonObject = when (this) {
-    JsonSpec.Bool -> buildJsonObject { put("type", "boolean") }
+    JsonSpec.Bool -> typedSchema("boolean")
 
-    JsonSpec.Null -> buildJsonObject { put("type", "null") }
+    JsonSpec.Null -> typedSchema("null")
 
-    is JsonSpec.Int -> buildJsonObject {
-        put("type", "integer")
-        min?.let { put("minimum", it) }
-        max?.let { put("maximum", it) }
-        exclusiveMin?.let { put("exclusiveMinimum", it) }
-        exclusiveMax?.let { put("exclusiveMaximum", it) }
-        multipleOf?.let { put("multipleOf", it) }
-    }
+    is JsonSpec.Int -> numericSchema("integer", min, max, exclusiveMin, exclusiveMax, multipleOf)
 
-    is JsonSpec.Long -> buildJsonObject {
-        put("type", "integer")
-        min?.let { put("minimum", it) }
-        max?.let { put("maximum", it) }
-        exclusiveMin?.let { put("exclusiveMinimum", it) }
-        exclusiveMax?.let { put("exclusiveMaximum", it) }
-        multipleOf?.let { put("multipleOf", it) }
-    }
+    is JsonSpec.Long -> numericSchema("integer", min, max, exclusiveMin, exclusiveMax, multipleOf)
 
-    is JsonSpec.Num -> buildJsonObject {
-        put("type", "number")
-        min?.let { put("minimum", it) }
-        max?.let { put("maximum", it) }
-        exclusiveMin?.let { put("exclusiveMinimum", it) }
-        exclusiveMax?.let { put("exclusiveMaximum", it) }
-        multipleOf?.let { put("multipleOf", it) }
-    }
+    is JsonSpec.Num -> numericSchema("number", min, max, exclusiveMin, exclusiveMax, multipleOf)
 
-    is JsonSpec.Str -> buildJsonObject {
-        put("type", "string")
+    is JsonSpec.Str -> typedSchema("string") {
         minLength?.let { put("minLength", it) }
         maxLength?.let { put("maxLength", it) }
         pattern?.let { put("pattern", it) }
         format?.let { put("format", it) }
     }
 
-    is JsonSpec.Enum -> buildJsonObject {
-        put("type", "string")
+    is JsonSpec.Enum -> typedSchema("string") {
         put("enum", buildJsonArray { values.forEach { add(it) } })
     }
 
-    is JsonSpec.Object -> buildJsonObject {
-        put("type", "object")
+    is JsonSpec.Object -> typedSchema("object") {
         if (properties.isNotEmpty()) {
             putJsonObject("properties") {
                 properties.forEach { (n, s) -> put(n, s.toJsonSchema()) }
@@ -297,8 +274,7 @@ fun JsonSpec.toJsonSchema(): JsonObject = when (this) {
         maxProperties?.let { put("maxProperties", it) }
     }
 
-    is JsonSpec.Array -> buildJsonObject {
-        put("type", "array")
+    is JsonSpec.Array -> typedSchema("array") {
         items?.let { put("items", it.toJsonSchema()) }
         prefixItems?.let { pi ->
             put("prefixItems", buildJsonArray { pi.forEach { add(it.toJsonSchema()) } })
@@ -312,17 +288,11 @@ fun JsonSpec.toJsonSchema(): JsonObject = when (this) {
 
     is JsonSpec.Ref -> buildJsonObject { put("\$ref", pointer) }
 
-    is JsonSpec.OneOf -> buildJsonObject {
-        put("oneOf", buildJsonArray { branches.forEach { add(it.toJsonSchema()) } })
-    }
+    is JsonSpec.OneOf -> compositionSchema("oneOf", branches)
 
-    is JsonSpec.AnyOf -> buildJsonObject {
-        put("anyOf", buildJsonArray { branches.forEach { add(it.toJsonSchema()) } })
-    }
+    is JsonSpec.AnyOf -> compositionSchema("anyOf", branches)
 
-    is JsonSpec.AllOf -> buildJsonObject {
-        put("allOf", buildJsonArray { branches.forEach { add(it.toJsonSchema()) } })
-    }
+    is JsonSpec.AllOf -> compositionSchema("allOf", branches)
 
     is JsonSpec.Not -> buildJsonObject { put("not", spec.toJsonSchema()) }
 
@@ -332,15 +302,7 @@ fun JsonSpec.toJsonSchema(): JsonObject = when (this) {
         otherwise?.let { put("else", it.toJsonSchema()) }
     }
 
-    is JsonSpec.Nullable -> buildJsonObject {
-        put(
-            "anyOf",
-            buildJsonArray {
-                add(inner.toJsonSchema())
-                add(buildJsonObject { put("type", "null") })
-            },
-        )
-    }
+    is JsonSpec.Nullable -> compositionSchema("anyOf", listOf(inner, JsonSpec.Null))
 
     is JsonSpec.Annotated -> buildJsonObject {
         inner.toJsonSchema().forEach { (k, v) -> put(k, v) }
@@ -353,6 +315,30 @@ fun JsonSpec.toJsonSchema(): JsonObject = when (this) {
         writeOnly?.let { put("writeOnly", it) }
         comment?.let { put("\$comment", it) }
     }
+}
+
+internal fun typedSchema(type: String, constraints: JsonObjectBuilder.() -> Unit = {}): JsonObject = buildJsonObject {
+    put("type", type)
+    constraints()
+}
+
+private fun numericSchema(
+    type: String,
+    min: Number?,
+    max: Number?,
+    exclusiveMin: Number?,
+    exclusiveMax: Number?,
+    multipleOf: Number?,
+): JsonObject = typedSchema(type) {
+    min?.let { put("minimum", it) }
+    max?.let { put("maximum", it) }
+    exclusiveMin?.let { put("exclusiveMinimum", it) }
+    exclusiveMax?.let { put("exclusiveMaximum", it) }
+    multipleOf?.let { put("multipleOf", it) }
+}
+
+private fun compositionSchema(keyword: String, branches: List<JsonSpec>): JsonObject = buildJsonObject {
+    put(keyword, buildJsonArray { branches.forEach { add(it.toJsonSchema()) } })
 }
 
 /** Exports all entries as required properties, forbids extras, and places [defs] in $defs. */

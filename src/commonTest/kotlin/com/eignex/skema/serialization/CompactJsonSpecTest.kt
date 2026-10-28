@@ -196,11 +196,9 @@ class CompactJsonSpecTest {
     @Test
     fun `missing unknown and malformed type names retain their paths`() {
         for (spec in listOf("{}", """{"${'$'}type":"missing"}""", """{"${'$'}type":3}""")) {
-            val error = assertFailsWith<SerializationException> {
+            assertSerializationFails("$.holder.spec.${'$'}type:") {
                 SchemaJson.decodeFromString<SchemaNode>("""{"holder":{"spec":$spec}}""")
             }
-
-            assertTrue(error.message.orEmpty().startsWith("$.holder.spec.${'$'}type:"), error.message)
         }
     }
 
@@ -216,11 +214,9 @@ class CompactJsonSpecTest {
             "[null,{}]" to "$.holder.spec[0]",
         )
         for ((spec, path) in cases) {
-            val error = assertFailsWith<SerializationException> {
+            assertSerializationFails("$path:") {
                 json.decodeFromString<SchemaNode>("""{"holder":{"spec":$spec}}""")
             }
-
-            assertTrue(error.message.orEmpty().startsWith("$path:"), error.message)
         }
     }
 
@@ -228,11 +224,9 @@ class CompactJsonSpecTest {
     fun `array polymorphic subtype failures retain body indexes`() {
         val json = Json { useArrayPolymorphism = true }
 
-        val error = assertFailsWith<SerializationException> {
+        assertSerializationFails("$.holder.spec[1].min:") {
             json.decodeFromString<SchemaNode>("""{"holder":{"spec":["Int",{"min":"13"}]}}""")
         }
-
-        assertTrue(error.message.orEmpty().startsWith("$.holder.spec[1].min:"), error.message)
     }
 
     @Test
