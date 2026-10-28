@@ -61,6 +61,8 @@ class JsonNode(
     val fixed: Map<String, JsonElement> = emptyMap(),
     serializer: () -> KSerializer<*>,
 ) {
+    internal val payloadMapping: JsonPayloadMapping by lazy { mapping ?: shape.payloadMapping(operands) }
+
     @Suppress("UNCHECKED_CAST")
     internal val serializer: KSerializer<Any> by lazy {
         (serializer() as KSerializer<Any>).also { validateDescriptor(it.descriptor) }
@@ -114,35 +116,17 @@ class JsonNode(
                 )
             }
         }
-        return mapping?.encode(fields) ?: when (shape) {
-            JsonNodeShape.Fields -> fields
-            JsonNodeShape.Literal, JsonNodeShape.Operand -> fields.getValue(operands.single())
-            JsonNodeShape.Operands -> JsonArray(operands.map { fields.getValue(it) })
-        }
+        return payloadMapping.encode(fields)
     }
 
     internal fun decode(payload: JsonElement, path: String): JsonObject {
-        val body = mapping?.decode(payload, path) ?: when (shape) {
-            JsonNodeShape.Fields -> payload.objectAt(path)
-
-            JsonNodeShape.Literal, JsonNodeShape.Operand -> JsonObject(mapOf(operands.single() to payload))
-
-            JsonNodeShape.Operands -> {
-                val array = payload as? JsonArray ?: invalid(path, "expected an operand array")
-                if (array.size != operands.size) invalid(path, "expected ${operands.size} operands")
-                JsonObject(operands.zip(array).toMap())
-            }
-        }
+        val body = payloadMapping.decode(payload, path)
         if (fixed.isEmpty()) return body
         body.keys.firstOrNull { it in fixed }?.let { invalid(fieldPath(it, path), "unknown field '$it'") }
         return JsonObject(body + fixed)
     }
 
-    internal fun fieldPath(field: String, path: String): String = mapping?.fieldPath(field, path) ?: when (shape) {
-        JsonNodeShape.Literal, JsonNodeShape.Operand -> path
-        JsonNodeShape.Operands -> "$path[${operands.indexOf(field)}]"
-        JsonNodeShape.Fields -> "$path.$field"
-    }
+    internal fun fieldPath(field: String, path: String): String = payloadMapping.fieldPath(field, path)
 
     internal fun pathAt(path: String): String = if (shape == JsonNodeShape.Literal) path else "$path.$name"
 }
