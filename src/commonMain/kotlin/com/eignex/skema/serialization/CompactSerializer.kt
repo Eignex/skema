@@ -1,4 +1,7 @@
-@file:OptIn(kotlinx.serialization.InternalSerializationApi::class)
+@file:OptIn(
+    kotlinx.serialization.InternalSerializationApi::class,
+    kotlinx.serialization.ExperimentalSerializationApi::class,
+)
 @file:Suppress("UNCHECKED_CAST")
 
 package com.eignex.skema.serialization
@@ -18,6 +21,8 @@ import kotlin.reflect.KClass
  * even when the caller uses lenient settings.
  * Integer fields accept any integral number token in range, such as `2.0` or `1e2`,
  * and encode it as a plain integer token.
+ * JSON naming strategies and non-polymorphic discriminator modes are unsupported and rejected
+ * before encoding or decoding a compact value.
  */
 open class CompactSerializer<T : Any>(
     /** Stable descriptor name, shared with the ordinary sealed serializer. */
@@ -46,8 +51,12 @@ open class CompactSerializer<T : Any>(
 
     internal fun select(element: JsonElement, path: String): Pair<JsonNode, JsonElement> {
         if (element is JsonPrimitive && !element.isString && element.doubleOrNull != null) {
-            val literal = nodes.singleOrNull { it.shape == JsonNodeShape.Literal }
-                ?: invalid(path, "expected an operator object")
+            val candidates = nodes.filter { it.shape == JsonNodeShape.Literal }
+            val literal = when (candidates.size) {
+                0 -> invalid(path, "expected an operator object")
+                1 -> candidates.single()
+                else -> catalog.resolve(candidates, element, path)
+            }
             return literal to element
         }
         val obj = if (element is JsonPrimitive && element.isString) {
@@ -71,11 +80,19 @@ open class CompactSerializer<T : Any>(
             encoder.encodeSerializableValue(legacy, value)
             return
         }
+        checkJsonConfiguration(encoder.json)
         val candidates = nodes.filter { it.type == value::class }
         if (candidates.isEmpty()) invalid("$", "unsupported $serialName implementation")
         val node = candidates.singleOrNull()?.takeIf { it.fixed.isEmpty() } ?: run {
             val fields = candidates.flatMapTo(mutableSetOf()) { it.fixed.keys }
             val values = candidates.first().fieldValues(value, encoder.json, fields)
+            val missing = fields - values.keys
+            if (missing.isNotEmpty()) {
+                invalid(
+                    "$",
+                    "fixed fields $missing were omitted by their body serializer; do not use @EncodeDefault(NEVER)",
+                )
+            }
             candidates.singleOrNull { candidate -> candidate.fixed.all { (field, fixed) -> values[field] == fixed } }
                 ?: invalid("$", "no unique $serialName node matches the fixed fields")
         }
@@ -92,6 +109,7 @@ open class CompactSerializer<T : Any>(
 
     override fun deserialize(decoder: Decoder): T {
         if (decoder !is JsonDecoder) return decoder.decodeSerializableValue(legacy)
+        checkJsonConfiguration(decoder.json)
         val element = decoder.decodeJsonElement()
         val parentPath = (decoder as? JsonPathDecoder)?.path ?: "$"
         val (node, payload) = select(element, parentPath)
@@ -110,5 +128,12 @@ open class CompactSerializer<T : Any>(
         } catch (error: IllegalArgumentException) {
             throw SerializationException("$path: ${error.message}", error)
         }
+    }
+}
+
+private fun checkJsonConfiguration(json: Json) {
+    if (json.configuration.namingStrategy != null) invalid("$", "Compact JSON does not support JSON naming strategies")
+    if (json.configuration.classDiscriminatorMode != ClassDiscriminatorMode.POLYMORPHIC) {
+        invalid("$", "Compact JSON requires polymorphic class discriminators")
     }
 }

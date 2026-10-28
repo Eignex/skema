@@ -15,7 +15,8 @@ fun CompactSerializer<*>.toJsonSchema(json: Json = SchemaJson): JsonObject =
  * JSON Schema draft 2020-12 for a serialized document. [catalog] must list its compact
  * vocabularies, including those nested in records, collections and schema definitions.
  * Custom payload mappings supply [JsonPayloadMapping.payloadSchema]. Constructor invariants
- * and domain validation rules are not inferred.
+ * and domain validation rules are not inferred. Floating-point, nullable and structured map
+ * keys require an explicit schema; string, enum, boolean, character and integer keys are supported.
  */
 fun KSerializer<*>.toJsonSchema(catalog: JsonNodeCatalog, json: Json = SchemaJson): JsonObject =
     JsonSchemaGenerator(json, catalog, this as? CompactSerializer<*>).generate(descriptor)
@@ -26,9 +27,11 @@ private class JsonSchemaGenerator(
     private val root: CompactSerializer<*>?,
 ) {
     private data class Definition(val descriptor: SerialDescriptor, val owner: CompactSerializer<*>?)
+    private data class Shorthand(val schema: JsonObject, val name: String, val payload: JsonObject)
 
     private val names = mutableMapOf<Definition, String>()
     private val definitions = linkedMapOf<String, JsonObject>()
+    private val shorthands = mutableListOf<Shorthand>()
 
     fun generate(descriptor: SerialDescriptor): JsonObject {
         require(json.configuration.classDiscriminatorMode == ClassDiscriminatorMode.POLYMORPHIC) {
@@ -36,11 +39,12 @@ private class JsonSchemaGenerator(
         }
         require(json.configuration.namingStrategy == null) { "JSON naming strategies require explicit schemas" }
         val schema = schema(descriptor, root)
-        return buildJsonObject {
+        val document = buildJsonObject {
             put("\$schema", "https://json-schema.org/draft/2020-12/schema")
             schema.forEach { (name, value) -> put(name, value) }
             if (definitions.isNotEmpty()) put("\$defs", JsonObject(definitions))
         }
+        return includeShorthands(document, document).jsonObject
     }
 
     private fun schema(
@@ -52,6 +56,20 @@ private class JsonSchemaGenerator(
         if (name == JsonElement.serializer().descriptor.serialName) return buildJsonObject {}
         if (descriptor.isNullable && !nonNull) {
             return alternatives(listOf(schema(descriptor, owner, true), typed("null")))
+        }
+        when (name) {
+            JsonNull.serializer().descriptor.serialName -> return typed("null")
+
+            JsonPrimitive.serializer().descriptor.serialName -> return buildJsonObject {
+                put("type", JsonArray(listOf("string", "number", "boolean", "null").map(::JsonPrimitive)))
+            }
+        }
+        descriptor.integerBounds()?.let { bounds ->
+            return buildJsonObject {
+                put("type", "integer")
+                put("minimum", JsonUnquotedLiteral(bounds.minimum))
+                put("maximum", JsonUnquotedLiteral(bounds.maximum))
+            }
         }
         if (descriptor.isInline) return schema(descriptor.getElementDescriptor(0), owner)
         val compact = if (name == owner?.serialName) {
@@ -69,13 +87,10 @@ private class JsonSchemaGenerator(
             }
 
             StructureKind.MAP -> buildJsonObject {
-                val key = descriptor.getElementDescriptor(0)
-                require(key.kind is PrimitiveKind || key.kind == SerialKind.ENUM) {
-                    "Structured map keys require an explicit JSON Schema: ${descriptor.serialName}"
-                }
                 put("type", "object")
                 put("additionalProperties", schema(descriptor.getElementDescriptor(1), owner))
-                if (key.kind == SerialKind.ENUM) put("propertyNames", enumeration(key))
+                val keySchema = mapKeySchema(descriptor.getElementDescriptor(0))
+                if (keySchema.isNotEmpty()) put("propertyNames", keySchema)
             }
 
             is PolymorphicKind -> reference(descriptor, owner) { polymorphic(descriptor, owner) }
@@ -84,20 +99,18 @@ private class JsonSchemaGenerator(
 
             PrimitiveKind.BOOLEAN -> typed("boolean")
 
-            PrimitiveKind.BYTE -> integer(Byte.MIN_VALUE.toLong(), Byte.MAX_VALUE.toLong())
-
-            PrimitiveKind.SHORT -> integer(Short.MIN_VALUE.toLong(), Short.MAX_VALUE.toLong())
-
-            PrimitiveKind.INT -> integer(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong())
-
-            PrimitiveKind.LONG -> integer(Long.MIN_VALUE, Long.MAX_VALUE)
-
-            PrimitiveKind.FLOAT, PrimitiveKind.DOUBLE -> typed("number")
+            PrimitiveKind.FLOAT, PrimitiveKind.DOUBLE -> buildJsonObject {
+                val maximum = descriptor.numberBounds()!!.maximum
+                put("type", "number")
+                put("minimum", JsonUnquotedLiteral("-$maximum"))
+                put("maximum", JsonUnquotedLiteral(maximum))
+            }
 
             PrimitiveKind.CHAR -> buildJsonObject {
                 put("type", "string")
                 put("minLength", 1)
                 put("maxLength", 1)
+                put("pattern", "^[\\u0000-\\uFFFF](?![\\s\\S])")
             }
 
             PrimitiveKind.STRING -> typed("string")
@@ -155,35 +168,51 @@ private class JsonSchemaGenerator(
                 JsonNodeShape.Operands -> tuple(node.operands.map { properties.getValue(it) })
             }
             if (node.shape == JsonNodeShape.Literal) return@map payload
-            val shorthand = if (node.mapping == null && node.shape == JsonNodeShape.Operand) {
-                val index = descriptor.getElementIndex(node.operands.single())
-                acceptsEmptyObject(descriptor.getElementDescriptor(index), serializer)
-            } else {
-                admitsEmptyObject(payload)
-            }
             val named = operator(node.name, payload)
-            if (shorthand) alternatives(listOf(named, constant(node.name))) else named
+            shorthands += Shorthand(named, node.name, payload)
+            named
         }
         return alternatives(schemas)
     }
 
-    private fun acceptsEmptyObject(descriptor: SerialDescriptor, owner: CompactSerializer<*>): Boolean {
-        val name = descriptor.serialName.removeSuffix("?")
-        if (name == JsonElement.serializer().descriptor.serialName) return true
-        val compact = name == owner.serialName || owner.catalog.find(descriptor) != null ||
-            catalog.find(descriptor) != null
-        if (compact) return false
-        if (descriptor.isInline) return acceptsEmptyObject(descriptor.getElementDescriptor(0), owner)
+    private fun mapKeySchema(descriptor: SerialDescriptor): JsonObject {
+        require(
+            !descriptor.acceptsJsonNull(),
+        ) { "Nullable map keys require an explicit JSON Schema: ${descriptor.serialName}" }
+        descriptor.integerBounds()?.let { bounds ->
+            return buildJsonObject { put("pattern", bounds.keyPattern()) }
+        }
+        if (descriptor.isInline) return mapKeySchema(descriptor.getElementDescriptor(0))
         return when (descriptor.kind) {
-            StructureKind.MAP -> true
+            PrimitiveKind.STRING -> buildJsonObject {}
 
-            StructureKind.CLASS, StructureKind.OBJECT -> (0 until descriptor.elementsCount).all { index ->
-                val child = descriptor.getElementDescriptor(index)
-                descriptor.isElementOptional(index) || (!json.configuration.explicitNulls && child.isNullable)
+            SerialKind.ENUM -> enumeration(descriptor)
+
+            PrimitiveKind.BOOLEAN -> buildJsonObject {
+                put("enum", JsonArray(listOf(JsonPrimitive("true"), JsonPrimitive("false"))))
             }
 
-            else -> false
+            PrimitiveKind.CHAR -> buildJsonObject { put("pattern", "^[\\u0000-\\uFFFF](?![\\s\\S])") }
+
+            else -> error("Map keys require an explicit JSON Schema: ${descriptor.serialName}")
         }
+    }
+
+    // Defer this pass until recursive definitions are complete; their placeholders admit everything.
+    private fun includeShorthands(element: JsonElement, document: JsonObject): JsonElement = when (element) {
+        is JsonArray -> JsonArray(element.map { includeShorthands(it, document) })
+
+        is JsonObject -> {
+            val rewritten = JsonObject(element.mapValues { (_, value) -> includeShorthands(value, document) })
+            val shorthand = shorthands.firstOrNull { it.schema === element }
+            if (shorthand != null && admitsEmptyObject(shorthand.payload, document)) {
+                alternatives(listOf(rewritten, constant(shorthand.name)))
+            } else {
+                rewritten
+            }
+        }
+
+        else -> element
     }
 
     private fun polymorphic(descriptor: SerialDescriptor, owner: CompactSerializer<*>?): JsonObject {
@@ -229,26 +258,53 @@ private fun JsonObject.withoutFields(fields: Set<String>): JsonObject {
     }
 }
 
-// Only inline object schemas qualify, so a payload behind a reference or extra keywords keeps the operator form.
-private fun admitsEmptyObject(schema: JsonObject): Boolean {
-    if (schema.keys == setOf("anyOf")) {
-        return schema.getValue("anyOf").jsonArray.any { it is JsonObject && admitsEmptyObject(it) }
+// Evaluate only the empty object. Property, item and primitive constraints are vacuous here.
+private fun admitsEmptyObject(
+    schema: JsonElement,
+    document: JsonObject,
+    references: Set<String> = emptySet(),
+): Boolean {
+    if (schema is JsonPrimitive) return schema.boolean
+    val body = schema.jsonObject
+    val type = body["type"]
+    if (type != null && type != JsonPrimitive("object") &&
+        (type !is JsonArray || JsonPrimitive("object") !in type)
+    ) {
+        return false
     }
-    val type = schema["type"] ?: return schema.isEmpty()
-    return type == JsonPrimitive("object") && objectKeywords.containsAll(schema.keys) &&
-        schema["required"]?.jsonArray.isNullOrEmpty()
+    if (!body["required"]?.jsonArray.isNullOrEmpty()) return false
+    if ((body["minProperties"]?.jsonPrimitive?.int ?: 0) > 0) return false
+    val empty = JsonObject(emptyMap())
+    if ("const" in body && body["const"] != empty) return false
+    if ("enum" in body && empty !in body.getValue("enum").jsonArray) return false
+    require("\$dynamicRef" !in body) { "Dynamic payload references require an explicit inline schema" }
+    body["\$ref"]?.jsonPrimitive?.content?.let { reference ->
+        require(reference.startsWith("#/") && reference !in references) {
+            "Cannot resolve payload schema reference: $reference"
+        }
+        val target = reference.removePrefix("#/").split('/').fold(document as JsonElement) { value, part ->
+            val key = part.replace("~1", "/").replace("~0", "~")
+            when (value) {
+                is JsonObject -> value.getValue(key)
+                is JsonArray -> value[key.toInt()]
+                else -> error("Cannot resolve payload schema reference: $reference")
+            }
+        }
+        if (!admitsEmptyObject(target, document, references + reference)) return false
+    }
+    fun accepts(value: JsonElement): Boolean = admitsEmptyObject(value, document, references)
+    if (body["allOf"]?.jsonArray?.all(::accepts) == false) return false
+    if (body["anyOf"]?.jsonArray?.any(::accepts) == false) return false
+    if (body["oneOf"]?.jsonArray?.count(::accepts)?.let { it != 1 } == true) return false
+    if (body["not"]?.let(::accepts) == true) return false
+    body["if"]?.let { condition ->
+        val branch = body[if (accepts(condition)) "then" else "else"]
+        if (branch != null && !accepts(branch)) return false
+    }
+    return true
 }
-
-private val objectKeywords =
-    setOf("type", "properties", "required", "additionalProperties", "propertyNames", "title", "description")
 
 private fun typed(type: String): JsonObject = buildJsonObject { put("type", type) }
-
-private fun integer(minimum: Long, maximum: Long): JsonObject = buildJsonObject {
-    put("type", "integer")
-    put("minimum", minimum)
-    put("maximum", maximum)
-}
 
 private fun enumeration(descriptor: SerialDescriptor): JsonObject = buildJsonObject {
     put("type", "string")

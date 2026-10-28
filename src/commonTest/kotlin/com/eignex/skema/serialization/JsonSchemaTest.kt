@@ -360,7 +360,9 @@ class JsonSchemaTest {
         val document = MappedWireSerializer.toJsonSchema()
         val branches = resolve(document, document).getValue("anyOf").jsonArray
 
-        assertTrue(buildJsonObject { put("type", "number") } in branches)
+        val number = branches.map { it.jsonObject }.single { it["type"] == JsonPrimitive("number") }
+        assertEquals(JsonUnquotedLiteral("-1.7976931348623157e308"), number["minimum"])
+        assertEquals(JsonUnquotedLiteral("1.7976931348623157e308"), number["maximum"])
         assertEquals("2.5", SchemaJson.encodeToString(MappedWireSerializer, SchemaDecimal(2.5)))
         assertEquals(SchemaDecimal(2.5), SchemaJson.decodeFromString(MappedWireSerializer, "2.5"))
     }

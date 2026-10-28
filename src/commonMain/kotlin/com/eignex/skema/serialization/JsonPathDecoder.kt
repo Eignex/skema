@@ -19,7 +19,8 @@ import kotlinx.serialization.json.*
  * Decodes [element] as a document root with strict validation, reporting errors at their
  * paths from the root through records, collections and maps. [catalog] must list the compact
  * vocabularies nested in the document. Integer fields accept integral number tokens by value,
- * as their generated JSON Schema does.
+ * as their generated JSON Schema does. Integer map keys use decimal digits, optionally prefixed
+ * with a minus sign for signed types, and must fit the key type's range.
  */
 fun <T> Json.decodeFromJsonElement(
     deserializer: DeserializationStrategy<T>,
