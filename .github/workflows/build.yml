@@ -19,6 +19,7 @@ on:
 permissions:
   contents: read
 
+# A newer push supersedes any in-flight run for the same ref.
 concurrency:
   group: build-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -43,6 +44,7 @@ jobs:
           distribution: temurin
           java-version: 25
 
+      # Build jobs persist dependency and encrypted configuration caches.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
