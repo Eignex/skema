@@ -37,7 +37,9 @@ interface JsonPayloadMapping {
     /**
      * JSON Schema for the compact payload, given the ordinary [body] schema without fixed fields.
      * Skema adds the operator key, and the bare-name shorthand when the payload schema is an
-     * object without required fields. Literal payloads stand alone.
+     * object without required fields. Local references and schema composition are supported;
+     * references needed to decide the shorthand must resolve within the generated document.
+     * Literal payloads stand alone.
      */
     fun payloadSchema(body: JsonObject): JsonObject =
         error("Custom payload mappings require an explicit payload schema")
@@ -58,6 +60,8 @@ class JsonNode(
     /**
      * Serialized field values implied by [name] and omitted from its payload. Encoding selects
      * among nodes sharing a [type] by these values, including default ones.
+     * Fixed fields and operands must be emitted by the body serializer; suppressing their
+     * defaults with `@EncodeDefault(NEVER)` is unsupported.
      */
     val fixed: Map<String, JsonElement> = emptyMap(),
     serializer: () -> KSerializer<*>,
@@ -97,14 +101,12 @@ class JsonNode(
         if (shape == JsonNodeShape.Literal) {
             val literal = descriptor.getElementDescriptor(descriptor.getElementIndex(operands.single()))
             require(
-                !literal.isNullable && literal.kind in listOf(
-                    PrimitiveKind.BYTE,
-                    PrimitiveKind.SHORT,
-                    PrimitiveKind.INT,
-                    PrimitiveKind.LONG,
-                    PrimitiveKind.FLOAT,
-                    PrimitiveKind.DOUBLE,
-                ),
+                !literal.acceptsJsonNull() && (
+                    literal.integerBounds() != null || literal.kind in listOf(
+                        PrimitiveKind.FLOAT,
+                        PrimitiveKind.DOUBLE,
+                    )
+                    ),
             ) { "JSON literal node '$name' requires a non-null numeric field" }
         }
     }
@@ -114,6 +116,14 @@ class JsonNode(
 
     internal fun encode(body: JsonObject): JsonElement {
         val fields = if (fixed.isEmpty()) body else JsonObject(body - fixed.keys)
+        if (mapping == null && shape != JsonNodeShape.Fields) {
+            operands.firstOrNull { it !in fields }?.let { field ->
+                invalid(
+                    "$.$name",
+                    "operand '$field' was omitted by its body serializer; do not use @EncodeDefault(NEVER)",
+                )
+            }
+        }
         return mapping?.encode(fields) ?: when (shape) {
             JsonNodeShape.Fields -> fields
             JsonNodeShape.Literal, JsonNodeShape.Operand -> fields.getValue(operands.single())

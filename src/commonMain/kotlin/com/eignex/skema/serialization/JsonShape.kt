@@ -11,13 +11,28 @@ import kotlinx.serialization.json.*
  * integral number tokens in integer fields rewritten to plain integer tokens.
  */
 internal class JsonShape(private val owner: CompactSerializer<*>?, private val catalog: JsonNodeCatalog) {
+    private val integerKeyPatterns = mutableMapOf<SerialDescriptor, Regex>()
+
     fun validateJson(descriptor: SerialDescriptor, element: JsonElement, path: String): JsonElement {
         val name = descriptor.serialName.removeSuffix("?")
-        if (name == JsonElement.serializer().descriptor.serialName) return element
+        when (name) {
+            JsonElement.serializer().descriptor.serialName -> return element
+
+            JsonPrimitive.serializer().descriptor.serialName -> {
+                if (element !is JsonPrimitive) invalid(path, "expected a JSON primitive")
+                return element
+            }
+
+            JsonNull.serializer().descriptor.serialName -> {
+                if (element != JsonNull) invalid(path, "expected null")
+                return element
+            }
+        }
         if (element == JsonNull) {
-            if (!descriptor.isNullable) invalid(path, "null is not allowed")
+            if (!descriptor.acceptsJsonNull()) invalid(path, "null is not allowed")
             return element
         }
+        descriptor.integerBounds()?.let { return it.validate(element, path) }
         if (descriptor.isInline) return validateJson(descriptor.getElementDescriptor(0), element, path)
         val serializer = if (name == owner?.serialName) owner else catalog.find(descriptor)
         // Compact children validate their own bodies when decoded, retaining the caller's path.
@@ -37,6 +52,8 @@ internal class JsonShape(private val owner: CompactSerializer<*>?, private val c
 
             StructureKind.MAP -> {
                 val map = element.objectAt(path)
+                val key = descriptor.getElementDescriptor(0)
+                map.keys.forEach { validateMapKey(key, it, "$path.$it") }
                 val child = descriptor.getElementDescriptor(1)
                 val values = map.mapValues { (key, value) -> validateJson(child, value, "$path.$key") }
                 if (values.all { (key, value) -> value === map.getValue(key) }) map else JsonObject(values)
@@ -50,6 +67,21 @@ internal class JsonShape(private val owner: CompactSerializer<*>?, private val c
             }
 
             else -> validatePrimitive(descriptor, element, path)
+        }
+    }
+
+    private fun validateMapKey(descriptor: SerialDescriptor, key: String, path: String) {
+        descriptor.integerBounds()?.let { bounds ->
+            val pattern = integerKeyPatterns.getOrPut(descriptor) { Regex(bounds.keyPattern()) }
+            if (!pattern.matches(key)) invalid(path, "expected an integer map key")
+            return
+        }
+        if (descriptor.isInline) {
+            validateMapKey(descriptor.getElementDescriptor(0), key, path)
+        } else if (descriptor.kind == PrimitiveKind.BOOLEAN) {
+            if (key != "true" && key != "false") invalid(path, "expected a boolean map key")
+        } else if (descriptor.kind != PrimitiveKind.FLOAT && descriptor.kind != PrimitiveKind.DOUBLE) {
+            validateJson(descriptor, JsonPrimitive(key), path)
         }
     }
 
@@ -79,20 +111,9 @@ internal class JsonShape(private val owner: CompactSerializer<*>?, private val c
 
     private fun validatePrimitive(descriptor: SerialDescriptor, element: JsonElement, path: String): JsonElement {
         val primitive = element as? JsonPrimitive ?: invalid(path, "expected ${descriptor.kind}")
-        val range = when (descriptor.kind) {
-            PrimitiveKind.BYTE -> BYTE_RANGE
-            PrimitiveKind.SHORT -> SHORT_RANGE
-            PrimitiveKind.INT -> INT_RANGE
-            PrimitiveKind.LONG -> LONG_RANGE
-            else -> null
-        }
-        if (range != null) {
-            val integer = primitive.integerOrNull(range) ?: invalid(path, "expected ${descriptor.kind}")
-            return if (primitive.content == integer.toString()) primitive else JsonPrimitive(integer)
-        }
         val valid = when (descriptor.kind) {
             PrimitiveKind.BOOLEAN -> !primitive.isString && primitive.booleanOrNull != null
-            PrimitiveKind.FLOAT, PrimitiveKind.DOUBLE -> !primitive.isString && primitive.doubleOrNull != null
+            PrimitiveKind.FLOAT, PrimitiveKind.DOUBLE -> descriptor.numberBounds()!!.contains(primitive)
             PrimitiveKind.CHAR -> primitive.isString && primitive.content.length == 1
             PrimitiveKind.STRING -> primitive.isString
             else -> true
@@ -102,34 +123,13 @@ internal class JsonShape(private val owner: CompactSerializer<*>?, private val c
     }
 }
 
-private val BYTE_RANGE = Byte.MIN_VALUE.toLong()..Byte.MAX_VALUE.toLong()
-private val SHORT_RANGE = Short.MIN_VALUE.toLong()..Short.MAX_VALUE.toLong()
-private val INT_RANGE = Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()
-private val LONG_RANGE = Long.MIN_VALUE..Long.MAX_VALUE
-private val NUMBER = Regex("""(-?)(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?""")
-private const val LONG_DIGITS = 19
+internal fun SerialDescriptor.acceptsJsonNull(): Boolean = isNullable || when (serialName.removeSuffix("?")) {
+    JsonElement.serializer().descriptor.serialName,
+    JsonPrimitive.serializer().descriptor.serialName,
+    JsonNull.serializer().descriptor.serialName,
+    -> true
 
-/**
- * The integer this number token denotes, or null when it is quoted, not integral or outside
- * [range]. JSON Schema's `integer` is defined by value, so decimal and exponent notation such
- * as `2.0` and `1e2` count; the digits are shifted exactly, since binary64 would round integers
- * past 2^53.
- */
-private fun JsonPrimitive.integerOrNull(range: LongRange): Long? {
-    if (isString) return null
-    val groups = NUMBER.matchEntire(content)?.groupValues ?: return null
-    val (sign, whole, fraction) = groups.subList(1, 4)
-    val exponent = groups[4]
-    val digits = (whole + fraction).trimStart('0')
-    if (digits.isEmpty()) return 0L.takeIf { it in range }
-    // Unparseable exponents exceed Int; any such shift leaves the range or the integers.
-    val shift = (exponent.ifEmpty { "0" }.toIntOrNull() ?: return null).toLong() - fraction.length
-    val trailingZeros = digits.length - digits.trimEnd('0').length
-    if (shift < -trailingZeros) return null
-    val mantissa = if (shift < 0) digits.dropLast((-shift).toInt()) else digits
-    val zeros = maxOf(shift, 0L)
-    if (mantissa.length + zeros > LONG_DIGITS) return null
-    return (sign + mantissa + "0".repeat(zeros.toInt())).toLongOrNull()?.takeIf { it in range }
+    else -> isInline && getElementDescriptor(0).acceptsJsonNull()
 }
 
 internal fun JsonElement.objectAt(path: String): JsonObject = this as? JsonObject ?: invalid(path, "expected an object")

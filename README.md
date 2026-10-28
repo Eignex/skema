@@ -91,3 +91,29 @@ their old names, so rewrite them with the owning library's traversal.
 [Compact JSON](src/commonMain/kotlin/com/eignex/skema/serialization/CompactSerializer.kt)
 and [serializer-derived JSON Schema](src/commonMain/kotlin/com/eignex/skema/serialization/JsonSchema.kt)
 are available in source but not yet in the 0.3.0 release.
+
+Serializer-derived schemas support string, enum, boolean, character, and signed or
+unsigned integer map keys. Floating-point, nullable, and structured map keys require
+an explicit schema. Strict decoding checks integer map keys as decimal digits with
+an optional minus sign for signed types, within the key type's range.
+
+Compact JSON requires the default polymorphic discriminator mode and no JSON naming
+strategy. Operands and fixed fields must be emitted by their body serializer; avoid
+`@EncodeDefault(NEVER)` on these fields. Unsupported configurations and omitted fields
+raise explicit serialization errors. Ambiguous numeric literals use the catalog resolver.
+
+Generated floating-point schemas and strict decoding use finite bounds that include
+the decimal encodings of `Float.MAX_VALUE` and `Double.MAX_VALUE`. Character schemas
+accept one UTF-16 code unit, matching Kotlin `Char`.
+
+## Validation
+
+Run `./gradlew check lintDocs` for the multiplatform tests, API checks, and documentation
+lint. CI also validates generated JSON Schemas against the encoder and decoder examples
+using an independent draft 2020-12 validator. To run that check locally after `jvmTest`:
+
+```sh
+python3 -m venv /tmp/skema-schema-tests
+/tmp/skema-schema-tests/bin/pip install -r scripts/requirements-schema-tests.txt
+/tmp/skema-schema-tests/bin/python scripts/check-json-schemas.py
+```
