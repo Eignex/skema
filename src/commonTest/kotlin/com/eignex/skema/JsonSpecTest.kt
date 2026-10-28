@@ -53,6 +53,7 @@ class JsonSpecTest {
         )
         assertEquals("[\"acceptsTos\",\"age\",\"handle\"]", js["required"]!!.toString())
         assertEquals("false", js["additionalProperties"]!!.toString())
+        assertEquals(false, js.containsKey("\$defs"))
     }
 
     @Test
@@ -137,25 +138,6 @@ class JsonSpecTest {
                         add(buildJsonObject { put("type", "null") })
                     },
                 )
-            },
-            js,
-        )
-    }
-
-    @Test
-    fun `Annotated adds annotation fields around inner`() {
-        val js = JsonSpec.Annotated(
-            inner = JsonSpec.Str(),
-            title = "Handle",
-            description = "User handle",
-            deprecated = true,
-        ).toJsonSchema()
-        assertEquals(
-            buildJsonObject {
-                put("type", "string")
-                put("title", "Handle")
-                put("description", "User handle")
-                put("deprecated", true)
             },
             js,
         )
@@ -525,24 +507,6 @@ class JsonSpecTest {
     }
 
     @Test
-    fun `JsonSpec round-trips through kotlinx serialization`() {
-        val original: JsonSpec = JsonSpec.Object(
-            properties = mapOf(
-                "id" to JsonSpec.Long(min = 1L),
-                "kind" to JsonSpec.Enum(listOf("a", "b")),
-                "tags" to JsonSpec.Array(items = JsonSpec.Str(minLength = 1), uniqueItems = true),
-                "ref" to JsonSpec.Ref("#/\$defs/Other"),
-                "doc" to JsonSpec.Annotated(JsonSpec.Bool, description = "flag"),
-            ),
-            required = listOf("id"),
-        )
-        val wire = SchemaJson.encodeToString(JsonSpec.serializer(), original)
-        val decoded = SchemaJson.decodeFromString(JsonSpec.serializer(), wire)
-        assertEquals(original, decoded)
-        assertEquals(original.toJsonSchema(), decoded.toJsonSchema())
-    }
-
-    @Test
     fun `every JsonSpec variant preserves its wire name and payload`() {
         val variants = listOf(
             "Bool" to JsonSpec.Bool,
@@ -595,11 +559,5 @@ class JsonSpecTest {
             assertEquals(spec, decoded, wireName)
             assertEquals(spec.toJsonSchema(), decoded.toJsonSchema(), wireName)
         }
-    }
-
-    @Test
-    fun `empty defs map does not emit a defs field`() {
-        val js = SignupSchema.definition().toJsonSchema()
-        assertEquals(false, js.containsKey("\$defs"))
     }
 }

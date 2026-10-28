@@ -37,7 +37,6 @@ private value class EdgeNullableInt(val value: Int?)
 
 @Serializable private data class EdgeNamed(val camelCase: String) : EdgeValue
 
-/** Regressions for inline values, omitted fields, configuration guards and literal resolution. */
 class CompactEdgeCasesTest {
     @Test fun fixedUnsignedFieldsSelectTheirNode() {
         val serializer = CompactSerializer("EdgeFixed", EdgeValue::class) {
@@ -83,16 +82,6 @@ class CompactEdgeCasesTest {
         val value = EdgeInline(EdgeNullableInline(null))
         val encoded = json.encodeToString(serializer, value)
         assertEquals(value, json.decodeFromString(serializer, encoded))
-    }
-
-    @Test fun nullableNumericInlineValuesRoundTrip() {
-        val serializer = CompactSerializer("EdgeNumericInline", EdgeValue::class) {
-            listOf(jsonNode<EdgeNumericInline>("numericInline"))
-        }
-        val json = Json { explicitNulls = true }
-        val value = EdgeNumericInline(EdgeNullableInt(null))
-        val encoded = json.encodeToJsonElement(serializer, value)
-        assertEquals(value, json.decodeFromJsonElement(serializer, encoded))
     }
 
     @Test fun literalAmbiguityUsesCatalogResolver() {

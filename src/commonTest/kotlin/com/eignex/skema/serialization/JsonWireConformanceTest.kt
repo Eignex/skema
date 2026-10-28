@@ -78,7 +78,6 @@ private object WireValueSerializer : CompactSerializer<WireValue>("WireValue", W
     )
 })
 
-/** Decoder and encoder examples also consumed by the independent JSON Schema check in CI. */
 class JsonWireConformanceTest {
     @Test
     fun `nullable numeric inline values preserve null in decoding and generated schemas`() {
