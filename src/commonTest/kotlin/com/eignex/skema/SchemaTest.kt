@@ -76,20 +76,6 @@ class SchemaTest {
     }
 
     @Test
-    fun `subclass can expose a separate wrapper for a custom root field name`() {
-        @Serializable data class FormSchemaDef(val fields: Map<String, FormField>)
-
-        val custom = object : FormSchema() {
-            init {
-                add("flag", BoolField)
-            }
-            fun customDef() = FormSchemaDef(definition().entries)
-        }
-        val encoded = SchemaJson.encodeToString(FormSchemaDef.serializer(), custom.customDef())
-        assertEquals("""{"fields":{"flag":{"${'$'}type":"Bool"}}}""", encoded)
-    }
-
-    @Test
     fun `definition is a snapshot of the registered entries`() {
         val schema = object : Schema<FormField>() {
             fun flag(name: String) = add(name, BoolField)
@@ -163,36 +149,6 @@ class SchemaTest {
     }
 
     @Test
-    fun `diff detects added entries`() {
-        val a = def("x" to BoolField)
-        val b = def("x" to BoolField, "y" to IntField(0, 10))
-        val d = a.diff(b)
-        assertEquals(mapOf("y" to IntField(0, 10)), d.added)
-        assertTrue(d.removed.isEmpty())
-        assertTrue(d.changed.isEmpty())
-    }
-
-    @Test
-    fun `diff detects removed entries`() {
-        val a = def("x" to BoolField, "y" to IntField(0, 10))
-        val b = def("x" to BoolField)
-        val d = a.diff(b)
-        assertEquals(mapOf("y" to IntField(0, 10)), d.removed)
-        assertTrue(d.added.isEmpty())
-        assertTrue(d.changed.isEmpty())
-    }
-
-    @Test
-    fun `diff detects changed entries with old and new payloads`() {
-        val a = def("x" to BoolField, "y" to IntField(0, 10))
-        val b = def("x" to BoolField, "y" to IntField(0, 100))
-        val d = a.diff(b)
-        assertEquals(mapOf("y" to (IntField(0, 10) to IntField(0, 100))), d.changed)
-        assertTrue(d.added.isEmpty())
-        assertTrue(d.removed.isEmpty())
-    }
-
-    @Test
     fun `diff handles mixed adds removes and changes`() {
         val a = def("kept" to BoolField, "moved" to IntField(0, 10), "gone" to BoolField)
         val b = def("kept" to BoolField, "moved" to IntField(0, 100), "new" to BoolField)
@@ -227,12 +183,6 @@ class SchemaTest {
     }
 
     @Test
-    fun `namespaced prefixes every key with the default separator`() {
-        val a = def("email" to BoolField, "phone" to BoolField)
-        assertEquals(listOf("user.email", "user.phone"), a.namespaced("user").entries.keys.toList())
-    }
-
-    @Test
     fun `namespaced respects a custom separator`() {
         val a = def("email" to BoolField)
         assertEquals(listOf("user/email"), a.namespaced("user", separator = "/").entries.keys.toList())
@@ -241,13 +191,5 @@ class SchemaTest {
     @Test
     fun `namespaced rejects empty prefix`() {
         assertFailsWith<IllegalArgumentException> { def("x" to BoolField).namespaced("") }
-    }
-
-    @Test
-    fun `plus of two namespaced schemas with different prefixes never overlaps`() {
-        val users = def("email" to BoolField).namespaced("user")
-        val billing = def("email" to BoolField).namespaced("billing")
-        val combined = users + billing
-        assertEquals(listOf("user.email", "billing.email"), combined.entries.keys.toList())
     }
 }

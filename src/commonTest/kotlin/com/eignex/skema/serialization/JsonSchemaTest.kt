@@ -306,10 +306,13 @@ class JsonSchemaTest {
     @Test
     fun `mapped schemas describe the mapped wire payload`() {
         val document = SchemaWireSerializer.toJsonSchema()
-        val mapped = resolve(document, document).getValue("anyOf").jsonArray.map { it.jsonObject }
+        val branch = resolve(document, document).getValue("anyOf").jsonArray.map { it.jsonObject }
             .single { it["properties"]?.jsonObject?.containsKey("mapped") == true }
-            .getValue("properties").jsonObject.getValue("mapped").jsonObject
+        val mapped = branch.getValue("properties").jsonObject.getValue("mapped").jsonObject
 
+        assertEquals(JsonPrimitive("object"), branch["type"])
+        assertEquals(JsonArray(listOf(JsonPrimitive("mapped"))), branch["required"])
+        assertEquals(JsonPrimitive(false), branch["additionalProperties"])
         assertEquals(JsonPrimitive("array"), mapped["type"])
         assertEquals(JsonPrimitive("boolean"), mapped["prefixItems"]!!.jsonArray[1].jsonObject["type"])
         assertEquals(
@@ -342,17 +345,6 @@ class JsonSchemaTest {
         assertEquals(JsonPrimitive("string"), ref["type"])
         assertEquals(setOf("name"), notRef.getValue("properties").jsonObject.keys)
         assertEquals(JsonArray(listOf(JsonPrimitive("name"))), notRef["required"])
-    }
-
-    @Test
-    fun `mapped payload schemas receive the operator wrapper`() {
-        val document = SchemaWireSerializer.toJsonSchema()
-        val mapped = resolve(document, document).getValue("anyOf").jsonArray.map { it.jsonObject }
-            .single { it["properties"]?.jsonObject?.containsKey("mapped") == true }
-
-        assertEquals(JsonPrimitive("object"), mapped["type"])
-        assertEquals(JsonArray(listOf(JsonPrimitive("mapped"))), mapped["required"])
-        assertEquals(JsonPrimitive(false), mapped["additionalProperties"])
     }
 
     @Test

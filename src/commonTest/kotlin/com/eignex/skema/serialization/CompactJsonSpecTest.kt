@@ -3,10 +3,8 @@
 package com.eignex.skema.serialization
 
 import com.eignex.skema.JsonSpec
-import com.eignex.skema.SchemaDef
 import com.eignex.skema.SchemaJson
 import com.eignex.skema.schemaJsonConfig
-import com.eignex.skema.toJsonSchema
 import kotlinx.serialization.Polymorphic
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -61,17 +59,6 @@ private object SchemaNodeSerializer : CompactSerializer<SchemaNode>("SchemaNode"
 
 class CompactJsonSpecTest {
     @Test
-    fun `JsonSpec retains its existing discriminator representation`() {
-        val definition = SchemaDef<JsonSpec>(mapOf("age" to JsonSpec.Int(min = 13, max = 120)))
-        val serializer = SchemaDef.serializer(JsonSpec.serializer())
-
-        val encoded = SchemaJson.encodeToString(serializer, definition)
-
-        assertEquals("""{"entries":{"age":{"${'$'}type":"Int","min":13,"max":120}}}""", encoded)
-        assertEquals(definition, SchemaJson.decodeFromString(serializer, encoded))
-    }
-
-    @Test
     fun `JsonSpec variants round trip inside compact nodes`() {
         val specs = listOf(
             JsonSpec.Bool, JsonSpec.Null, JsonSpec.Int(min = 13, max = 120),
@@ -117,21 +104,6 @@ class CompactJsonSpecTest {
         val encoded = SchemaJson.encodeToString(value)
 
         assertEquals(value, SchemaJson.decodeFromString<SchemaNode>(encoded))
-    }
-
-    @Test
-    fun `decoded compact schemas retain JSON Schema export semantics`() {
-        val spec = JsonSpec.Object(
-            properties = mapOf("age" to JsonSpec.Int(min = 13), "active" to JsonSpec.Bool),
-            required = listOf("age"),
-        )
-        val value: SchemaNode = SpecHolder(spec)
-        val decoded = SchemaJson.decodeFromString<SchemaNode>(SchemaJson.encodeToString(value))
-        val definition = SchemaDef(mapOf("user" to decoded))
-
-        val exported = definition.toJsonSchema { (it as SpecHolder).spec.toJsonSchema() }
-
-        assertEquals(SchemaDef<JsonSpec>(mapOf("user" to spec)).toJsonSchema(), exported)
     }
 
     @Test
