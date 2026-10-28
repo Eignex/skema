@@ -18,6 +18,8 @@ internal class JsonShape(
     private val integerKeyPatterns = mutableMapOf<SerialDescriptor, Regex>()
 
     fun validateJson(descriptor: SerialDescriptor, element: JsonElement, path: String): JsonElement {
+        // Contextual serializers resolve their actual descriptor during decoding, including nullability.
+        if (descriptor.kind == SerialKind.CONTEXTUAL) return element
         val name = descriptor.serialName.removeSuffix("?")
         when (name) {
             JsonElement.serializer().descriptor.serialName -> return element
@@ -74,7 +76,7 @@ internal class JsonShape(
         }
     }
 
-    private fun validateMapKey(descriptor: SerialDescriptor, key: String, path: String) {
+    fun validateMapKey(descriptor: SerialDescriptor, key: String, path: String) {
         descriptor.integerBounds()?.let { bounds ->
             val pattern = integerKeyPatterns.getOrPut(descriptor) { Regex(bounds.keyPattern()) }
             if (!pattern.matches(key)) invalid(path, "expected an integer map key")

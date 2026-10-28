@@ -3,6 +3,7 @@
 package com.eignex.skema.serialization
 
 import com.eignex.skema.SchemaJson
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -10,6 +11,8 @@ import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.*
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.contextual
 import kotlin.jvm.JvmInline
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -53,6 +56,9 @@ private data class WrappedNullableCount(val value: NullableCount) : WireValue
 private data class WireSettings(val flag: Boolean = false)
 
 @Serializable
+private data class WireContextual(@Contextual val settings: WireSettings?)
+
+@Serializable
 private data class MappedSettings(val options: WireSettings) : WireValue
 
 @Serializable
@@ -79,6 +85,33 @@ private object WireValueSerializer : CompactSerializer<WireValue>("WireValue", W
 })
 
 class JsonWireConformanceTest {
+    @Test
+    fun `contextual schemas agree with strict decoding and encoded values`() {
+        val json = Json {
+            serializersModule = SerializersModule { contextual(WireSettings.serializer()) }
+        }
+        val serializer = WireContextual.serializer()
+        val valid = listOf(null, WireSettings(), WireSettings(true)).map { settings ->
+            val value = WireContextual(settings)
+            val encoded = json.encodeToJsonElement(serializer, value)
+            assertEquals(value, json.decodeFromJsonElement(serializer, encoded, JsonNodeCatalog()))
+            encoded
+        }
+        val invalid = listOf(
+            """{"settings":{"flag":"true"}}""",
+            """{"settings":{"extra":1}}""",
+            """{"settings":[]}""",
+            """{}""",
+        ).map { wire ->
+            val element = json.parseToJsonElement(wire)
+            assertFailsWith<SerializationException> {
+                json.decodeFromJsonElement(serializer, element, JsonNodeCatalog())
+            }
+            element
+        }
+        schemaExamples("contextual settings", serializer.toJsonSchema(JsonNodeCatalog(), json), valid, invalid)
+    }
+
     @Test
     fun `nullable numeric inline values preserve null in decoding and generated schemas`() {
         for (explicit in listOf(false, true)) {

@@ -8,6 +8,7 @@ package com.eignex.skema.serialization
 
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.SerialKind
 import kotlinx.serialization.descriptors.StructureKind
 import kotlinx.serialization.encoding.CompositeDecoder
 import kotlinx.serialization.encoding.Decoder
@@ -37,11 +38,12 @@ internal class JsonPathSerializer<T>(
     private val path: String,
     private val shape: JsonShape,
     private val fieldPath: (String) -> String = { "$path.$it" },
+    private val mapKey: Boolean = false,
 ) : DeserializationStrategy<T> {
     override val descriptor: SerialDescriptor get() = body.descriptor
 
     override fun deserialize(decoder: Decoder): T = withJsonPath(path) {
-        JsonPathDecoder(decoder as JsonDecoder, element, path, shape, fieldPath).decodeSerializableValue(body)
+        JsonPathDecoder(decoder as JsonDecoder, element, path, shape, fieldPath, mapKey).decodeSerializableValue(body)
     }
 }
 
@@ -51,11 +53,29 @@ internal class JsonPathDecoder(
     val path: String,
     private val shape: JsonShape,
     private val fieldPath: (String) -> String = { "$path.$it" },
+    private val mapKey: Boolean = false,
 ) : JsonDecoder by decoder {
     @Suppress("UNCHECKED_CAST")
     override fun <T> decodeSerializableValue(deserializer: DeserializationStrategy<T>): T =
         if (deserializer is AbstractPolymorphicSerializer<*>) {
             decodePolymorphic(deserializer) as T
+        } else if (deserializer.descriptor.kind == SerialKind.CONTEXTUAL) {
+            // ContextualSerializer resolves its module, fallback and generic arguments itself.
+            // Validate the resolved serializer before it reads the value, as with polymorphism.
+            deserializer.deserialize(object : JsonDecoder by this {
+                override fun <V> decodeSerializableValue(deserializer: DeserializationStrategy<V>): V {
+                    val checked = if (mapKey) {
+                        shape.validateMapKey(deserializer.descriptor, element.jsonPrimitive.content, path)
+                        element
+                    } else {
+                        shape.validateJson(deserializer.descriptor, element, path)
+                    }
+                    return json.decodeFromJsonElement(
+                        JsonPathSerializer(deserializer, checked, path, shape, fieldPath, mapKey),
+                        checked,
+                    )
+                }
+            })
         } else {
             deserializer.deserialize(this)
         }
@@ -100,7 +120,7 @@ internal class JsonPathDecoder(
 
     override fun decodeInline(descriptor: SerialDescriptor): Decoder {
         val inline = decoder.decodeInline(descriptor)
-        return if (inline is JsonDecoder) JsonPathDecoder(inline, element, path, shape, fieldPath) else inline
+        return if (inline is JsonDecoder) JsonPathDecoder(inline, element, path, shape, fieldPath, mapKey) else inline
     }
 
     override fun beginStructure(descriptor: SerialDescriptor): CompositeDecoder {
@@ -120,7 +140,13 @@ internal class JsonPathDecoder(
                     (element.jsonObject[name] ?: JsonNull) to fieldPath(name)
                 }
             }
-            return JsonPathSerializer(deserializer, value, childPath, shape)
+            return JsonPathSerializer(
+                deserializer,
+                value,
+                childPath,
+                shape,
+                mapKey = descriptor.kind == StructureKind.MAP && index % 2 == 0,
+            )
         }
         return object : CompositeDecoder by composite {
             override fun <T> decodeSerializableElement(
