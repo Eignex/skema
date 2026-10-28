@@ -15,7 +15,7 @@ operator fun <C> SchemaDef<C>.plus(other: SchemaDef<C>): SchemaDef<C> {
 }
 
 /**
- * Prefix every entry name (default separator `.`).
+ * Prefixes entry names with [prefix] and [separator].
  *
  * Only entry keys change; configurations are kept as-is. Skema does not know
  * which configuration values name other entries, so an embedded reference to

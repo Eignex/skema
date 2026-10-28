@@ -149,8 +149,6 @@ class SchemaTest {
         assertTrue(ex.message!!.contains("b"))
     }
 
-    // diff
-
     private fun def(vararg pairs: Pair<String, FormField>) = SchemaDef(mapOf(*pairs))
 
     @Test
@@ -204,8 +202,6 @@ class SchemaTest {
         assertEquals(mapOf("moved" to (IntField(0, 10) to IntField(0, 100))), d.changed)
         assertTrue(!d.isEmpty)
     }
-
-    // composition
 
     @Test
     fun `plus combines disjoint schemas preserving order`() {

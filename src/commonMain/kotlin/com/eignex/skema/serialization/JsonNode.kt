@@ -19,13 +19,13 @@ enum class JsonNodeShape {
     /** Value of a single named field. */
     Operand,
 
-    /** Array of named fields in their declared operand order. */
+    /** Array of field values in the declared operand order. */
     Operands,
 }
 
 /** Reversible mapping between ordinary serialized fields and a node's JSON payload. */
 interface JsonPayloadMapping {
-    /** Maps serialized fields to a compact payload. */
+    /** Converts body fields to the wire payload. */
     fun encode(body: JsonObject): JsonElement
 
     /** Restores serialized fields, reporting malformed input at [path]. */
@@ -43,17 +43,17 @@ interface JsonPayloadMapping {
         error("Custom payload mappings require an explicit payload schema")
 }
 
-/** One concrete implementation in a compact polymorphic vocabulary. */
+/** A concrete type and its compact JSON representation. */
 class JsonNode(
-    /** Concrete Kotlin implementation used when encoding. */
+    /** Kotlin type matched during encoding. */
     val type: KClass<*>,
     /** Operator key or shorthand name on the wire. */
     val name: String,
-    /** Built-in payload shape. */
+    /** Wire payload layout. */
     val shape: JsonNodeShape = JsonNodeShape.Fields,
     /** Serialized field names for single or positional operands. */
     val operands: List<String> = emptyList(),
-    /** Optional domain-specific payload mapping. */
+    /** Custom mapping; takes precedence over [shape]. */
     val mapping: JsonPayloadMapping? = null,
     /**
      * Serialized field values implied by [name] and omitted from its payload. Encoding selects

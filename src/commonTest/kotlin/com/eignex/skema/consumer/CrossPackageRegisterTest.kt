@@ -24,11 +24,7 @@ private object DemoFormSchema : FormSchema() {
     val accept by bool()
 }
 
-/**
- * Must live outside `com.eignex.skema`: that's what makes [Schema.register]'s
- * inlined body land in a synthetic class outside Schema's package, exercising
- * the JVM-protected access path that same-package tests would mask.
- */
+// Keep this outside Schema's package: same-package tests hide JVM protected-access failures.
 class CrossPackageRegisterTest {
 
     @Test

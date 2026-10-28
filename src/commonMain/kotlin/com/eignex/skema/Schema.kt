@@ -3,11 +3,7 @@ package com.eignex.skema
 import kotlin.properties.PropertyDelegateProvider
 import kotlin.properties.ReadOnlyProperty
 
-/**
- * Builder base for any schema'd Eignex library. Subclasses expose
- * library-specific declarators that call [add] (assignment form) or
- * [register] (delegate form). [definition] returns the wire form.
- */
+/** Schema builder with explicit names via [add] or property names via [register]. */
 @Suppress("AbstractClassCanBeConcreteClass")
 abstract class Schema<C : Any> {
     private val mutableEntries = LinkedHashMap<String, C>()
@@ -19,13 +15,7 @@ abstract class Schema<C : Any> {
         addPublished(name, config)
     }
 
-    /**
-     * Backing implementation for [add] and [register]. `register` is `inline`,
-     * so its body executes from a synthetic class in the consumer's package —
-     * JVM `protected` blocks that path with `IllegalAccessError`.
-     * `@PublishedApi internal` keeps the symbol off the public source API
-     * while letting inlined call sites reach it.
-     */
+    // Inlined register calls from other packages cannot access a protected JVM method.
     @PublishedApi
     internal fun addPublished(name: String, config: C) {
         require(name !in mutableEntries) {
@@ -34,11 +24,7 @@ abstract class Schema<C : Any> {
         mutableEntries[name] = config
     }
 
-    /**
-     * Property-delegate variant of [add]; captures the property name and
-     * returns a typed [Key]. `val flag by bool()` instead of
-     * `val flag = bool("flag")`.
-     */
+    /** Registers under the delegated property's name and returns its key. */
     protected inline fun <Key> register(config: C, crossinline keyOf: (name: String) -> Key) =
         PropertyDelegateProvider<Schema<C>, ReadOnlyProperty<Schema<C>, Key>> { _, property ->
             val name = property.name
@@ -50,11 +36,7 @@ abstract class Schema<C : Any> {
     /** Override to enforce cross-entry invariants; called by [definition]. */
     protected open fun validate(entries: Map<String, C>) {}
 
-    /**
-     * Validates the entries and returns a shallow snapshot in serializable form.
-     * For a different root field name or adjunct fields, expose a separate method
-     * returning your own serializable wrapper.
-     */
+    /** Calls [validate] and returns a shallow snapshot of the entries. */
     open fun definition(): SchemaDef<C> {
         validate(mutableEntries)
         return SchemaDef(LinkedHashMap(mutableEntries))

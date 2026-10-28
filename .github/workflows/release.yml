@@ -17,7 +17,7 @@ on:
 permissions:
   contents: read
 
-# New snapshots supersede older runs; a tag publication must never be cancelled.
+# Do not cancel tag publications.
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: ${{ github.ref_type != 'tag' }}
@@ -86,7 +86,7 @@ jobs:
             echo "revision=$(git rev-parse HEAD)"
           } >> "$GITHUB_OUTPUT"
 
-  # Tags and manual runs use the same gate as pull requests. Automatic snapshots have already passed it.
+  # Snapshots already passed the build workflow.
   validate:
     if: github.event_name != 'workflow_run'
     needs: prepare

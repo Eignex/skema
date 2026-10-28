@@ -4,9 +4,8 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.json.JsonElement
 
 /**
- * Explicit vocabulary shared by related compact serializers. Suppliers are lazy to support
- * recursive type graphs without global registration. The resolver selects among nodes with
- * the same wire name and must return one of the supplied candidates.
+ * Shared compact serializers, loaded lazily to allow recursive types.
+ * The resolver handles duplicate wire names and must return one of its candidates.
  */
 class JsonNodeCatalog(
     private val resolve: ((candidates: List<JsonNode>, payload: JsonElement, path: String) -> JsonNode)? = null,
