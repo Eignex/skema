@@ -35,11 +35,9 @@ interface JsonPayloadMapping {
     fun fieldPath(field: String, path: String): String = "$path.$field"
 
     /**
-     * JSON Schema for the compact payload, given the ordinary [body] schema without fixed fields.
-     * Skema adds the operator key, and the bare-name shorthand when the payload schema is an
-     * object without required fields. Local references and schema composition are supported;
-     * references needed to decide the shorthand must resolve within the generated document.
-     * Literal payloads stand alone.
+     * Schema for the payload, given the [body] schema without fixed fields. Skema adds the
+     * operator key and a bare-name shorthand for objects without required fields; literals
+     * stand alone. References used to determine shorthand must resolve within the document.
      */
     fun payloadSchema(body: JsonObject): JsonObject =
         error("Custom payload mappings require an explicit payload schema")
@@ -47,21 +45,18 @@ interface JsonPayloadMapping {
 
 /** A concrete type and its compact JSON representation. */
 class JsonNode(
-    /** Kotlin type matched during encoding. */
     val type: KClass<*>,
     /** Operator key or shorthand name on the wire. */
     val name: String,
-    /** Wire payload layout. */
     val shape: JsonNodeShape = JsonNodeShape.Fields,
     /** Serialized field names for single or positional operands. */
     val operands: List<String> = emptyList(),
     /** Custom mapping; takes precedence over [shape]. */
     val mapping: JsonPayloadMapping? = null,
     /**
-     * Serialized field values implied by [name] and omitted from its payload. Encoding selects
-     * among nodes sharing a [type] by these values, including default ones.
-     * Fixed fields and operands must be emitted by the body serializer; suppressing their
-     * defaults with `@EncodeDefault(NEVER)` is unsupported.
+     * Fields implied by [name] and omitted from the payload; selects among nodes sharing [type].
+     * The body serializer must emit fixed fields and operands, including defaults;
+     * `@EncodeDefault(NEVER)` is unsupported for these fields.
      */
     val fixed: Map<String, JsonElement> = emptyMap(),
     serializer: () -> KSerializer<*>,

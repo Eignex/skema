@@ -40,13 +40,9 @@ sealed interface JsonSpec {
     @Serializable
     @SerialName("Int")
     data class Int(
-        /** Inclusive lower bound. */
         val min: kotlin.Int? = null,
-        /** Inclusive upper bound. */
         val max: kotlin.Int? = null,
-        /** Exclusive lower bound. */
         val exclusiveMin: kotlin.Int? = null,
-        /** Exclusive upper bound. */
         val exclusiveMax: kotlin.Int? = null,
         /** Required divisor; must be positive when supplied. */
         val multipleOf: kotlin.Int? = null,
@@ -56,13 +52,9 @@ sealed interface JsonSpec {
     @Serializable
     @SerialName("Long")
     data class Long(
-        /** Inclusive lower bound. */
         val min: kotlin.Long? = null,
-        /** Inclusive upper bound. */
         val max: kotlin.Long? = null,
-        /** Exclusive lower bound. */
         val exclusiveMin: kotlin.Long? = null,
-        /** Exclusive upper bound. */
         val exclusiveMax: kotlin.Long? = null,
         /** Required divisor; must be positive when supplied. */
         val multipleOf: kotlin.Long? = null,
@@ -72,13 +64,9 @@ sealed interface JsonSpec {
     @Serializable
     @SerialName("Number")
     data class Num(
-        /** Inclusive lower bound. */
         val min: Double? = null,
-        /** Inclusive upper bound. */
         val max: Double? = null,
-        /** Exclusive lower bound. */
         val exclusiveMin: Double? = null,
-        /** Exclusive upper bound. */
         val exclusiveMax: Double? = null,
         /** Required divisor; must be positive when supplied. */
         val multipleOf: Double? = null,
@@ -88,11 +76,8 @@ sealed interface JsonSpec {
     @Serializable
     @SerialName("String")
     data class Str(
-        /** Minimum string length. */
         val minLength: kotlin.Int? = null,
-        /** Maximum string length. */
         val maxLength: kotlin.Int? = null,
-        /** Regular expression constraint. */
         val pattern: String? = null,
         /** JSON Schema format annotation, such as email or date-time. */
         val format: String? = null,
@@ -101,30 +86,22 @@ sealed interface JsonSpec {
     /** String restricted to [values]. */
     @Serializable
     @SerialName("Enum")
-    data class Enum(
-        /** Allowed string values. */
-        val values: List<String>,
-    ) : JsonSpec
+    data class Enum(val values: List<String>) : JsonSpec
 
     /** [additionalPropertiesSpec] takes precedence over [additionalPropertiesAllowed]. */
     @Serializable
     @SerialName("Object")
     data class Object(
-        /** Schemas for named properties. */
         val properties: Map<String, JsonSpec> = emptyMap(),
-        /** Names of properties that must be present. */
         val required: List<String> = emptyList(),
         /** Unlisted properties are allowed when null or true. */
         val additionalPropertiesAllowed: Boolean? = null,
-        /** Schema for unlisted properties. */
         val additionalPropertiesSpec: JsonSpec? = null,
-        /** Minimum property count. */
         val minProperties: kotlin.Int? = null,
-        /** Maximum property count. */
         val maxProperties: kotlin.Int? = null,
     ) : JsonSpec
 
-    /** Array with optional positional and shared element constraints. */
+    /** Positional prefix schemas followed by shared [items] constraints. */
     @Serializable
     @SerialName("Array")
     data class Array(
@@ -132,29 +109,20 @@ sealed interface JsonSpec {
         val items: JsonSpec? = null,
         /** Positional schemas for leading elements; must be non-empty when supplied. */
         val prefixItems: List<JsonSpec>? = null,
-        /** Minimum array length. */
         val minItems: kotlin.Int? = null,
-        /** Maximum array length. */
         val maxItems: kotlin.Int? = null,
-        /** Requires distinct elements when true. */
         val uniqueItems: Boolean? = null,
     ) : JsonSpec
 
     /** Matches a single JSON value. */
     @Serializable
     @SerialName("Const")
-    data class Const(
-        /** The required JSON value. */
-        val value: JsonElement,
-    ) : JsonSpec
+    data class Const(val value: JsonElement) : JsonSpec
 
     /** JSON Schema reference, such as #/$defs/User or an absolute URI. */
     @Serializable
     @SerialName("Ref")
-    data class Ref(
-        /** JSON pointer or URI to the referenced schema. */
-        val pointer: String,
-    ) : JsonSpec
+    data class Ref(val pointer: String) : JsonSpec
 
     /** Exactly one branch must match. */
     @Serializable
@@ -201,22 +169,16 @@ sealed interface JsonSpec {
     @SerialName("Annotated")
     data class Annotated(
         val inner: JsonSpec,
-        /** Display label. */
         val title: String? = null,
-        /** Description for readers. */
         val description: String? = null,
         /** Kotlin null omits the annotation; [JsonNull] preserves an explicit JSON null. */
         @OptIn(ExperimentalSerializationApi::class)
         @EncodeDefault(EncodeDefault.Mode.NEVER)
         @Serializable(with = JsonAnnotationDefaultSerializer::class)
         val default: JsonElement? = null,
-        /** Example values. */
         val examples: List<JsonElement>? = null,
-        /** Deprecation annotation. */
         val deprecated: Boolean? = null,
-        /** Marks server-managed values. */
         val readOnly: Boolean? = null,
-        /** Marks values intended only for input. */
         val writeOnly: Boolean? = null,
         /** Comment for schema readers, ignored by validators. */
         val comment: String? = null,

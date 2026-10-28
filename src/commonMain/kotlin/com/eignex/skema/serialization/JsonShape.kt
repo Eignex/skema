@@ -6,10 +6,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.json.*
 
-/**
- * Strict shape validation ahead of decoding. Validation returns the element to decode, with
- * integral number tokens in integer fields rewritten to plain integer tokens.
- */
+/** Validates JSON before decoding, normalizing integral tokens in integer fields. */
 internal class JsonShape(
     private val owner: CompactSerializer<*>?,
     private val catalog: JsonNodeCatalog,

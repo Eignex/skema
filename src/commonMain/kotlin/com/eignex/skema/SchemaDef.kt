@@ -8,10 +8,8 @@ data class SchemaDef<C>(
     /** Entries keyed by name, in declaration order. */
     val entries: Map<String, C>,
 ) {
-    /** Entry count. */
     val size: Int get() = entries.size
 
-    /** Entry names. */
     val names: Set<String> get() = entries.keys
 
     /** Throws if [name] is absent. */

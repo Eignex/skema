@@ -65,8 +65,8 @@ object SignupFormSchema : FormSchema() {
 }
 ```
 
-Use add for an explicit name or register to take the property name. Duplicate names
-throw. Calling definition() validates the entries and takes a snapshot for serialization:
+Use `add` for an explicit name or `register` to take the property name. Duplicate names
+throw. Calling `definition()` validates the entries and takes a snapshot for serialization:
 
 ```kotlin
 val serializer = SchemaDef.serializer(FormField.serializer())
@@ -80,31 +80,20 @@ The JSON contains the entry names and configuration:
 {"entries":{"acceptsTos":{"$type":"Bool"},"age":{"$type":"Int","min":13,"max":120}}}
 ```
 
-Consumers share the configuration types and read definition.entries without needing
+Consumers share the configuration types and read `definition.entries` without needing
 the original schema object. Applications handle field values and input validation.
 
 Definitions also support [diffs](src/commonMain/kotlin/com/eignex/skema/SchemaDiff.kt),
 [composition and namespaces](src/commonMain/kotlin/com/eignex/skema/SchemaComposition.kt),
 and [JSON Schema export](src/commonMain/kotlin/com/eignex/skema/JsonSpec.kt).
-Namespacing renames entry keys only; references embedded in configurations keep
-their old names, so rewrite them with the owning library's traversal.
+Namespacing prefixes entry keys; applications must update references inside configurations.
+
 [Compact JSON](src/commonMain/kotlin/com/eignex/skema/serialization/CompactSerializer.kt)
-and [serializer-derived JSON Schema](src/commonMain/kotlin/com/eignex/skema/serialization/JsonSchema.kt)
-are available in source but not yet in the 0.3.0 release.
-
-Serializer-derived schemas support string, enum, boolean, character, and signed or
-unsigned integer map keys. Floating-point, nullable, and structured map keys require
-an explicit schema. Strict decoding checks integer map keys as decimal digits with
-an optional minus sign for signed types, within the key type's range.
-
-Compact JSON requires the default polymorphic discriminator mode and no JSON naming
-strategy. Operands and fixed fields must be emitted by their body serializer; avoid
-`@EncodeDefault(NEVER)` on these fields. Unsupported configurations and omitted fields
-raise explicit serialization errors. Ambiguous numeric literals use the catalog resolver.
-
-Generated floating-point schemas and strict decoding use finite bounds that include
-the decimal encodings of `Float.MAX_VALUE` and `Double.MAX_VALUE`. Character schemas
-accept one UTF-16 code unit, matching Kotlin `Char`.
+encodes nodes as operator objects, names, or numeric literals.
+[Serializer-derived JSON Schema](src/commonMain/kotlin/com/eignex/skema/serialization/JsonSchema.kt)
+and [strict decoding](src/commonMain/kotlin/com/eignex/skema/serialization/JsonPathDecoder.kt)
+use a `JsonNodeCatalog` for nested compact vocabularies. Compact JSON requires the default
+polymorphic discriminator mode and no JSON naming strategy.
 
 ## Validation
 
