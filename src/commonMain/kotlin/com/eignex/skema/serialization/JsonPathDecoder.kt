@@ -26,7 +26,7 @@ fun <T> Json.decodeFromJsonElement(
     element: JsonElement,
     catalog: JsonNodeCatalog,
 ): T {
-    val shape = JsonShape(deserializer as? CompactSerializer<*>, catalog)
+    val shape = JsonShape(deserializer as? CompactSerializer<*>, catalog, this)
     val checked = shape.validateJson(deserializer.descriptor, element, "$")
     return decodeFromJsonElement(JsonPathSerializer(deserializer, checked, "$", shape), checked)
 }

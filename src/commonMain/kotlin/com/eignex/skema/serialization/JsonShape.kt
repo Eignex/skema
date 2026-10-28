@@ -10,7 +10,11 @@ import kotlinx.serialization.json.*
  * Strict shape validation ahead of decoding. Validation returns the element to decode, with
  * integral number tokens in integer fields rewritten to plain integer tokens.
  */
-internal class JsonShape(private val owner: CompactSerializer<*>?, private val catalog: JsonNodeCatalog) {
+internal class JsonShape(
+    private val owner: CompactSerializer<*>?,
+    private val catalog: JsonNodeCatalog,
+    private val json: Json,
+) {
     private val integerKeyPatterns = mutableMapOf<SerialDescriptor, Regex>()
 
     fun validateJson(descriptor: SerialDescriptor, element: JsonElement, path: String): JsonElement {
@@ -97,7 +101,8 @@ internal class JsonShape(private val owner: CompactSerializer<*>?, private val c
         for ((name, index) in fields) {
             val value = body[name]
             val child = descriptor.getElementDescriptor(index)
-            val required = !descriptor.isElementOptional(index) && !child.isNullable
+            val required = !descriptor.isElementOptional(index) &&
+                (json.configuration.explicitNulls || !child.isNullable)
             if (value == null) {
                 if (required) invalid(fieldPath(name), "missing operand '$name'")
             } else {

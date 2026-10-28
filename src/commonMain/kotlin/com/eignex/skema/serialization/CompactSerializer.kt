@@ -105,7 +105,7 @@ open class CompactSerializer<T : Any>(
         val parentPath = (decoder as? JsonPathDecoder)?.path ?: "$"
         val (node, payload) = select(element, parentPath)
         val path = node.pathAt(parentPath)
-        val shape = JsonShape(this, catalog)
+        val shape = JsonShape(this, catalog, decoder.json)
         val fieldPath: (String) -> String = { node.fieldPath(it, path) }
         val body = shape.validateRecord(node.serializer.descriptor, node.decode(payload, path), path, fieldPath)
         return withJsonPath(path) {

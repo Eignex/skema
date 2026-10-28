@@ -30,8 +30,11 @@ internal class JsonNumberBounds(val maximum: String) {
 private val FLOAT_BOUNDS = JsonNumberBounds("3.4028235e38")
 private val DOUBLE_BOUNDS = JsonNumberBounds("1.7976931348623157e308")
 
-internal fun SerialDescriptor.numberBounds(): JsonNumberBounds? = when (kind) {
-    PrimitiveKind.FLOAT -> FLOAT_BOUNDS
-    PrimitiveKind.DOUBLE -> DOUBLE_BOUNDS
-    else -> null
+internal fun SerialDescriptor.numberBounds(): JsonNumberBounds? {
+    if (isInline) return getElementDescriptor(0).numberBounds()
+    return when (kind) {
+        PrimitiveKind.FLOAT -> FLOAT_BOUNDS
+        PrimitiveKind.DOUBLE -> DOUBLE_BOUNDS
+        else -> null
+    }
 }

@@ -1,7 +1,6 @@
 package com.eignex.skema.serialization
 
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.StructureKind
 import kotlinx.serialization.descriptors.elementNames
@@ -102,12 +101,7 @@ class JsonNode(
         if (shape == JsonNodeShape.Literal) {
             val literal = descriptor.getElementDescriptor(descriptor.getElementIndex(operands.single()))
             require(
-                !literal.acceptsJsonNull() && (
-                    literal.integerBounds() != null || literal.kind in listOf(
-                        PrimitiveKind.FLOAT,
-                        PrimitiveKind.DOUBLE,
-                    )
-                    ),
+                !literal.acceptsJsonNull() && (literal.integerBounds() != null || literal.numberBounds() != null),
             ) { "JSON literal node '$name' requires a non-null numeric field" }
         }
     }
