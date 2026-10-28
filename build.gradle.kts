@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalWasmDsl::class)
-
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 
 plugins {
@@ -21,11 +19,8 @@ eignexPublish {
     githubRepo.set("Eignex/skema")
 }
 
+@OptIn(ExperimentalWasmDsl::class)
 kotlin {
-    applyDefaultHierarchyTemplate()
-    compilerOptions {
-        freeCompilerArgs.add("-Xexpect-actual-classes")
-    }
     jvm()
     js { browser(); nodejs() }
     wasmJs { browser(); nodejs() }
