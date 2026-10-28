@@ -13,11 +13,11 @@ import kotlinx.serialization.json.*
 import kotlin.reflect.KClass
 
 /**
- * Opt-in polymorphic serializer using operator keys, empty-object names and numeric literals
- * in JSON. Other formats retain the ordinary sealed-class representation. JSON decoding
- * validates the compact shape, including nested catalog types, regardless of lenient settings.
- * As in JSON Schema's `integer`, integer fields accept any integral number token within their
- * range, such as `2.0` or `1e2`, and encode it as a plain integer token.
+ * Encodes JSON with operator keys, names for empty objects, and numeric literals.
+ * Other formats use the sealed-class representation. Compact JSON is validated
+ * even when the caller uses lenient settings.
+ * Integer fields accept any integral number token in range, such as `2.0` or `1e2`,
+ * and encode it as a plain integer token.
  */
 open class CompactSerializer<T : Any>(
     /** Stable descriptor name, shared with the ordinary sealed serializer. */
@@ -26,7 +26,7 @@ open class CompactSerializer<T : Any>(
     internal val catalog: JsonNodeCatalog = JsonNodeCatalog(),
     nodes: () -> List<JsonNode>,
 ) : KSerializer<T> {
-    /** Concrete nodes, evaluated lazily to support recursive vocabularies. */
+    /** Loaded lazily to allow recursive vocabularies. */
     val nodes: List<JsonNode> by lazy(nodes)
 
     private val legacy by lazy {
@@ -41,7 +41,7 @@ open class CompactSerializer<T : Any>(
 
     override val descriptor: SerialDescriptor get() = legacy.descriptor
 
-    /** Selects the concrete node for a compact value, applying the catalog's ambiguity resolver. */
+    /** Uses the catalog resolver when multiple nodes match. */
     fun selectNode(element: JsonElement, path: String = "$"): JsonNode = select(element, path).first
 
     internal fun select(element: JsonElement, path: String): Pair<JsonNode, JsonElement> {

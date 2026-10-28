@@ -2,23 +2,19 @@ package com.eignex.skema
 
 import kotlinx.serialization.Serializable
 
-/**
- * Pure-data, serializable form of a [Schema]. The default root field name
- * is `entries`; for a different name or adjunct fields, define your own
- * Serializable wrapper and expose it through a separate method.
- */
+/** Serializable entries from a [Schema]. */
 @Serializable
 data class SchemaDef<C>(
     /** Entries keyed by name, in declaration order. */
     val entries: Map<String, C>,
 ) {
-    /** Number of entries. */
+    /** Entry count. */
     val size: Int get() = entries.size
 
-    /** Set of entry names. */
+    /** Entry names. */
     val names: Set<String> get() = entries.keys
 
-    /** Returns the entry for [name], or throws if no such entry exists. */
+    /** Throws if [name] is absent. */
     operator fun get(name: String): C = if (name in entries) {
         entries.getValue(name)
     } else {

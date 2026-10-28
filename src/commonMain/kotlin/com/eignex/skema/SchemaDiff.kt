@@ -4,20 +4,20 @@ package com.eignex.skema
 
 import kotlin.jvm.JvmName
 
-/** Per-entry difference between two schemas. Equal entries on both sides are omitted. */
+/** Changes from the old schema to the new; equal entries are omitted. */
 data class SchemaDiff<C>(
-    /** Entries present in the new schema but not the old. */
+    /** Entries only in the new schema. */
     val added: Map<String, C>,
-    /** Entries present in the old schema but not the new. */
+    /** Entries only in the old schema. */
     val removed: Map<String, C>,
-    /** Entries present in both schemas whose configs differ, mapped to `(old, new)`. */
+    /** Changed configs as (old, new) pairs. */
     val changed: Map<String, Pair<C, C>>,
 ) {
-    /** True when there are no added, removed, or changed entries. */
+    /** Whether the schemas are equal. */
     val isEmpty: Boolean get() = added.isEmpty() && removed.isEmpty() && changed.isEmpty()
 }
 
-/** Computes the [SchemaDiff] from this schema to [other]. */
+/** Compares this schema to the newer [other] schema. */
 fun <C> SchemaDef<C>.diff(other: SchemaDef<C>): SchemaDiff<C> {
     val added = other.entries.filterKeys { it !in entries }
     val removed = entries.filterKeys { it !in other.entries }

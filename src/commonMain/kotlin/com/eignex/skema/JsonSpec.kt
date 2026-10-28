@@ -19,257 +19,210 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 
 /**
- * Built-in JSON-Schema-shaped config vocabulary. Use as the type parameter of
- * [Schema] to get [toJsonSchema] without writing a mapper. For domain-specific
- * configs, define your own sealed type and use the [SchemaDef.toJsonSchema]
- * overload that takes a per-entry mapper lambda.
- *
- * This vocabulary renders schemas; it does not validate schema constraints or
- * instance data. Callers must supply valid draft 2020-12 keyword values.
- * Variants containing [JsonElement] values require the JSON serialization format.
+ * JSON Schema draft 2020-12 vocabulary for [Schema]. Renders schemas without
+ * validating constraints or instance data. Variants containing [JsonElement]
+ * require JSON serialization.
  */
 @Serializable
 sealed interface JsonSpec {
-    /** Boolean value. Maps to `{"type":"boolean"}`. */
+    /** Boolean value. */
     @Serializable
     @SerialName("Bool")
     data object Bool : JsonSpec
 
-    /** Null value. Maps to `{"type":"null"}`. Useful as a branch in [Nullable]-style composition. */
+    /** Only the JSON null value. */
     @Serializable
     @SerialName("Null")
     data object Null : JsonSpec
 
-    /** Integer value, optionally bounded. Maps to `{"type":"integer"}` plus `minimum`/`maximum`. */
+    /** JSON Schema integer; no implicit 32-bit bounds. */
     @Serializable
     @SerialName("Int")
     data class Int(
-        /** Inclusive lower bound, or `null` for unbounded. */
+        /** Inclusive lower bound. */
         val min: kotlin.Int? = null,
-        /** Inclusive upper bound, or `null` for unbounded. */
+        /** Inclusive upper bound. */
         val max: kotlin.Int? = null,
-        /** Exclusive lower bound, or `null` for unbounded. */
+        /** Exclusive lower bound. */
         val exclusiveMin: kotlin.Int? = null,
-        /** Exclusive upper bound, or `null` for unbounded. */
+        /** Exclusive upper bound. */
         val exclusiveMax: kotlin.Int? = null,
-        /** Value must be a multiple of this, or `null` for no constraint. */
+        /** Required divisor; must be positive when supplied. */
         val multipleOf: kotlin.Int? = null,
     ) : JsonSpec
 
-    /** 64-bit integer value, optionally bounded. Maps to `{"type":"integer"}` plus `minimum`/`maximum`. */
+    /** JSON Schema integer; no implicit 64-bit bounds. */
     @Serializable
     @SerialName("Long")
     data class Long(
-        /** Inclusive lower bound, or `null` for unbounded. */
+        /** Inclusive lower bound. */
         val min: kotlin.Long? = null,
-        /** Inclusive upper bound, or `null` for unbounded. */
+        /** Inclusive upper bound. */
         val max: kotlin.Long? = null,
-        /** Exclusive lower bound, or `null` for unbounded. */
+        /** Exclusive lower bound. */
         val exclusiveMin: kotlin.Long? = null,
-        /** Exclusive upper bound, or `null` for unbounded. */
+        /** Exclusive upper bound. */
         val exclusiveMax: kotlin.Long? = null,
-        /** Value must be a multiple of this, or `null` for no constraint. */
+        /** Required divisor; must be positive when supplied. */
         val multipleOf: kotlin.Long? = null,
     ) : JsonSpec
 
-    /** Floating-point value, optionally bounded. Maps to `{"type":"number"}` plus `minimum`/`maximum`. */
+    /** JSON Schema number. */
     @Serializable
     @SerialName("Number")
     data class Num(
-        /** Inclusive lower bound, or `null` for unbounded. */
+        /** Inclusive lower bound. */
         val min: Double? = null,
-        /** Inclusive upper bound, or `null` for unbounded. */
+        /** Inclusive upper bound. */
         val max: Double? = null,
-        /** Exclusive lower bound, or `null` for unbounded. */
+        /** Exclusive lower bound. */
         val exclusiveMin: Double? = null,
-        /** Exclusive upper bound, or `null` for unbounded. */
+        /** Exclusive upper bound. */
         val exclusiveMax: Double? = null,
-        /** Value must be a multiple of this, or `null` for no constraint. */
+        /** Required divisor; must be positive when supplied. */
         val multipleOf: Double? = null,
     ) : JsonSpec
 
-    /** String value, optionally constrained by length and pattern. */
+    /** String constraints. */
     @Serializable
     @SerialName("String")
     data class Str(
-        /** Minimum length, or `null` for unbounded. */
+        /** Minimum string length. */
         val minLength: kotlin.Int? = null,
-        /** Maximum length, or `null` for unbounded. */
+        /** Maximum string length. */
         val maxLength: kotlin.Int? = null,
-        /** Regex pattern the value must match, or `null` for no constraint. */
+        /** Regular expression constraint. */
         val pattern: String? = null,
-        /**
-         * JSON Schema `format` annotation (`date-time`, `email`, `uri`, `uuid`, ...), or `null`.
-         * Free-form: JSON Schema treats unknown formats as annotations rather than errors.
-         */
+        /** JSON Schema format annotation, such as email or date-time. */
         val format: String? = null,
     ) : JsonSpec
 
-    /** String value drawn from a fixed set. Maps to `{"type":"string","enum":[...]}`. */
+    /** String restricted to [values]. */
     @Serializable
     @SerialName("Enum")
     data class Enum(
-        /** Allowed values, in declaration order. */
+        /** Allowed string values. */
         val values: List<String>,
     ) : JsonSpec
 
-    /**
-     * Object with named properties. [additionalPropertiesAllowed] gates extras; set
-     * [additionalPropertiesSpec] to constrain extras to a schema instead of a boolean.
-     * If both are set, the spec wins.
-     */
+    /** [additionalPropertiesSpec] takes precedence over [additionalPropertiesAllowed]. */
     @Serializable
     @SerialName("Object")
     data class Object(
-        /** Named properties and their specs. */
+        /** Schemas for named properties. */
         val properties: Map<String, JsonSpec> = emptyMap(),
-        /** Property names that must be present. */
+        /** Names of properties that must be present. */
         val required: List<String> = emptyList(),
-        /** Whether properties not listed in [properties] are allowed. Default true (per JSON Schema). */
+        /** Unlisted properties are allowed when null or true. */
         val additionalPropertiesAllowed: Boolean? = null,
-        /** Spec that all additional (unlisted) properties must match. */
+        /** Schema for unlisted properties. */
         val additionalPropertiesSpec: JsonSpec? = null,
-        /** Minimum number of properties. */
+        /** Minimum property count. */
         val minProperties: kotlin.Int? = null,
-        /** Maximum number of properties. */
+        /** Maximum property count. */
         val maxProperties: kotlin.Int? = null,
     ) : JsonSpec
 
-    /**
-     * Array of values. [prefixItems] constrains the first N elements positionally;
-     * [items] constrains the remaining elements, or every element when no prefix
-     * is supplied. Set both for a tuple with a homogeneous tail.
-     */
+    /** Array with optional positional and shared element constraints. */
     @Serializable
     @SerialName("Array")
     data class Array(
-        /**
-         * Spec for elements after [prefixItems], or all elements without a prefix.
-         * `null` leaves them unconstrained.
-         */
+        /** Applies after [prefixItems], or to all elements without a prefix. Null leaves them unconstrained. */
         val items: JsonSpec? = null,
-        /** Non-empty list of positional specs for leading elements, or `null` for no prefix. */
+        /** Positional schemas for leading elements; must be non-empty when supplied. */
         val prefixItems: List<JsonSpec>? = null,
         /** Minimum array length. */
         val minItems: kotlin.Int? = null,
         /** Maximum array length. */
         val maxItems: kotlin.Int? = null,
-        /** If true, elements must be unique. */
+        /** Requires distinct elements when true. */
         val uniqueItems: Boolean? = null,
     ) : JsonSpec
 
-    /** Value constrained to a single constant. Maps to `{"const": value}`. */
+    /** Matches a single JSON value. */
     @Serializable
     @SerialName("Const")
     data class Const(
-        /** The required value, as a [JsonElement]. */
+        /** The required JSON value. */
         val value: JsonElement,
     ) : JsonSpec
 
-    /**
-     * Reference to a named spec defined elsewhere. Renders as `{"$ref": pointer}`.
-     * Pass `pointer = "#/$defs/User"` to point at a definition supplied via the
-     * `defs` parameter of [SchemaDef.toJsonSchema]; absolute URIs work too.
-     */
+    /** JSON Schema reference, such as #/$defs/User or an absolute URI. */
     @Serializable
     @SerialName("Ref")
     data class Ref(
-        /** JSON pointer or URI, e.g. `"#/${'$'}defs/User"`. */
+        /** JSON pointer or URI to the referenced schema. */
         val pointer: String,
     ) : JsonSpec
 
-    /** Value must match exactly one of the listed specs. */
+    /** Exactly one branch must match. */
     @Serializable
     @SerialName("OneOf")
     data class OneOf(
-        /** Non-empty list of branches; exactly one must match. */
+        /** Non-empty list of schemas. */
         val branches: List<JsonSpec>,
     ) : JsonSpec
 
-    /** Value must match at least one of the listed specs. */
+    /** At least one branch must match. */
     @Serializable
     @SerialName("AnyOf")
     data class AnyOf(
-        /** Non-empty list of branches; at least one must match. */
+        /** Non-empty list of schemas. */
         val branches: List<JsonSpec>,
     ) : JsonSpec
 
-    /** Value must match all of the listed specs. */
+    /** All branches must match. */
     @Serializable
     @SerialName("AllOf")
     data class AllOf(
-        /** Non-empty list of branches; all must match. */
+        /** Non-empty list of schemas. */
         val branches: List<JsonSpec>,
     ) : JsonSpec
 
-    /** Value must NOT match the given spec. */
+    /** The value must fail [spec]. */
     @Serializable
     @SerialName("Not")
-    data class Not(
-        /** The spec the value must fail. */
-        val spec: JsonSpec,
-    ) : JsonSpec
+    data class Not(val spec: JsonSpec) : JsonSpec
 
-    /**
-     * Conditional schema. If [condition] matches, [then] applies; otherwise
-     * [otherwise] applies. Either branch may be omitted.
-     */
+    /** Applies [then] when [condition] matches, or [otherwise] when it does not. Either branch may be omitted. */
     @Serializable
     @SerialName("IfThenElse")
-    data class IfThenElse(
-        /** The condition spec. */
-        val condition: JsonSpec,
-        /** Applied when [condition] matches. */
-        val then: JsonSpec? = null,
-        /** Applied when [condition] does not match. */
-        val otherwise: JsonSpec? = null,
-    ) : JsonSpec
+    data class IfThenElse(val condition: JsonSpec, val then: JsonSpec? = null, val otherwise: JsonSpec? = null) :
+        JsonSpec
 
-    /**
-     * Wraps a [JsonSpec] so the value may also be null. Renders as
-     * `{"anyOf":[<inner>, {"type":"null"}]}`. Uses [AnyOf] so null remains
-     * accepted even when [inner] already accepts it.
-     */
+    /** Allows null as well as [inner], without making an object property optional. */
     @Serializable
     @SerialName("Nullable")
-    data class Nullable(
-        /** The non-null spec. */
-        val inner: JsonSpec,
-    ) : JsonSpec
+    data class Nullable(val inner: JsonSpec) : JsonSpec
 
-    /**
-     * Wraps another [JsonSpec] with JSON Schema annotations. Annotations decorate
-     * the inner spec without changing the values it accepts.
-     */
+    /** Adds annotations without changing which values [inner] accepts. */
     @Serializable
     @SerialName("Annotated")
     data class Annotated(
-        /** The spec being annotated. */
         val inner: JsonSpec,
-        /** Short human-readable label. */
+        /** Display label. */
         val title: String? = null,
-        /** Longer human-readable explanation. */
+        /** Description for readers. */
         val description: String? = null,
-        /** Default value; Kotlin `null` omits the annotation, while [JsonNull] specifies a JSON null default. */
+        /** Kotlin null omits the annotation; [JsonNull] preserves an explicit JSON null. */
         @OptIn(ExperimentalSerializationApi::class)
         @EncodeDefault(EncodeDefault.Mode.NEVER)
         @Serializable(with = JsonAnnotationDefaultSerializer::class)
         val default: JsonElement? = null,
-        /** Example values, used by documentation. */
+        /** Example values. */
         val examples: List<JsonElement>? = null,
-        /** Marks the value as deprecated. */
+        /** Deprecation annotation. */
         val deprecated: Boolean? = null,
-        /** Marks the value as read-only (e.g., server-assigned). */
+        /** Marks server-managed values. */
         val readOnly: Boolean? = null,
-        /** Marks the value as write-only (e.g., passwords). */
+        /** Marks values intended only for input. */
         val writeOnly: Boolean? = null,
-        /** Non-validating comment, ignored by validators. */
+        /** Comment for schema readers, ignored by validators. */
         val comment: String? = null,
     ) : JsonSpec
 }
 
-// The standard nullable serializer collapses an explicit JSON null into Kotlin null.
-// Handle null ourselves so a present annotation always decodes as a JsonElement.
+// Preserve explicit JsonNull defaults, which the standard nullable serializer collapses to Kotlin null.
 private object JsonAnnotationDefaultSerializer : KSerializer<JsonElement?> {
     override val descriptor: SerialDescriptor = JsonElement.serializer().descriptor.nullable
 
@@ -280,7 +233,7 @@ private object JsonAnnotationDefaultSerializer : KSerializer<JsonElement?> {
     override fun deserialize(decoder: Decoder): JsonElement = decoder.decodeSerializableValue(JsonElement.serializer())
 }
 
-/** JSON Schema fragment describing the value this primitive validates. */
+/** Renders this spec as a JSON Schema fragment. */
 fun JsonSpec.toJsonSchema(): JsonObject = when (this) {
     JsonSpec.Bool -> buildJsonObject { put("type", "boolean") }
 
@@ -402,21 +355,13 @@ fun JsonSpec.toJsonSchema(): JsonObject = when (this) {
     }
 }
 
-/**
- * JSON Schema (draft 2020-12) for a schema whose entries are [JsonSpec]s.
- * All entries are emitted as required; post-process the result if a different
- * required-set is needed. Supply [defs] to populate the root `$defs` block;
- * reference them with `JsonSpec.Ref("#/${'$'}defs/<name>")`.
- */
+/** Exports all entries as required properties, forbids extras, and places [defs] in $defs. */
 fun SchemaDef<JsonSpec>.toJsonSchema(defs: Map<String, JsonSpec> = emptyMap()): JsonObject =
     toJsonSchema(defs = defs) { it.toJsonSchema() }
 
 /**
- * JSON Schema (draft 2020-12) for an arbitrary config vocabulary. Supply a
- * mapper that turns each entry's config into a JSON Schema fragment for the
- * value it validates. For mixed hierarchies, call [JsonSpec.toJsonSchema]
- * inside the lambda for the [JsonSpec] branches. Supply [defs] to populate
- * the root `$defs` block.
+ * Maps each config to a field-value schema. All entries are required, extras are
+ * forbidden, and [defs] populates $defs.
  */
 fun <C : Any> SchemaDef<C>.toJsonSchema(defs: Map<String, JsonSpec> = emptyMap(), map: (C) -> JsonObject): JsonObject =
     buildJsonObject {
