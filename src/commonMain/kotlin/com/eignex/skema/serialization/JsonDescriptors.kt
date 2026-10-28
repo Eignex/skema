@@ -9,6 +9,9 @@ internal fun SerialDescriptor.classDiscriminator(json: Json): String =
     annotations.filterIsInstance<JsonClassDiscriminator>().firstOrNull()?.discriminator
         ?: json.configuration.classDiscriminator
 
+internal fun SerialDescriptor.isJsonFieldRequired(index: Int, json: Json): Boolean =
+    !isElementOptional(index) && (json.configuration.explicitNulls || !getElementDescriptor(index).isNullable)
+
 internal fun SerialDescriptor.acceptsJsonNull(): Boolean = isNullable || when (serialName.removeSuffix("?")) {
     JsonElement.serializer().descriptor.serialName,
     JsonPrimitive.serializer().descriptor.serialName,

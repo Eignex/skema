@@ -100,10 +100,8 @@ internal class JsonShape(
         for ((name, index) in fields) {
             val value = body[name]
             val child = descriptor.getElementDescriptor(index)
-            val required = !descriptor.isElementOptional(index) &&
-                (json.configuration.explicitNulls || !child.isNullable)
             if (value == null) {
-                if (required) invalid(fieldPath(name), "missing operand '$name'")
+                if (descriptor.isJsonFieldRequired(index, json)) invalid(fieldPath(name), "missing operand '$name'")
             } else {
                 val checked = validateJson(child, value, fieldPath(name))
                 if (checked !== value) rewritten[name] = checked

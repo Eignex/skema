@@ -38,6 +38,41 @@ private value class EdgeNullableInt(val value: Int?)
 @Serializable private data class EdgeNamed(val camelCase: String) : EdgeValue
 
 class CompactEdgeCasesTest {
+    @Test fun literalAndNamedNodesCanShareAName() {
+        var loads = 0
+        val serializer = CompactSerializer("SharedName", EdgeValue::class) {
+            loads++
+            listOf(
+                jsonNode<EdgeNumber>("value", JsonNodeShape.Literal, "value"),
+                jsonNode<EdgeInteger>("value", JsonNodeShape.Operand, "value"),
+            )
+        }
+        assertEquals(0, loads)
+
+        repeat(2) {
+            val literal = EdgeNumber(2.5)
+            val named = EdgeInteger(3)
+            assertEquals("2.5", SchemaJson.encodeToString(serializer, literal))
+            assertEquals("""{"value":3}""", SchemaJson.encodeToString(serializer, named))
+            assertEquals(literal, SchemaJson.decodeFromString(serializer, "2.5"))
+            assertEquals(named, SchemaJson.decodeFromString(serializer, """{"value":3}"""))
+        }
+        assertEquals(1, loads)
+    }
+
+    @Test fun overlappingFixedNodesRemainAmbiguousWhenEncoding() {
+        val serializer = CompactSerializer("OverlappingFixed", EdgeValue::class) {
+            listOf(
+                jsonNode<EdgeInteger>("first", fixed = mapOf("value" to JsonPrimitive(7))),
+                jsonNode<EdgeInteger>("second", fixed = mapOf("value" to JsonPrimitive(7))),
+            )
+        }
+        val error = assertFailsWith<SerializationException> {
+            SchemaJson.encodeToString(serializer, EdgeInteger(7))
+        }
+        assertTrue("no unique OverlappingFixed node matches the fixed fields" in error.message.orEmpty(), error.message)
+    }
+
     @Test fun fixedUnsignedFieldsSelectTheirNode() {
         val serializer = CompactSerializer("EdgeFixed", EdgeValue::class) {
             listOf(jsonNode<EdgeFixedUnsigned>("max", fixed = mapOf("tag" to JsonPrimitive(UInt.MAX_VALUE))))

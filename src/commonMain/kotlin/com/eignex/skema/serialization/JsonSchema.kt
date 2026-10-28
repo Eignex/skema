@@ -29,11 +29,10 @@ private class JsonSchemaGenerator(
     private val root: CompactSerializer<*>?,
 ) {
     private data class Definition(val descriptor: SerialDescriptor, val owner: CompactSerializer<*>?)
-    private data class Shorthand(val schema: JsonObject, val name: String, val payload: JsonObject)
 
     private val names = mutableMapOf<Definition, String>()
     private val definitions = linkedMapOf<String, JsonObject>()
-    private val shorthands = mutableListOf<Shorthand>()
+    private val shorthands = JsonSchemaShorthands()
 
     fun generate(descriptor: SerialDescriptor): JsonObject {
         require(json.configuration.classDiscriminatorMode == ClassDiscriminatorMode.POLYMORPHIC) {
@@ -46,7 +45,7 @@ private class JsonSchemaGenerator(
             schema.forEach { (name, value) -> put(name, value) }
             if (definitions.isNotEmpty()) put("\$defs", JsonObject(definitions))
         }
-        return includeShorthands(document, document).jsonObject
+        return shorthands.includeIn(document)
     }
 
     private fun schema(
@@ -144,8 +143,7 @@ private class JsonSchemaGenerator(
         }
         put("properties", properties)
         val required = (0 until descriptor.elementsCount).filter { index ->
-            val child = descriptor.getElementDescriptor(index)
-            !descriptor.isElementOptional(index) && (json.configuration.explicitNulls || !child.isNullable)
+            descriptor.isJsonFieldRequired(index, json)
         }
         if (required.isNotEmpty()) {
             put("required", JsonArray(required.map { JsonPrimitive(descriptor.getElementName(it)) }))
@@ -158,16 +156,9 @@ private class JsonSchemaGenerator(
         val schemas = serializer.nodes.map { node ->
             val descriptor = node.serializer.descriptor
             val body = record(descriptor, serializer).withoutFields(node.fixed.keys)
-            val properties = body.getValue("properties").jsonObject
-            val payload = node.mapping?.payloadSchema(body) ?: when (node.shape) {
-                JsonNodeShape.Fields -> body
-                JsonNodeShape.Literal, JsonNodeShape.Operand -> properties.getValue(node.operands.single()).jsonObject
-                JsonNodeShape.Operands -> tuple(node.operands.map { properties.getValue(it) })
-            }
+            val payload = node.payloadMapping.payloadSchema(body)
             if (node.shape == JsonNodeShape.Literal) return@map payload
-            val named = operator(node.name, payload)
-            shorthands += Shorthand(named, node.name, payload)
-            named
+            shorthands.operator(node.name, payload)
         }
         return alternatives(schemas)
     }
@@ -201,23 +192,6 @@ private class JsonSchemaGenerator(
             "Contextual type requires a registered serializer or an explicit JSON Schema: ${descriptor.capturedKClass}"
         }
 
-    // Defer this pass until recursive definitions are complete; their placeholders admit everything.
-    private fun includeShorthands(element: JsonElement, document: JsonObject): JsonElement = when (element) {
-        is JsonArray -> JsonArray(element.map { includeShorthands(it, document) })
-
-        is JsonObject -> {
-            val rewritten = JsonObject(element.mapValues { (_, value) -> includeShorthands(value, document) })
-            val shorthand = shorthands.firstOrNull { it.schema === element }
-            if (shorthand != null && admitsEmptyObject(shorthand.payload, document)) {
-                alternatives(listOf(rewritten, constant(shorthand.name)))
-            } else {
-                rewritten
-            }
-        }
-
-        else -> element
-    }
-
     private fun polymorphic(descriptor: SerialDescriptor, owner: CompactSerializer<*>?): JsonObject {
         val subtypes = if (descriptor.kind == PolymorphicKind.SEALED) {
             require(
@@ -232,7 +206,7 @@ private class JsonSchemaGenerator(
         val discriminator = descriptor.classDiscriminator(json)
         val schemas = subtypes.map { subtype ->
             if (json.configuration.useArrayPolymorphism) {
-                tuple(listOf(constant(subtype.serialName), schema(subtype, owner)))
+                tupleSchema(listOf(constant(subtype.serialName), schema(subtype, owner)))
             } else {
                 require(subtype.kind == StructureKind.CLASS || subtype.kind == StructureKind.OBJECT) {
                     "Object polymorphism requires an object body: ${subtype.serialName}"
@@ -260,52 +234,6 @@ private fun JsonObject.withoutFields(fields: Set<String>): JsonObject {
     }
 }
 
-// Evaluate only the empty object. Property, item and primitive constraints are vacuous here.
-private fun admitsEmptyObject(
-    schema: JsonElement,
-    document: JsonObject,
-    references: Set<String> = emptySet(),
-): Boolean {
-    if (schema is JsonPrimitive) return schema.boolean
-    val body = schema.jsonObject
-    val type = body["type"]
-    if (type != null && type != JsonPrimitive("object") &&
-        (type !is JsonArray || JsonPrimitive("object") !in type)
-    ) {
-        return false
-    }
-    if (!body["required"]?.jsonArray.isNullOrEmpty()) return false
-    if ((body["minProperties"]?.jsonPrimitive?.int ?: 0) > 0) return false
-    val empty = JsonObject(emptyMap())
-    if ("const" in body && body["const"] != empty) return false
-    if ("enum" in body && empty !in body.getValue("enum").jsonArray) return false
-    require("\$dynamicRef" !in body) { "Dynamic payload references require an explicit inline schema" }
-    body["\$ref"]?.jsonPrimitive?.content?.let { reference ->
-        require(reference.startsWith("#/") && reference !in references) {
-            "Cannot resolve payload schema reference: $reference"
-        }
-        val target = reference.removePrefix("#/").split('/').fold(document as JsonElement) { value, part ->
-            val key = part.replace("~1", "/").replace("~0", "~")
-            when (value) {
-                is JsonObject -> value.getValue(key)
-                is JsonArray -> value[key.toInt()]
-                else -> error("Cannot resolve payload schema reference: $reference")
-            }
-        }
-        if (!admitsEmptyObject(target, document, references + reference)) return false
-    }
-    fun accepts(value: JsonElement): Boolean = admitsEmptyObject(value, document, references)
-    if (body["allOf"]?.jsonArray?.all(::accepts) == false) return false
-    if (body["anyOf"]?.jsonArray?.any(::accepts) == false) return false
-    if (body["oneOf"]?.jsonArray?.count(::accepts)?.let { it != 1 } == true) return false
-    if (body["not"]?.let(::accepts) == true) return false
-    body["if"]?.let { condition ->
-        val branch = body[if (accepts(condition)) "then" else "else"]
-        if (branch != null && !accepts(branch)) return false
-    }
-    return true
-}
-
 private const val CHAR_PATTERN = "^[\\u0000-\\uFFFF](?![\\s\\S])"
 
 private fun enumeration(descriptor: SerialDescriptor): JsonObject = typedSchema("string") {
@@ -314,13 +242,7 @@ private fun enumeration(descriptor: SerialDescriptor): JsonObject = typedSchema(
 
 private fun constant(value: String): JsonObject = buildJsonObject { put("const", value) }
 
-private fun operator(name: String, payload: JsonObject): JsonObject = typedSchema("object") {
-    put("properties", buildJsonObject { put(name, payload) })
-    put("required", JsonArray(listOf(JsonPrimitive(name))))
-    put("additionalProperties", false)
-}
-
-private fun tuple(items: List<JsonElement>): JsonObject = typedSchema("array") {
+internal fun tupleSchema(items: List<JsonElement>): JsonObject = typedSchema("array") {
     if (items.isNotEmpty()) put("prefixItems", JsonArray(items))
     put("minItems", items.size)
     put("maxItems", items.size)

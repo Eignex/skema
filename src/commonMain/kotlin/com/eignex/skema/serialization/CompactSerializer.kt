@@ -30,6 +30,10 @@ open class CompactSerializer<T : Any>(
     /** Loaded lazily to allow recursive vocabularies. */
     val nodes: List<JsonNode> by lazy(nodes)
 
+    private val nodesByType by lazy { this.nodes.groupBy { it.type } }
+    private val operatorsByName by lazy { this.nodes.filter { it.shape != JsonNodeShape.Literal }.groupBy { it.name } }
+    private val literalNodes by lazy { this.nodes.filter { it.shape == JsonNodeShape.Literal } }
+
     private val legacy by lazy {
         val implementations = this.nodes.distinctBy { it.type }
         SealedClassSerializer(
@@ -47,8 +51,7 @@ open class CompactSerializer<T : Any>(
 
     internal fun select(element: JsonElement, path: String): Pair<JsonNode, JsonElement> {
         if (element is JsonPrimitive && !element.isString && element.doubleOrNull != null) {
-            val candidates = nodes.filter { it.shape == JsonNodeShape.Literal }
-            val literal = catalog.select(candidates, element, path, "expected an operator object")
+            val literal = catalog.select(literalNodes, element, path, "expected an operator object")
             return literal to element
         }
         val obj = if (element is JsonPrimitive && element.isString) {
@@ -58,7 +61,7 @@ open class CompactSerializer<T : Any>(
         }
         if (obj.size != 1) invalid(path, "expected exactly one operator")
         val (operator, payload) = obj.entries.single()
-        val candidates = nodes.filter { it.name == operator && it.shape != JsonNodeShape.Literal }
+        val candidates = operatorsByName[operator].orEmpty()
         val node = catalog.select(candidates, payload, "$path.$operator", "unknown operator or reference '$operator'")
         return node to payload
     }
@@ -69,11 +72,24 @@ open class CompactSerializer<T : Any>(
             return
         }
         checkJsonConfiguration(encoder.json)
-        val candidates = nodes.filter { it.type == value::class }
+        val node = selectNodeForValue(value, encoder.json)
+        val body = encoder.json.encodeToJsonElement(node.encodingSerializer, value).jsonObject
+        val payload = node.encode(body)
+        encoder.encodeJsonElement(
+            when {
+                node.shape == JsonNodeShape.Literal -> payload
+                payload is JsonObject && payload.isEmpty() -> JsonPrimitive(node.name)
+                else -> JsonObject(mapOf(node.name to payload))
+            },
+        )
+    }
+
+    private fun selectNodeForValue(value: T, json: Json): JsonNode {
+        val candidates = nodesByType[value::class].orEmpty()
         if (candidates.isEmpty()) invalid("$", "unsupported $serialName implementation")
-        val node = candidates.singleOrNull()?.takeIf { it.fixed.isEmpty() } ?: run {
+        return candidates.singleOrNull()?.takeIf { it.fixed.isEmpty() } ?: run {
             val fields = candidates.flatMapTo(mutableSetOf()) { it.fixed.keys }
-            val values = candidates.first().fieldValues(value, encoder.json, fields)
+            val values = candidates.first().fieldValues(value, json, fields)
             val missing = fields - values.keys
             if (missing.isNotEmpty()) {
                 invalid(
@@ -84,15 +100,6 @@ open class CompactSerializer<T : Any>(
             candidates.singleOrNull { candidate -> candidate.fixed.all { (field, fixed) -> values[field] == fixed } }
                 ?: invalid("$", "no unique $serialName node matches the fixed fields")
         }
-        val body = encoder.json.encodeToJsonElement(node.encodingSerializer, value).jsonObject
-        val payload = node.encode(body)
-        encoder.encodeJsonElement(
-            when {
-                node.shape == JsonNodeShape.Literal -> payload
-                payload is JsonObject && payload.isEmpty() -> JsonPrimitive(node.name)
-                else -> JsonObject(mapOf(node.name to payload))
-            },
-        )
     }
 
     override fun deserialize(decoder: Decoder): T {
