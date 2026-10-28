@@ -65,8 +65,8 @@ object SignupFormSchema : FormSchema() {
 }
 ```
 
-Use `add` for an explicit name or `register` to take the property name. Duplicate names
-throw. Calling `definition()` validates the entries and takes a snapshot for serialization:
+Use add for an explicit name or register to take the property name. Duplicate names
+throw. Calling definition() validates the entries and takes a snapshot for serialization:
 
 ```kotlin
 val serializer = SchemaDef.serializer(FormField.serializer())
@@ -80,7 +80,7 @@ The JSON contains the entry names and configuration:
 {"entries":{"acceptsTos":{"$type":"Bool"},"age":{"$type":"Int","min":13,"max":120}}}
 ```
 
-Consumers share the configuration types and read `definition.entries` without needing
+Consumers share the configuration types and read definition.entries without needing
 the original schema object. Applications handle field values and input validation.
 
 Definitions also support [diffs](src/commonMain/kotlin/com/eignex/skema/SchemaDiff.kt),
