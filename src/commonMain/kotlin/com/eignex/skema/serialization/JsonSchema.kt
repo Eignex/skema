@@ -16,7 +16,8 @@ fun CompactSerializer<*>.toJsonSchema(json: Json = SchemaJson): JsonObject =
  * JSON Schema draft 2020-12 for a serialized document. [catalog] must list its compact
  * vocabularies, including those nested in records, collections and schema definitions.
  * Custom payload mappings supply [JsonPayloadMapping.payloadSchema]. Constructor invariants
- * and domain validation rules are not inferred. Floating-point, nullable and structured map
+ * and domain validation rules are not inferred. Contextual types require serializers registered
+ * in the caller's module. Floating-point, nullable and structured map
  * keys require an explicit schema; string, enum, boolean, character and integer keys are supported.
  */
 fun KSerializer<*>.toJsonSchema(catalog: JsonNodeCatalog, json: Json = SchemaJson): JsonObject =
@@ -65,6 +66,7 @@ private class JsonSchemaGenerator(
                 put("type", JsonArray(listOf("string", "number", "boolean", "null").map(::JsonPrimitive)))
             }
         }
+        if (descriptor.kind == SerialKind.CONTEXTUAL) return schema(contextualDescriptor(descriptor), owner)
         descriptor.integerBounds()?.let { bounds ->
             return typedSchema("integer") {
                 put("minimum", JsonUnquotedLiteral(bounds.minimum))
@@ -174,6 +176,7 @@ private class JsonSchemaGenerator(
         require(
             !descriptor.acceptsJsonNull(),
         ) { "Nullable map keys require an explicit JSON Schema: ${descriptor.serialName}" }
+        if (descriptor.kind == SerialKind.CONTEXTUAL) return mapKeySchema(contextualDescriptor(descriptor))
         descriptor.integerBounds()?.let { bounds ->
             return buildJsonObject { put("pattern", bounds.keyPattern()) }
         }
@@ -192,6 +195,11 @@ private class JsonSchemaGenerator(
             else -> error("Map keys require an explicit JSON Schema: ${descriptor.serialName}")
         }
     }
+
+    private fun contextualDescriptor(descriptor: SerialDescriptor): SerialDescriptor =
+        requireNotNull(json.serializersModule.getContextualDescriptor(descriptor)) {
+            "Contextual type requires a registered serializer or an explicit JSON Schema: ${descriptor.capturedKClass}"
+        }
 
     // Defer this pass until recursive definitions are complete; their placeholders admit everything.
     private fun includeShorthands(element: JsonElement, document: JsonObject): JsonElement = when (element) {
