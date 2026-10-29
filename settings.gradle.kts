@@ -13,12 +13,13 @@ pluginManagement {
         mavenCentral()
     }
     resolutionStrategy.eachPlugin {
-        if (requested.id.id in setOf("com.eignex.kmp", "org.jetbrains.kotlin.plugin.serialization")) {
+        if (requested.id.id in setOf("com.eignex.kmp", "com.eignex.publish.github", "org.jetbrains.kotlin.plugin.serialization")) {
             useModule("com.eignex:kbuild:$kbuildVersion")
         }
     }
 }
 
 plugins {
+    // Auto-provisions the required JDK.
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
