@@ -21,14 +21,7 @@ eignexPublish {
     githubRepo.set("Eignex/skema")
 }
 
-// Run the real JVM artifact on both the supported floor and the current LTS.
-eignexBuild {
-    packagedTestJdks.set(listOf(17, 25))
-}
-
-tasks.withType<org.gradle.api.tasks.testing.AbstractTestTask>().configureEach {
-    inputs.property("kotlin.tests.individualTaskReports", providers.gradleProperty("kotlin.tests.individualTaskReports"))
-}
+eignexBuild { jvmToolchain.set(17) }
 
 // Routine checks cover JVM + Linux x64; release validation opts into every target.
 val fullTargets = providers.gradleProperty("targets.full").isPresent
