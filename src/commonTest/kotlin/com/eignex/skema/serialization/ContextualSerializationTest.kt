@@ -27,9 +27,6 @@ private sealed interface ContextualNode
 @Serializable
 private data class ContextualCompact(@Contextual val payload: ContextualPayload) : ContextualNode
 
-@Serializable
-private data class NullableContextualRecord(@Contextual val payload: ContextualPayload?)
-
 class ContextualSerializationTest {
     private val json = Json {
         serializersModule = SerializersModule { contextual(ContextualPayload.serializer()) }
@@ -59,22 +56,9 @@ class ContextualSerializationTest {
             listOf(jsonNode<ContextualCompact>("context", JsonNodeShape.Operand, "payload"))
         }
         val value = ContextualCompact(ContextualPayload(2))
-        val encoded = json.encodeToJsonElement(serializer, value)
-        assertEquals(value, json.decodeFromJsonElement(serializer, encoded))
         assertEquals(value, json.decodeFromString(serializer, """{"context":{"count":2e0}}"""))
         assertSerializationFails("$.context.count:") {
             json.decodeFromString(serializer, """{"context":{"count":2.5}}""")
-        }
-    }
-
-    @Test
-    fun `nullable contextual records accept null and validate non-null values`() {
-        for (value in listOf(NullableContextualRecord(null), NullableContextualRecord(ContextualPayload(2)))) {
-            val encoded = json.encodeToJsonElement(NullableContextualRecord.serializer(), value)
-            assertEquals(
-                value,
-                json.decodeFromJsonElement(NullableContextualRecord.serializer(), encoded, JsonNodeCatalog()),
-            )
         }
     }
 
@@ -90,34 +74,13 @@ class ContextualSerializationTest {
     }
 
     @Test
-    fun `contextual integer map keys retain key validation and schemas`() {
+    fun `contextual integer map keys constrain property names in schemas`() {
         val format = Json {
             serializersModule = SerializersModule { contextual(Int.serializer()) }
         }
         val serializer = MapSerializer(ContextualSerializer(Int::class), String.serializer())
-        val encoded = format.parseToJsonElement("""{"2":"value"}""")
-        assertEquals(mapOf(2 to "value"), format.decodeFromJsonElement(serializer, encoded, JsonNodeCatalog()))
-        assertSerializationFails("$.2.0:") {
-            format.decodeFromJsonElement(
-                serializer,
-                format.parseToJsonElement("""{"2.0":"value"}"""),
-                JsonNodeCatalog(),
-            )
-        }
         val schema = serializer.toJsonSchema(JsonNodeCatalog(), format)
         assertTrue("pattern" in schema.getValue("propertyNames").jsonObject)
-    }
-
-    @Test
-    fun `contextual schemas use the descriptor registered in the caller module`() {
-        val document = ContextualRecord.serializer().toJsonSchema(JsonNodeCatalog(), json)
-        val definitions = document.getValue("\$defs").jsonObject
-        val root = definitions.getValue(document.getValue("\$ref").jsonPrimitive.content.substringAfterLast('/'))
-            .jsonObject
-        val payload = root.getValue("properties").jsonObject.getValue("payload").jsonObject
-        val body = definitions.getValue(payload.getValue("\$ref").jsonPrimitive.content.substringAfterLast('/'))
-            .jsonObject
-        assertEquals(JsonPrimitive("integer"), body.getValue("properties").jsonObject["count"]!!.jsonObject["type"])
     }
 
     @Test

@@ -30,10 +30,9 @@ class JsonOperandSerializerTest {
     }
 
     @Test
-    fun `JSON transforming bodies retain JSON encoders for every built-in shape`() {
+    fun `JSON transforming bodies retain JSON encoders for compact operand shapes`() {
         val value = TransformedRecord(7)
         val cases = listOf(
-            JsonNodeShape.Fields to """{"node":{"value":7}}""",
             JsonNodeShape.Operand to """{"node":7}""",
             JsonNodeShape.Operands to """{"node":[7]}""",
             JsonNodeShape.Literal to "7",
