@@ -57,6 +57,91 @@ class JsonPathDecoderTest {
         ContentCountSerializer.nullable,
     )
 
+    @Serializable(with = DelegatedNodeSerializer::class)
+    private sealed interface DelegatedNode
+
+    @Serializable
+    private data class DelegatedCount(val value: Int) : DelegatedNode
+
+    private object CanonicalNodeSerializer : CompactSerializer<DelegatedNode>(
+        "DelegatedNode",
+        DelegatedNode::class,
+        nodes = { listOf(jsonNode<DelegatedCount>("count")) },
+    )
+
+    private object DelegatedNodeSerializer : KSerializer<DelegatedNode> by CanonicalNodeSerializer
+
+    private companion object {
+        val delegatedCatalog = JsonNodeCatalog { listOf(CanonicalNodeSerializer) }
+    }
+
+    @Serializable(with = DelegatedEnvelopeSerializer::class)
+    private sealed interface DelegatedEnvelope
+
+    @Serializable
+    private data class DelegatedHolder(val posterior: DelegatedNode?) : DelegatedEnvelope
+
+    private object DelegatedEnvelopeSerializer : CompactSerializer<DelegatedEnvelope>(
+        "DelegatedEnvelope",
+        DelegatedEnvelope::class,
+        delegatedCatalog,
+        nodes = { listOf(jsonNode<DelegatedHolder>("bandit")) },
+    )
+
+    @Test
+    fun `delegated compact serializers decode roots and nullable nested fields`() {
+        val document = Json.parseToJsonElement("""{"count":{"value":2e0}}""")
+        assertEquals(
+            DelegatedCount(2),
+            Json.decodeFromJsonElement(DelegatedNodeSerializer, document, delegatedCatalog),
+        )
+        assertEquals(
+            DelegatedCount(2),
+            Json.decodeFromJsonElement(DelegatedNodeSerializer.nullable, document, delegatedCatalog),
+        )
+        assertEquals(
+            null,
+            Json.decodeFromJsonElement(DelegatedNodeSerializer.nullable, JsonNull, delegatedCatalog),
+        )
+        val value = DelegatedHolder(DelegatedCount(2))
+        val wire = Json.encodeToString(DelegatedEnvelopeSerializer, value)
+        assertEquals(value, Json.decodeFromString(DelegatedEnvelopeSerializer, wire))
+    }
+
+    @Test
+    fun `delegated compact fields preserve strict validation and nested paths`() {
+        val json = Json {
+            ignoreUnknownKeys = true
+            coerceInputValues = true
+        }
+        for ((payload, path) in listOf(
+            """{"value":"2"}""" to "$.bandit.posterior.count.value:",
+            """{"value":2,"extra":3}""" to "$.bandit.posterior.count.extra:",
+        )) {
+            assertSerializationFails(path) {
+                json.decodeFromString(
+                    DelegatedEnvelopeSerializer,
+                    """{"bandit":{"posterior":{"count":$payload}}}""",
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `catalog compact descriptors decode through the canonical serializer`() {
+        val transformed = object : JsonTransformingSerializer<DelegatedNode>(CanonicalNodeSerializer) {
+            override fun transformDeserialize(element: JsonElement): JsonElement =
+                Json.parseToJsonElement("""{"count":{"value":0}}""")
+        }
+        assertSerializationFails("$.count.extra:") {
+            Json.decodeFromJsonElement(
+                transformed,
+                Json.parseToJsonElement("""{"count":{"value":2,"extra":3}}"""),
+                delegatedCatalog,
+            )
+        }
+    }
+
     @Test
     fun `aliased contextual fields retain their values and nested paths`() {
         val json = Json { serializersModule = SerializersModule { contextual(AliasedCount.serializer()) } }
