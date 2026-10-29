@@ -93,3 +93,6 @@ encodes nodes as operator objects, names, or numeric literals.
 and [strict decoding](src/commonMain/kotlin/com/eignex/skema/serialization/JsonPathDecoder.kt)
 use a `JsonNodeCatalog` for nested compact vocabularies. Compact JSON requires the default
 polymorphic discriminator mode and no JSON naming strategy.
+Strict decoding rejects custom polymorphic serializers whose selected subtype is
+not exposed for validation, including content-based serializers. Contextual schema providers that require generic
+type arguments need an explicit JSON Schema because contextual descriptors omit those arguments.

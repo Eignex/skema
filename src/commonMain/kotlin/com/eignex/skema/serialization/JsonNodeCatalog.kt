@@ -18,8 +18,7 @@ class JsonNodeCatalog(
         byName
     }
 
-    internal fun find(descriptor: SerialDescriptor): CompactSerializer<*>? =
-        entries[descriptor.serialName.removeSuffix("?")]
+    internal fun find(descriptor: SerialDescriptor): CompactSerializer<*>? = entries[descriptor.nonNullableSerialName()]
 
     internal fun select(candidates: List<JsonNode>, payload: JsonElement, path: String, missing: String): JsonNode =
         when (candidates.size) {

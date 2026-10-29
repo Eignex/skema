@@ -17,7 +17,8 @@ fun CompactSerializer<*>.toJsonSchema(json: Json = SchemaJson): JsonObject =
  * vocabularies, including those nested in records, collections and schema definitions.
  * Custom payload mappings supply [JsonPayloadMapping.payloadSchema]. Constructor invariants
  * and domain validation rules are not inferred. Contextual types require serializers registered
- * in the caller's module. Floating-point, nullable and structured map
+ * in the caller's module. Contextual providers requiring type arguments need an explicit schema;
+ * contextual descriptors do not retain their type arguments. Floating-point, nullable and structured map
  * keys require an explicit schema; string, enum, boolean, character and integer keys are supported.
  */
 fun KSerializer<*>.toJsonSchema(catalog: JsonNodeCatalog, json: Json = SchemaJson): JsonObject =
@@ -53,7 +54,7 @@ private class JsonSchemaGenerator(
         owner: CompactSerializer<*>?,
         nonNull: Boolean = false,
     ): JsonObject {
-        val name = descriptor.serialName.removeSuffix("?")
+        val name = descriptor.nonNullableSerialName()
         if (name == JsonElement.serializer().descriptor.serialName) return buildJsonObject {}
         if (descriptor.isNullable && !nonNull) {
             return alternatives(listOf(schema(descriptor, owner, true), typedSchema("null")))
@@ -123,7 +124,7 @@ private class JsonSchemaGenerator(
     ): JsonObject {
         val key = Definition(descriptor.nullable, owner)
         val name = names[key] ?: run {
-            val base = descriptor.serialName.removeSuffix("?").replace(Regex("[^A-Za-z0-9_.-]"), "_")
+            val base = descriptor.nonNullableSerialName().replace(Regex("[^A-Za-z0-9_.-]"), "_")
             var candidate = base
             var suffix = 2
             while (candidate in definitions) candidate = "${base}_${suffix++}"
@@ -187,10 +188,23 @@ private class JsonSchemaGenerator(
         }
     }
 
-    private fun contextualDescriptor(descriptor: SerialDescriptor): SerialDescriptor =
-        requireNotNull(json.serializersModule.getContextualDescriptor(descriptor)) {
+    // User-supplied providers can fail when their type arguments are unavailable.
+    @Suppress("TooGenericExceptionCaught")
+    private fun contextualDescriptor(descriptor: SerialDescriptor): SerialDescriptor {
+        val resolved = try {
+            json.serializersModule.getContextualDescriptor(descriptor)
+        } catch (error: RuntimeException) {
+            throw IllegalArgumentException(
+                "Cannot resolve contextual type ${descriptor.capturedKClass} for JSON Schema: " +
+                    "contextual descriptors do not retain type arguments; " +
+                    "providers requiring type arguments need an explicit JSON Schema",
+                error,
+            )
+        }
+        return requireNotNull(resolved) {
             "Contextual type requires a registered serializer or an explicit JSON Schema: ${descriptor.capturedKClass}"
         }
+    }
 
     private fun polymorphic(descriptor: SerialDescriptor, owner: CompactSerializer<*>?): JsonObject {
         val subtypes = if (descriptor.kind == PolymorphicKind.SEALED) {

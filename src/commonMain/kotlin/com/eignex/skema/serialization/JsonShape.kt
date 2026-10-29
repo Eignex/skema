@@ -13,11 +13,12 @@ internal class JsonShape(
     private val json: Json,
 ) {
     private val integerKeyPatterns = mutableMapOf<SerialDescriptor, Regex>()
+    private val fieldIndices = mutableMapOf<SerialDescriptor, Map<String, Int>>()
 
     fun validateJson(descriptor: SerialDescriptor, element: JsonElement, path: String): JsonElement {
         // Contextual serializers resolve their actual descriptor during decoding, including nullability.
         if (descriptor.kind == SerialKind.CONTEXTUAL) return element
-        val name = descriptor.serialName.removeSuffix("?")
+        val name = descriptor.nonNullableSerialName()
         when (name) {
             JsonElement.serializer().descriptor.serialName -> return element
 
@@ -53,19 +54,14 @@ internal class JsonShape(
                 if (items.indices.all { items[it] === array[it] }) array else JsonArray(items)
             }
 
-            StructureKind.MAP -> {
-                val map = element.objectAt(path)
-                val key = descriptor.getElementDescriptor(0)
-                map.keys.forEach { validateMapKey(key, it, "$path.$it") }
-                val child = descriptor.getElementDescriptor(1)
-                val values = map.mapValues { (key, value) -> validateJson(child, value, "$path.$key") }
-                if (values.all { (key, value) -> value === map.getValue(key) }) map else JsonObject(values)
-            }
+            StructureKind.MAP -> validateJsonMap(json, descriptor, element, path, ::validateJson, ::validateMapKey)
 
             SerialKind.ENUM -> {
                 val literal = element as? JsonPrimitive
                 val names = descriptor.elementNames.toList()
-                if (literal?.isString != true || literal.content !in names) invalid(path, "expected one of $names")
+                if (literal?.isString != true || literal.content !in fields(descriptor, path)) {
+                    invalid(path, "expected one of $names")
+                }
                 element
             }
 
@@ -94,10 +90,17 @@ internal class JsonShape(
         path: String,
         fieldPath: (String) -> String = { "$path.$it" },
     ): JsonObject {
-        val fields = (0 until descriptor.elementsCount).associateBy { descriptor.getElementName(it) }
-        body.keys.firstOrNull { it !in fields }?.let { invalid("$path.$it", "unknown field '$it'") }
+        val fields = fields(descriptor, path)
+        val supplied = mutableMapOf<Int, String>()
+        for (name in body.keys) {
+            val index = fields[name] ?: invalid(fieldPath(name), "unknown field '$name'")
+            if (supplied.put(index, name) != null) {
+                invalid(fieldPath(name), "duplicate field '${descriptor.getElementName(index)}'")
+            }
+        }
         val rewritten = mutableMapOf<String, JsonElement>()
-        for ((name, index) in fields) {
+        for (index in 0 until descriptor.elementsCount) {
+            val name = supplied[index] ?: descriptor.getElementName(index)
             val value = body[name]
             val child = descriptor.getElementDescriptor(index)
             if (value == null) {
@@ -110,6 +113,28 @@ internal class JsonShape(
         if (rewritten.isEmpty()) return body
         return JsonObject(body.mapValues { (name, value) -> rewritten[name] ?: value })
     }
+
+    fun fieldName(descriptor: SerialDescriptor, index: Int, body: JsonObject, path: String): String {
+        val fields = fields(descriptor, path)
+        return body.keys.firstOrNull { fields[it] == index } ?: descriptor.getElementName(index)
+    }
+
+    private fun fields(descriptor: SerialDescriptor, path: String): Map<String, Int> =
+        fieldIndices.getOrPut(descriptor) {
+            val canonical = (0 until descriptor.elementsCount).associateBy { descriptor.getElementName(it) }
+            val fields = canonical.toMutableMap()
+            if (json.configuration.useAlternativeNames) {
+                for (index in 0 until descriptor.elementsCount) {
+                    val aliases = descriptor.getElementAnnotations(index).filterIsInstance<JsonNames>()
+                        .flatMap { it.names.toList() }
+                    for (alias in aliases.filter { it !in canonical }) {
+                        val previous = fields.put(alias, index)
+                        if (previous != null && previous != index) invalid(path, "ambiguous field alias '$alias'")
+                    }
+                }
+            }
+            fields
+        }
 
     private fun validatePrimitive(descriptor: SerialDescriptor, element: JsonElement, path: String): JsonElement {
         val primitive = element as? JsonPrimitive ?: invalid(path, "expected ${descriptor.kind}")

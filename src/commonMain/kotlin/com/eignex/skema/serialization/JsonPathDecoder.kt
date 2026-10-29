@@ -7,6 +7,9 @@
 package com.eignex.skema.serialization
 
 import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.builtins.nullable
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.descriptors.PolymorphicKind
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.SerialKind
 import kotlinx.serialization.descriptors.StructureKind
@@ -19,7 +22,8 @@ import kotlinx.serialization.json.*
  * Strictly decodes [element], reporting errors at paths from the document root.
  * [catalog] must include all nested compact vocabularies. Integer fields accept integral
  * tokens by value; integer map keys require decimal digits within the key type's range,
- * with an optional minus sign for signed types.
+ * with an optional minus sign for signed types. Content-based polymorphic serializers
+ * and custom polymorphic serializers without an exposed subtype are rejected.
  */
 fun <T> Json.decodeFromJsonElement(
     deserializer: DeserializationStrategy<T>,
@@ -56,8 +60,12 @@ internal class JsonPathDecoder(
 ) : JsonDecoder by decoder {
     @Suppress("UNCHECKED_CAST")
     override fun <T> decodeSerializableValue(deserializer: DeserializationStrategy<T>): T =
-        if (deserializer is AbstractPolymorphicSerializer<*>) {
+        if (deserializer is JsonContentPolymorphicSerializer<*>) {
+            invalid(path, "Content-based polymorphic serializers do not expose their subtype for strict decoding")
+        } else if (deserializer is AbstractPolymorphicSerializer<*>) {
             decodePolymorphic(deserializer) as T
+        } else if (deserializer.requiresExposedSubtype()) {
+            invalid(path, "Custom polymorphic serializers do not expose their subtype for strict decoding")
         } else if (deserializer.descriptor.kind == SerialKind.CONTEXTUAL) {
             // Let ContextualSerializer resolve the type, then validate before decoding.
             deserializer.deserialize(object : JsonDecoder by this {
@@ -123,18 +131,15 @@ internal class JsonPathDecoder(
 
     override fun beginStructure(descriptor: SerialDescriptor): CompositeDecoder {
         val composite = decoder.beginStructure(descriptor)
-        val entries = if (descriptor.kind == StructureKind.MAP) element.jsonObject.entries.toList() else emptyList()
+        val mapElements = if (descriptor.kind == StructureKind.MAP) JsonMapElements(element, path) else null
         fun <T> child(index: Int, deserializer: DeserializationStrategy<T>): JsonPathSerializer<T> {
             val (value, childPath) = when (descriptor.kind) {
                 StructureKind.LIST -> element.jsonArray[index] to "$path[$index]"
 
-                StructureKind.MAP -> {
-                    val entry = entries[index / 2]
-                    (if (index % 2 == 0) JsonPrimitive(entry.key) else entry.value) to "$path.${entry.key}"
-                }
+                StructureKind.MAP -> mapElements!!.child(index)
 
                 else -> {
-                    val name = descriptor.getElementName(index)
+                    val name = shape.fieldName(descriptor, index, element.jsonObject, path)
                     (element.jsonObject[name] ?: JsonNull) to fieldPath(name)
                 }
             }
@@ -143,7 +148,7 @@ internal class JsonPathDecoder(
                 value,
                 childPath,
                 shape,
-                mapKey = descriptor.kind == StructureKind.MAP && index % 2 == 0,
+                mapKey = mapElements?.isObjectKey(index) == true,
             )
         }
         return object : CompositeDecoder by composite {
@@ -167,4 +172,19 @@ internal class JsonPathDecoder(
             )
         }
     }
+}
+
+// Recognize the standard nullable wrapper through its public factory. It delegates back
+// through this decoder, whereas JSON transformers can decode their delegate outside it.
+private val nullableSerializerClass = String.serializer().nullable::class
+
+private fun DeserializationStrategy<*>.requiresExposedSubtype(): Boolean {
+    if (descriptor.kind !is PolymorphicKind || this is CompactSerializer<*> || this::class == nullableSerializerClass) {
+        return false
+    }
+    return descriptor.nonNullableSerialName() !in setOf(
+        JsonElement.serializer().descriptor.serialName,
+        JsonPrimitive.serializer().descriptor.serialName,
+        JsonNull.serializer().descriptor.serialName,
+    )
 }

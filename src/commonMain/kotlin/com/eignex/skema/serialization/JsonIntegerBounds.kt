@@ -34,7 +34,7 @@ internal class JsonIntegerBounds(val minimum: String, val maximum: String) {
 internal fun SerialDescriptor.integerBounds(): JsonIntegerBounds? {
     if (isInline) {
         if (getElementDescriptor(0).acceptsJsonNull()) return null
-        return when (serialName.removeSuffix("?")) {
+        return when (nonNullableSerialName()) {
             "kotlin.UByte" -> JsonIntegerBounds("0", UByte.MAX_VALUE.toString())
             "kotlin.UShort" -> JsonIntegerBounds("0", UShort.MAX_VALUE.toString())
             "kotlin.UInt" -> JsonIntegerBounds("0", UInt.MAX_VALUE.toString())

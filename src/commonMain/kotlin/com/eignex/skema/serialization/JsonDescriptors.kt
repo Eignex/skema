@@ -12,7 +12,10 @@ internal fun SerialDescriptor.classDiscriminator(json: Json): String =
 internal fun SerialDescriptor.isJsonFieldRequired(index: Int, json: Json): Boolean =
     !isElementOptional(index) && (json.configuration.explicitNulls || !getElementDescriptor(index).isNullable)
 
-internal fun SerialDescriptor.acceptsJsonNull(): Boolean = isNullable || when (serialName.removeSuffix("?")) {
+internal fun SerialDescriptor.nonNullableSerialName(): String =
+    if (isNullable) serialName.removeSuffix("?") else serialName
+
+internal fun SerialDescriptor.acceptsJsonNull(): Boolean = isNullable || when (nonNullableSerialName()) {
     JsonElement.serializer().descriptor.serialName,
     JsonPrimitive.serializer().descriptor.serialName,
     JsonNull.serializer().descriptor.serialName,
