@@ -4,6 +4,7 @@ package com.eignex.skema.serialization
 
 import com.eignex.skema.SchemaJson
 import kotlinx.serialization.Contextual
+import kotlinx.serialization.ContextualSerializer
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -294,6 +295,12 @@ class JsonWireConformanceTest {
         mapExamples(UShort.serializer(), listOf("65535"), listOf("65536"))
         mapExamples(UInt.serializer(), listOf("4294967295"), listOf("4294967296"))
         mapExamples(ULong.serializer(), listOf("18446744073709551615"), listOf("18446744073709551616"))
+        mapExamples(
+            ContextualSerializer(Int::class),
+            listOf("2147483647", "-2147483648"),
+            listOf("2147483648", "-2147483649", "2.0"),
+            json = Json { serializersModule = SerializersModule { contextual(Int.serializer()) } },
+        )
     }
 
     @Test
@@ -319,16 +326,16 @@ class JsonWireConformanceTest {
         }
     }
 
-    private fun <T> roundTrip(serializer: KSerializer<T>, value: T): JsonElement {
-        val element = SchemaJson.encodeToJsonElement(serializer, value)
-        assertEquals(value, SchemaJson.decodeFromJsonElement(serializer, element, JsonNodeCatalog()))
+    private fun <T> roundTrip(serializer: KSerializer<T>, value: T, json: Json = SchemaJson): JsonElement {
+        val element = json.encodeToJsonElement(serializer, value)
+        assertEquals(value, json.decodeFromJsonElement(serializer, element, JsonNodeCatalog()))
         return element
     }
 
-    private fun <T> invalidWire(serializer: KSerializer<T>, wire: String): JsonElement {
-        val element = SchemaJson.parseToJsonElement(wire)
+    private fun <T> invalidWire(serializer: KSerializer<T>, wire: String, json: Json = SchemaJson): JsonElement {
+        val element = json.parseToJsonElement(wire)
         assertFailsWith<SerializationException> {
-            SchemaJson.decodeFromJsonElement(serializer, element, JsonNodeCatalog())
+            json.decodeFromJsonElement(serializer, element, JsonNodeCatalog())
         }
         return element
     }
@@ -353,19 +360,20 @@ class JsonWireConformanceTest {
         valid: List<String>,
         invalid: List<String>,
         numeric: Boolean = true,
+        json: Json = SchemaJson,
     ) {
         val serializer = MapSerializer(key, String.serializer())
         fun record(name: String): JsonObject = buildJsonObject { put(name, "value") }
         val good = valid.map { name ->
             val element = record(name)
-            val value = SchemaJson.decodeFromJsonElement(serializer, element, JsonNodeCatalog())
-            roundTrip(serializer, value)
+            val value = json.decodeFromJsonElement(serializer, element, JsonNodeCatalog())
+            roundTrip(serializer, value, json)
             element
         }
         val bad = (invalid + if (numeric) listOf("bogus", "1\n", "") else emptyList()).map { name ->
-            invalidWire(serializer, record(name).toString())
+            invalidWire(serializer, record(name).toString(), json)
         }
-        schemaExamples("map ${key.descriptor.serialName}", serializer.toJsonSchema(JsonNodeCatalog()), good, bad)
+        schemaExamples("map ${key.descriptor.serialName}", serializer.toJsonSchema(JsonNodeCatalog(), json), good, bad)
     }
 
     private fun schemaExamples(name: String, schema: JsonObject, valid: List<JsonElement>, invalid: List<JsonElement>) {

@@ -5,8 +5,6 @@ package com.eignex.skema.serialization
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.ContextualSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.MapSerializer
-import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.*
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
@@ -71,16 +69,6 @@ class ContextualSerializationTest {
             JsonNull,
             format.decodeFromJsonElement(ContextualSerializer(JsonPrimitive::class), JsonNull, JsonNodeCatalog()),
         )
-    }
-
-    @Test
-    fun `contextual integer map keys constrain property names in schemas`() {
-        val format = Json {
-            serializersModule = SerializersModule { contextual(Int.serializer()) }
-        }
-        val serializer = MapSerializer(ContextualSerializer(Int::class), String.serializer())
-        val schema = serializer.toJsonSchema(JsonNodeCatalog(), format)
-        assertTrue("pattern" in schema.getValue("propertyNames").jsonObject)
     }
 
     @Test
