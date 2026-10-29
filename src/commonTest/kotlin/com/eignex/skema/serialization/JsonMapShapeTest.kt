@@ -46,7 +46,7 @@ private object StructuredCompactKeySerializer : CompactSerializer<StructuredComp
     nodes = { listOf(jsonNode<StructuredCompactId>("key", JsonNodeShape.Operand, "id")) },
 )
 
-class StructuredMapTest {
+class JsonMapShapeTest {
     private val json = Json { allowStructuredMapKeys = true }
 
     @Test
