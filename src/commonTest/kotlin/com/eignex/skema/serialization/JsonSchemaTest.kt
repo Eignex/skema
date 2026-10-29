@@ -280,17 +280,6 @@ class JsonSchemaTest {
     }
 
     @Test
-    fun `descriptor names with URI characters produce resolvable references`() {
-        val serializer = CompactSerializer("example/expr~v1", SchemaWire::class) {
-            listOf(jsonNode<SchemaInput>("input"))
-        }
-
-        val document = serializer.toJsonSchema()
-
-        assertTrue(resolve(document, document).containsKey("anyOf"))
-    }
-
-    @Test
     fun `fixed fields are omitted from payload schemas`() {
         val serializer = CompactSerializer("Fixed", SchemaWire::class) {
             listOf(
@@ -412,13 +401,21 @@ class JsonSchemaTest {
     }
 
     @Test
-    fun `compact schema names preserve literal trailing question marks`() {
-        val schema = QuestionSchemaSerializer.toJsonSchema()
-        assertCompactDefinition(schema, schema)
-        val encoded = Json.encodeToJsonElement(QuestionSchemaSerializer, QuestionSchemaLeaf)
-        assertEquals(JsonPrimitive("leaf"), encoded)
-        assertEquals(QuestionSchemaLeaf, Json.decodeFromJsonElement(QuestionSchemaSerializer, encoded))
-        schemaExamples("question mark compact root", schema, listOf(encoded))
+    fun `compact schema names with URI characters produce valid references`() {
+        val serializers = listOf(
+            QuestionSchemaSerializer,
+            CompactSerializer("example/expr~v1", QuestionSchemaNode::class) {
+                listOf(jsonNode<QuestionSchemaLeaf>("leaf"))
+            },
+        )
+        for (serializer in serializers) {
+            val schema = serializer.toJsonSchema()
+            assertCompactDefinition(schema, schema)
+            val encoded = Json.encodeToJsonElement(serializer, QuestionSchemaLeaf)
+            assertEquals(JsonPrimitive("leaf"), encoded)
+            assertEquals(QuestionSchemaLeaf, Json.decodeFromJsonElement(serializer, encoded))
+            schemaExamples("compact root ${serializer.serialName}", schema, listOf(encoded))
+        }
     }
 
     @Test

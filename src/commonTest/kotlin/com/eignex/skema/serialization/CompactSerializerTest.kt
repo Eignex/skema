@@ -802,24 +802,32 @@ class CompactSerializerTest {
 
     @Test
     fun `catalog resolvers receive candidates payload and caller path`() {
-        var receivedNodes: List<JsonNode>? = null
-        var receivedPayload: JsonElement? = null
-        var receivedPath: String? = null
-        val catalog = JsonNodeCatalog(resolve = { candidates, payload, path ->
-            receivedNodes = candidates
-            receivedPayload = payload
-            receivedPath = path
-            candidates.single { it.type == NumericChoice::class }
-        })
-        val serializer = CompactSerializer("ResolverInput", Choice::class, catalog) { ChoiceSerializer.nodes }
-        val payload = JsonObject(mapOf("number" to JsonPrimitive(3)))
+        val cases = listOf(
+            ChoiceSerializer.nodes to JsonObject(mapOf("choice" to JsonObject(mapOf("number" to JsonPrimitive(3))))),
+            listOf(
+                jsonNode<NumericChoice>("first", JsonNodeShape.Literal, "number"),
+                jsonNode<NumericChoice>("second", JsonNodeShape.Literal, "number"),
+            ) to JsonPrimitive(3),
+        )
+        for ((nodes, element) in cases) {
+            var receivedNodes: List<JsonNode>? = null
+            var receivedPayload: JsonElement? = null
+            var receivedPath: String? = null
+            val catalog = JsonNodeCatalog(resolve = { candidates, payload, path ->
+                receivedNodes = candidates
+                receivedPayload = payload
+                receivedPath = path
+                candidates.last()
+            })
+            val serializer = CompactSerializer("ResolverInput", Choice::class, catalog) { nodes }
 
-        val selected = serializer.selectNode(JsonObject(mapOf("choice" to payload)), "$.entries.result")
+            val selected = serializer.selectNode(element, "$.entries.result")
 
-        assertEquals(NumericChoice::class, selected.type)
-        assertEquals(serializer.nodes, receivedNodes)
-        assertEquals(payload, receivedPayload)
-        assertEquals("$.entries.result.choice", receivedPath)
+            assertEquals(nodes.last(), selected)
+            assertEquals(nodes, receivedNodes)
+            assertEquals(if (element is JsonObject) element.getValue("choice") else element, receivedPayload)
+            assertEquals(if (element is JsonObject) "$.entries.result.choice" else "$.entries.result", receivedPath)
+        }
     }
 
     @Test

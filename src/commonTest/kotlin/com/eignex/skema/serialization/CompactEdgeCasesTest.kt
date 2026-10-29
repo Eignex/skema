@@ -86,18 +86,6 @@ class CompactEdgeCasesTest {
         assertTrue("@EncodeDefault(NEVER)" in error.message.orEmpty(), error.message)
     }
 
-    @Test fun literalAmbiguityUsesCatalogResolver() {
-        val catalog = JsonNodeCatalog(resolve = { candidates, _, _ -> candidates.first() })
-        val serializer = CompactSerializer("EdgeLiterals", EdgeValue::class, catalog) {
-            listOf(
-                jsonNode<EdgeNumber>("number", JsonNodeShape.Literal, "value"),
-                jsonNode<EdgeInteger>("integer", JsonNodeShape.Literal, "value"),
-            )
-        }
-        val encoded = SchemaJson.encodeToString(serializer, EdgeNumber(2.5))
-        assertEquals(EdgeNumber(2.5), SchemaJson.decodeFromString(serializer, encoded))
-    }
-
     @Test fun compactFieldsRejectUnsupportedJsonConfigurations() {
         val serializer = CompactSerializer("EdgeNamed", EdgeValue::class) {
             listOf(jsonNode<EdgeNamed>("named"))
