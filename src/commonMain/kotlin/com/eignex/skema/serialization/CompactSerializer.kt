@@ -18,6 +18,7 @@ import kotlin.reflect.KClass
  * Encodes JSON as operator objects, names for empty objects, or numeric literals;
  * other formats use sealed-class serialization. Decoding is strict regardless of caller settings.
  * Integer fields accept integral tokens in range (`2.0`, `1e2`) and encode as plain integers.
+ * Numeric body fields must be finite, even when the caller allows special floating-point values.
  * Requires polymorphic class discriminators and no JSON naming strategy.
  */
 open class CompactSerializer<T : Any>(
@@ -72,8 +73,13 @@ open class CompactSerializer<T : Any>(
             return
         }
         checkJsonConfiguration(encoder.json)
-        val node = selectNodeForValue(value, encoder.json)
-        val body = encoder.json.encodeToJsonElement(node.encodingSerializer, value).jsonObject
+        val json = if (encoder.json.configuration.allowSpecialFloatingPointValues) {
+            Json(encoder.json) { allowSpecialFloatingPointValues = false }
+        } else {
+            encoder.json
+        }
+        val node = selectNodeForValue(value, json)
+        val body = json.encodeToJsonElement(node.encodingSerializer, value).jsonObject
         val payload = node.encode(body)
         encoder.encodeJsonElement(
             when {

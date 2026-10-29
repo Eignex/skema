@@ -26,11 +26,55 @@ private value class EdgeNullableInt(val value: Int?)
 
 @Serializable private data class EdgeNumber(val value: Double) : EdgeValue
 
+@Serializable private data class EdgeNumbers(val floats: List<Float>, val doubles: Map<String, Double>) : EdgeValue
+
 @Serializable private data class EdgeInteger(val value: Int) : EdgeValue
 
 @Serializable private data class EdgeNamed(val camelCase: String) : EdgeValue
 
 class CompactEdgeCasesTest {
+    @Test fun compactNumericFieldsRejectSpecialFloatingPointValues() {
+        val json = Json { allowSpecialFloatingPointValues = true }
+        for (shape in JsonNodeShape.entries) {
+            val operands = if (shape == JsonNodeShape.Fields) emptyList() else listOf("value")
+            val serializer = CompactSerializer("FiniteNumber", EdgeValue::class) {
+                listOf(JsonNode(EdgeNumber::class, "number", shape, operands) { EdgeNumber.serializer() })
+            }
+            for (number in listOf(Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY)) {
+                assertFailsWith<SerializationException>("$shape: $number") {
+                    json.encodeToString(serializer, EdgeNumber(number))
+                }
+            }
+            for (number in listOf(0.0, -0.0, Double.MIN_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE)) {
+                val value = EdgeNumber(number)
+                val encoded = json.encodeToString(serializer, value)
+                assertEquals(value, json.decodeFromString(serializer, encoded), "$shape: $number")
+            }
+        }
+    }
+
+    @Test fun nestedNumericCollectionsRejectSpecialFloatingPointValues() {
+        val json = Json { allowSpecialFloatingPointValues = true }
+        val serializer = CompactSerializer("FiniteNumbers", EdgeValue::class) {
+            listOf(jsonNode<EdgeNumbers>("numbers"))
+        }
+        val values = listOf(
+            EdgeNumbers(listOf(Float.NaN), emptyMap()),
+            EdgeNumbers(listOf(Float.POSITIVE_INFINITY), emptyMap()),
+            EdgeNumbers(listOf(Float.NEGATIVE_INFINITY), emptyMap()),
+            EdgeNumbers(emptyList(), mapOf("value" to Double.NaN)),
+            EdgeNumbers(emptyList(), mapOf("value" to Double.POSITIVE_INFINITY)),
+            EdgeNumbers(emptyList(), mapOf("value" to Double.NEGATIVE_INFINITY)),
+        )
+        for (value in values) {
+            assertFailsWith<SerializationException>(value.toString()) {
+                json.encodeToString(serializer, value)
+            }
+        }
+        val finite = EdgeNumbers(listOf(Float.MIN_VALUE, Float.MAX_VALUE), mapOf("value" to Double.MAX_VALUE))
+        assertEquals(finite, json.decodeFromString(serializer, json.encodeToString(serializer, finite)))
+    }
+
     @Test fun literalAndNamedNodesCanShareAName() {
         val serializer = CompactSerializer("SharedName", EdgeValue::class) {
             listOf(
