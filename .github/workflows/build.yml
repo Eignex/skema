@@ -66,10 +66,7 @@ jobs:
         run: ./gradlew check koverXmlReport
 
       - name: Validate generated JSON Schemas
-        run: |
-          python3 -m venv "$RUNNER_TEMP/skema-schema-tests"
-          "$RUNNER_TEMP/skema-schema-tests/bin/pip" install -r scripts/requirements-schema-tests.txt
-          "$RUNNER_TEMP/skema-schema-tests/bin/python" scripts/check-json-schemas.py
+        run: bash scripts/check-json-schemas.sh
 
       - name: Upload test reports
         if: always()

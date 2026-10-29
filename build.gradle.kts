@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+import org.jetbrains.kotlin.gradle.targets.jvm.KotlinJvmTarget
 
 plugins {
     id("com.eignex.kmp")
@@ -40,7 +41,21 @@ kotlin {
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf")
         }
+        jvmTest.dependencies {
+            implementation("com.networknt:json-schema-validator:1.5.9")
+        }
     }
+}
+
+val schemaTestCompilation = kotlin.targets.getByName<KotlinJvmTarget>("jvm").compilations.getByName("test")
+tasks.register<JavaExec>("validateJsonSchemas") {
+    group = "verification"
+    description = "Validate emitted JSON Schema fixtures against draft 2020-12."
+    dependsOn(schemaTestCompilation.compileTaskProvider)
+    mustRunAfter("jvmTest")
+    classpath(schemaTestCompilation.output.allOutputs, schemaTestCompilation.runtimeDependencyFiles)
+    mainClass.set("com.eignex.skema.serialization.CheckJsonSchemasKt")
+    args(providers.gradleProperty("schemaReportDir").getOrElse("build/test-results/jvmTest"))
 }
 
 dokka {

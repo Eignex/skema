@@ -370,7 +370,7 @@ class JsonWireConformanceTest {
 
     private fun schemaExamples(name: String, schema: JsonObject, valid: List<JsonElement>, invalid: List<JsonElement>) {
         assertTrue(valid.isNotEmpty())
-        // The Python CI check reads these cases from the JVM test XML, including cached test outputs.
+        // The schema CI check reads these cases from the JVM test XML, including cached test outputs.
         val example = buildJsonObject {
             put("name", name)
             put("schema", schema)
