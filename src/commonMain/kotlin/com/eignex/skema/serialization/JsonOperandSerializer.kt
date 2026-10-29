@@ -1,4 +1,7 @@
-@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+@file:OptIn(
+    kotlinx.serialization.ExperimentalSerializationApi::class,
+    kotlinx.serialization.SealedSerializationApi::class,
+)
 
 package com.eignex.skema.serialization
 
@@ -8,11 +11,13 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.nullable
 import kotlinx.serialization.encoding.CompositeEncoder
 import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonEncoder
 
 internal class JsonOperandSerializer(private val body: KSerializer<Any>) : KSerializer<Any> by body {
     override fun serialize(encoder: Encoder, value: Any) {
+        val jsonEncoder = encoder as JsonEncoder
         body.serialize(
-            object : Encoder by encoder {
+            object : JsonEncoder by jsonEncoder {
                 override fun beginStructure(descriptor: SerialDescriptor): CompositeEncoder {
                     val composite = encoder.beginStructure(descriptor)
                     return object : CompositeEncoder by composite {

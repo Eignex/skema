@@ -1,4 +1,7 @@
-@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+@file:OptIn(
+    kotlinx.serialization.ExperimentalSerializationApi::class,
+    kotlinx.serialization.SealedSerializationApi::class,
+)
 
 package com.eignex.skema.serialization
 
@@ -9,13 +12,19 @@ import kotlinx.serialization.encoding.CompositeEncoder
 import kotlinx.serialization.json.*
 import kotlinx.serialization.modules.SerializersModule
 
-// Reads only the named top-level fields, so selecting a node never encodes its other operands.
-internal class FieldCaptureEncoder(private val json: Json, private val fields: Set<String>) : AbstractEncoder() {
+// Structured body serializers can skip other operands while capturing the named top-level fields.
+internal class FieldCaptureEncoder(override val json: Json, private val fields: Set<String>) :
+    AbstractEncoder(),
+    JsonEncoder {
     val values = mutableMapOf<String, JsonElement>()
     private var depth = 0
     private var field: String? = null
 
     override val serializersModule: SerializersModule get() = json.serializersModule
+
+    override fun encodeJsonElement(element: JsonElement) {
+        values.putAll(element.objectAt("$").filterKeys { it in fields })
+    }
 
     override fun beginStructure(descriptor: SerialDescriptor): CompositeEncoder {
         depth++
