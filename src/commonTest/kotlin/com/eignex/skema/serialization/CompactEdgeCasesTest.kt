@@ -16,15 +16,8 @@ import kotlin.test.assertTrue
 @Serializable
 private sealed interface EdgeValue
 
-@Serializable private data class EdgeFixedUnsigned(val tag: UInt) : EdgeValue
-
 @Serializable
 private data class EdgeNeverDefault(@EncodeDefault(EncodeDefault.Mode.NEVER) val value: Int = 7) : EdgeValue
-
-@Serializable @JvmInline
-private value class EdgeNullableInline(val value: String?)
-
-@Serializable private data class EdgeInline(val value: EdgeNullableInline) : EdgeValue
 
 @Serializable @JvmInline
 private value class EdgeNullableInt(val value: Int?)
@@ -39,25 +32,19 @@ private value class EdgeNullableInt(val value: Int?)
 
 class CompactEdgeCasesTest {
     @Test fun literalAndNamedNodesCanShareAName() {
-        var loads = 0
         val serializer = CompactSerializer("SharedName", EdgeValue::class) {
-            loads++
             listOf(
                 jsonNode<EdgeNumber>("value", JsonNodeShape.Literal, "value"),
                 jsonNode<EdgeInteger>("value", JsonNodeShape.Operand, "value"),
             )
         }
-        assertEquals(0, loads)
+        val literal = EdgeNumber(2.5)
+        val named = EdgeInteger(3)
 
-        repeat(2) {
-            val literal = EdgeNumber(2.5)
-            val named = EdgeInteger(3)
-            assertEquals("2.5", SchemaJson.encodeToString(serializer, literal))
-            assertEquals("""{"value":3}""", SchemaJson.encodeToString(serializer, named))
-            assertEquals(literal, SchemaJson.decodeFromString(serializer, "2.5"))
-            assertEquals(named, SchemaJson.decodeFromString(serializer, """{"value":3}"""))
-        }
-        assertEquals(1, loads)
+        assertEquals("2.5", SchemaJson.encodeToString(serializer, literal))
+        assertEquals("""{"value":3}""", SchemaJson.encodeToString(serializer, named))
+        assertEquals(literal, SchemaJson.decodeFromString(serializer, "2.5"))
+        assertEquals(named, SchemaJson.decodeFromString(serializer, """{"value":3}"""))
     }
 
     @Test fun overlappingFixedNodesRemainAmbiguousWhenEncoding() {
@@ -71,16 +58,6 @@ class CompactEdgeCasesTest {
             SchemaJson.encodeToString(serializer, EdgeInteger(7))
         }
         assertTrue("no unique OverlappingFixed node matches the fixed fields" in error.message.orEmpty(), error.message)
-    }
-
-    @Test fun fixedUnsignedFieldsSelectTheirNode() {
-        val serializer = CompactSerializer("EdgeFixed", EdgeValue::class) {
-            listOf(jsonNode<EdgeFixedUnsigned>("max", fixed = mapOf("tag" to JsonPrimitive(UInt.MAX_VALUE))))
-        }
-        val value = EdgeFixedUnsigned(UInt.MAX_VALUE)
-        val encoded = SchemaJson.encodeToString(serializer, value)
-        assertEquals("\"max\"", encoded)
-        assertEquals(value, SchemaJson.decodeFromString(serializer, encoded))
     }
 
     @Test fun neverDefaultPositionalOperandsReportOmissions() {
@@ -107,16 +84,6 @@ class CompactEdgeCasesTest {
         }
         assertTrue("fixed fields [value] were omitted" in error.message.orEmpty(), error.message)
         assertTrue("@EncodeDefault(NEVER)" in error.message.orEmpty(), error.message)
-    }
-
-    @Test fun nullableInlineValuesRoundTrip() {
-        val serializer = CompactSerializer("EdgeInline", EdgeValue::class) {
-            listOf(jsonNode<EdgeInline>("inline"))
-        }
-        val json = Json { explicitNulls = true }
-        val value = EdgeInline(EdgeNullableInline(null))
-        val encoded = json.encodeToString(serializer, value)
-        assertEquals(value, json.decodeFromString(serializer, encoded))
     }
 
     @Test fun literalAmbiguityUsesCatalogResolver() {

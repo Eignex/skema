@@ -9,6 +9,7 @@ import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.AbstractEncoder
 import kotlinx.serialization.encoding.CompositeEncoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.*
 import kotlinx.serialization.modules.SerializersModule
 
@@ -21,10 +22,6 @@ internal class FieldCaptureEncoder(override val json: Json, private val fields: 
     private var field: String? = null
 
     override val serializersModule: SerializersModule get() = json.serializersModule
-
-    override fun encodeJsonElement(element: JsonElement) {
-        values.putAll(element.objectAt("$").filterKeys { it in fields })
-    }
 
     override fun beginStructure(descriptor: SerialDescriptor): CompositeEncoder {
         depth++
@@ -53,6 +50,42 @@ internal class FieldCaptureEncoder(override val json: Json, private val fields: 
 
     override fun encodeNull() {
         field?.let { values[it] = JsonNull }
+    }
+
+    override fun encodeJsonElement(element: JsonElement) {
+        val name = field
+        if (name != null) {
+            values[name] = element
+        } else {
+            values.putAll(element.objectAt("$").filterKeys { it in fields })
+        }
+    }
+
+    override fun encodeInline(descriptor: SerialDescriptor): Encoder {
+        if (!descriptor.isInline) return this
+        if (descriptor.serialName !in setOf("kotlin.UByte", "kotlin.UShort", "kotlin.UInt", "kotlin.ULong")) {
+            return this
+        }
+        return object : AbstractEncoder() {
+            override val serializersModule: SerializersModule get() = json.serializersModule
+
+            // JS represents Byte, Short and Int as numbers, so runtime type checks lose their width.
+            override fun encodeByte(value: Byte) {
+                field?.let { values[it] = JsonPrimitive(value.toUByte()) }
+            }
+
+            override fun encodeShort(value: Short) {
+                field?.let { values[it] = JsonPrimitive(value.toUShort()) }
+            }
+
+            override fun encodeInt(value: Int) {
+                field?.let { values[it] = JsonPrimitive(value.toUInt()) }
+            }
+
+            override fun encodeLong(value: Long) {
+                field?.let { values[it] = JsonPrimitive(value.toULong()) }
+            }
+        }
     }
 
     override fun encodeEnum(enumDescriptor: SerialDescriptor, index: Int) {

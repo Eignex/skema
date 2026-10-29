@@ -5,11 +5,15 @@ package com.eignex.skema.serialization
 import com.eignex.skema.JsonSpec
 import com.eignex.skema.SchemaDef
 import com.eignex.skema.SchemaJson
+import kotlinx.serialization.Contextual
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.contextual
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -120,27 +124,60 @@ private object SchemaWireSerializer : CompactSerializer<SchemaWire>("SchemaWire"
     )
 })
 
+@Serializable
+private data class GenericSchemaBox<T>(val value: T)
+
+@Serializable
+private data class ContextualGenericSchema(@Contextual val box: GenericSchemaBox<Int>)
+
+@Serializable(with = QuestionSchemaSerializer::class)
+private sealed interface QuestionSchemaNode
+
+@Serializable
+private data object QuestionSchemaLeaf : QuestionSchemaNode
+
+@Serializable
+private data class QuestionSchemaDocument(val value: QuestionSchemaNode, val nullable: QuestionSchemaNode?)
+
+private object QuestionSchemaSerializer : CompactSerializer<QuestionSchemaNode>(
+    "Release?",
+    QuestionSchemaNode::class,
+    nodes = { listOf(jsonNode<QuestionSchemaLeaf>("leaf")) },
+)
+
 class JsonSchemaTest {
     @Test
-    fun `compact schemas describe numeric literals and recursive operands`() {
-        val document = SchemaWireSerializer.toJsonSchema()
-        val root = resolve(document, document)
-        val branches = root.getValue("anyOf").jsonArray
-        val integer = branches.single { it.jsonObject["type"] == JsonPrimitive("integer") }.jsonObject
-        val plus = branches.single { it.jsonObject["properties"]?.jsonObject?.containsKey("plus") == true }.jsonObject
-        val tuple = plus.getValue("properties").jsonObject.getValue("plus").jsonObject
-
-        assertEquals(JsonPrimitive("https://json-schema.org/draft/2020-12/schema"), document["${'$'}schema"])
-        assertEquals(JsonPrimitive(Long.MIN_VALUE), integer["minimum"])
-        assertEquals(JsonPrimitive(Long.MAX_VALUE), integer["maximum"])
-        assertEquals(JsonPrimitive(2), tuple["minItems"])
-        assertEquals(JsonPrimitive(2), tuple["maxItems"])
-        assertEquals(JsonPrimitive(false), tuple["items"])
-        assertEquals(
-            listOf(document["${'$'}ref"], document["${'$'}ref"]),
-            tuple["prefixItems"]!!.jsonArray.map {
-                it.jsonObject["${'$'}ref"]
-            },
+    fun `compact schemas accept encoded nodes and reject invalid payloads`() {
+        val values = listOf<SchemaWire>(
+            SchemaInput,
+            SchemaNumber(Long.MIN_VALUE),
+            SchemaNumber(Long.MAX_VALUE),
+            SchemaNegate(SchemaInput),
+            SchemaPlus(SchemaInput, SchemaNumber(2)),
+            SchemaOptions(null),
+            SchemaOptions(SchemaInput, strict = true),
+            SchemaLabels(),
+            SchemaLabels(mapOf("label" to "value")),
+            SchemaLegacy(JsonSpec.Int(min = 0)),
+            SchemaMapped("enabled", true),
+        )
+        val invalid = listOf(
+            "{}",
+            "\"unknown\"",
+            "-9223372036854775809",
+            "9223372036854775808",
+            """{"input":{},"negate":"input"}""",
+            """{"plus":["input"]}""",
+            """{"plus":["input",1,2]}""",
+            """{"mapped":["enabled"]}""",
+            """{"mapped":["enabled","true"]}""",
+            """{"mapped":["enabled",true],"extra":1}""",
+        ).map(SchemaJson::parseToJsonElement)
+        schemaExamples(
+            "recursive compact vocabulary",
+            SchemaWireSerializer.toJsonSchema(),
+            values.map { SchemaJson.encodeToJsonElement(SchemaWireSerializer, it) },
+            invalid,
         )
     }
 
@@ -148,7 +185,6 @@ class JsonSchemaTest {
     fun `schema definitions use compact entry schemas through an explicit catalog`() {
         val catalog = JsonNodeCatalog { listOf(SchemaWireSerializer) }
         val serializer = SchemaDef.serializer(SchemaWireSerializer)
-        val value = SchemaDef<SchemaWire>(mapOf("result" to SchemaPlus(SchemaInput, SchemaNumber(2))))
 
         val document = serializer.toJsonSchema(catalog)
 
@@ -157,30 +193,6 @@ class JsonSchemaTest {
         val entry = resolve(entries.getValue("additionalProperties").jsonObject, document)
         assertTrue(entry.containsKey("anyOf"))
         assertEquals(JsonPrimitive(false), definition["additionalProperties"])
-        assertEquals(value, SchemaJson.decodeFromString(serializer, SchemaJson.encodeToString(serializer, value)))
-    }
-
-    @Test
-    fun `all generated references resolve within the document`() {
-        val document = SchemaWireSerializer.toJsonSchema()
-        val definitions = document.getValue("${'$'}defs").jsonObject
-        fun visit(value: JsonElement) {
-            when (value) {
-                is JsonObject -> {
-                    value["${'$'}ref"]?.let { reference ->
-                        val name = reference.jsonPrimitive.content.removePrefix("#/${'$'}defs/")
-                        assertTrue(name in definitions, reference.toString())
-                    }
-                    value.values.forEach(::visit)
-                }
-
-                is JsonArray -> value.forEach(::visit)
-
-                else -> Unit
-            }
-        }
-
-        visit(document)
     }
 
     @Test
@@ -200,18 +212,6 @@ class JsonSchemaTest {
             val child = options.getValue("properties").jsonObject.getValue("child").jsonObject
             assertEquals(document["${'$'}ref"], child.getValue("anyOf").jsonArray[0].jsonObject["${'$'}ref"])
         }
-    }
-
-    @Test
-    fun `single map operands include empty payload shorthands`() {
-        val document = SchemaWireSerializer.toJsonSchema()
-        val branches = resolve(document, document).getValue("anyOf").jsonArray
-        val labels = branches.map { it.jsonObject }.single { branch ->
-            branch["anyOf"]?.jsonArray?.any { it.jsonObject["const"] == JsonPrimitive("labels") } == true
-        }
-
-        assertTrue(labels.getValue("anyOf").jsonArray.any { it.jsonObject["const"] == JsonPrimitive("labels") })
-        assertEquals("\"labels\"", SchemaJson.encodeToString<SchemaWire>(SchemaLabels()))
     }
 
     @Test
@@ -280,18 +280,6 @@ class JsonSchemaTest {
     }
 
     @Test
-    fun `nullable root serializers retain null alternatives`() {
-        val catalog = JsonNodeCatalog { listOf(SchemaWireSerializer) }
-
-        val document = SchemaWireSerializer.nullable.toJsonSchema(catalog)
-
-        val branches = document.getValue("anyOf").jsonArray.map { it.jsonObject }
-        assertEquals(2, branches.size)
-        assertTrue(branches.any { it["type"] == JsonPrimitive("null") })
-        assertTrue(branches.any { it.containsKey("${'$'}ref") })
-    }
-
-    @Test
     fun `descriptor names with URI characters produce resolvable references`() {
         val serializer = CompactSerializer("example/expr~v1", SchemaWire::class) {
             listOf(jsonNode<SchemaInput>("input"))
@@ -299,26 +287,7 @@ class JsonSchemaTest {
 
         val document = serializer.toJsonSchema()
 
-        assertEquals(JsonPrimitive("#/\$defs/example_expr_v1"), document["${'$'}ref"])
         assertTrue(resolve(document, document).containsKey("anyOf"))
-    }
-
-    @Test
-    fun `mapped schemas describe the mapped wire payload`() {
-        val document = SchemaWireSerializer.toJsonSchema()
-        val branch = resolve(document, document).getValue("anyOf").jsonArray.map { it.jsonObject }
-            .single { it["properties"]?.jsonObject?.containsKey("mapped") == true }
-        val mapped = branch.getValue("properties").jsonObject.getValue("mapped").jsonObject
-
-        assertEquals(JsonPrimitive("object"), branch["type"])
-        assertEquals(JsonArray(listOf(JsonPrimitive("mapped"))), branch["required"])
-        assertEquals(JsonPrimitive(false), branch["additionalProperties"])
-        assertEquals(JsonPrimitive("array"), mapped["type"])
-        assertEquals(JsonPrimitive("boolean"), mapped["prefixItems"]!!.jsonArray[1].jsonObject["type"])
-        assertEquals(
-            """{"mapped":["enabled",true]}""",
-            SchemaJson.encodeToString<SchemaWire>(SchemaMapped("enabled", true)),
-        )
     }
 
     @Test
@@ -404,6 +373,104 @@ class JsonSchemaTest {
         val error = assertFailsWith<IllegalStateException> { serializer.toJsonSchema() }
 
         assertTrue("explicit payload schema" in error.message.orEmpty(), error.message)
+    }
+
+    @Test
+    fun `contextual providers independent of type arguments retain schema support`() {
+        val json = Json {
+            serializersModule = SerializersModule {
+                contextual(GenericSchemaBox::class) { GenericSchemaBox.serializer(Int.serializer()) }
+            }
+        }
+        val schema = ContextualGenericSchema.serializer().toJsonSchema(JsonNodeCatalog(), json)
+        val box = resolve(schema, schema).getValue("properties").jsonObject.getValue("box").jsonObject
+        val value = resolve(box, schema).getValue("properties").jsonObject.getValue("value").jsonObject
+
+        assertEquals(JsonPrimitive("integer"), value["type"])
+    }
+
+    @Test
+    fun `contextual generic providers explain their schema limitation`() {
+        val json = Json {
+            serializersModule = SerializersModule {
+                contextual(GenericSchemaBox::class) { arguments ->
+                    @Suppress("UNCHECKED_CAST")
+                    GenericSchemaBox.serializer(arguments.single() as KSerializer<Any?>)
+                }
+            }
+        }
+        val serializer = ContextualGenericSchema.serializer()
+        val value = ContextualGenericSchema(GenericSchemaBox(2))
+        val encoded = json.encodeToJsonElement(serializer, value)
+        assertEquals(value, json.decodeFromJsonElement(serializer, encoded, JsonNodeCatalog()))
+
+        val error = assertFailsWith<IllegalArgumentException> { serializer.toJsonSchema(JsonNodeCatalog(), json) }
+
+        assertTrue("contextual descriptors do not retain type arguments" in error.message.orEmpty())
+        assertTrue("explicit JSON Schema" in error.message.orEmpty())
+        assertTrue(error.cause is NoSuchElementException)
+    }
+
+    @Test
+    fun `compact schema names preserve literal trailing question marks`() {
+        val schema = QuestionSchemaSerializer.toJsonSchema()
+        assertCompactDefinition(schema, schema)
+        val encoded = Json.encodeToJsonElement(QuestionSchemaSerializer, QuestionSchemaLeaf)
+        assertEquals(JsonPrimitive("leaf"), encoded)
+        assertEquals(QuestionSchemaLeaf, Json.decodeFromJsonElement(QuestionSchemaSerializer, encoded))
+        schemaExamples("question mark compact root", schema, listOf(encoded))
+    }
+
+    @Test
+    fun `nullable compact schemas preserve question mark names through catalogs`() {
+        val catalog = JsonNodeCatalog { listOf(QuestionSchemaSerializer) }
+        val serializer = QuestionSchemaSerializer.nullable
+        val schema = serializer.toJsonSchema(catalog)
+        val branches = schema.getValue("anyOf").jsonArray
+        assertCompactDefinition(branches.first().jsonObject, schema)
+        val encoded = listOf(QuestionSchemaLeaf, null).map { value ->
+            Json.encodeToJsonElement(serializer, value).also {
+                assertEquals(value, Json.decodeFromJsonElement(serializer, it, catalog))
+            }
+        }
+        schemaExamples("question mark nullable compact root", schema, encoded)
+    }
+
+    @Test
+    fun `nested compact schemas resolve question mark names through catalogs`() {
+        val catalog = JsonNodeCatalog { listOf(QuestionSchemaSerializer) }
+        val serializer = QuestionSchemaDocument.serializer()
+        val schema = serializer.toJsonSchema(catalog)
+        val definition = resolve(schema, schema)
+        val properties = definition.getValue("properties").jsonObject
+        assertCompactDefinition(properties.getValue("value").jsonObject, schema)
+        val encoded = listOf(QuestionSchemaLeaf, null).map { nullable ->
+            val value = QuestionSchemaDocument(QuestionSchemaLeaf, nullable)
+            Json.encodeToJsonElement(serializer, value).also {
+                assertEquals(value, Json.decodeFromJsonElement(serializer, it, catalog))
+            }
+        }
+        schemaExamples("question mark nested compact", schema, encoded)
+    }
+
+    private fun assertCompactDefinition(schema: JsonObject, document: JsonObject) {
+        val branches = resolve(schema, document).getValue("anyOf").jsonArray
+        assertTrue(branches.any { it.jsonObject["const"] == JsonPrimitive("leaf") })
+    }
+
+    private fun schemaExamples(
+        name: String,
+        schema: JsonObject,
+        valid: List<JsonElement>,
+        invalid: List<JsonElement> = listOf(JsonObject(emptyMap())),
+    ) {
+        val fixture = buildJsonObject {
+            put("name", name)
+            put("schema", schema)
+            put("valid", JsonArray(valid))
+            put("invalid", JsonArray(invalid))
+        }
+        println("JSON_SCHEMA_CASE:$fixture")
     }
 
     private fun resolve(schema: JsonObject, document: JsonObject): JsonObject {

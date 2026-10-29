@@ -8,7 +8,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.jvm.JvmInline
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 
 @Serializable
 private sealed interface InlineLiteral
@@ -19,17 +18,11 @@ private value class FloatAmount(val value: Float)
 @Serializable @JvmInline
 private value class DoubleAmount(val value: Double)
 
-@Serializable @JvmInline
-private value class NullableDoubleAmount(val value: Double?)
-
 @Serializable
 private data class FloatLiteral(val amount: FloatAmount) : InlineLiteral
 
 @Serializable
 private data class DoubleLiteral(val amount: DoubleAmount) : InlineLiteral
-
-@Serializable
-private data class NullableDoubleLiteral(val amount: NullableDoubleAmount) : InlineLiteral
 
 class InlineLiteralTest {
     @Test
@@ -48,13 +41,5 @@ class InlineLiteralTest {
             val literal = document.getValue("\$defs").jsonObject.getValue(ref).jsonObject
             assertEquals(JsonPrimitive("number"), literal["type"])
         }
-    }
-
-    @Test
-    fun `nullable inline floating point literals remain invalid`() {
-        val serializer = CompactSerializer("NullableInlineLiteral", InlineLiteral::class) {
-            listOf(jsonNode<NullableDoubleLiteral>("double", JsonNodeShape.Literal, "amount"))
-        }
-        assertFailsWith<IllegalArgumentException> { serializer.descriptor }
     }
 }

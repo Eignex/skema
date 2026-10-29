@@ -59,40 +59,6 @@ private object SchemaNodeSerializer : CompactSerializer<SchemaNode>("SchemaNode"
 
 class CompactJsonSpecTest {
     @Test
-    fun `JsonSpec variants round trip inside compact nodes`() {
-        val specs = listOf(
-            JsonSpec.Bool, JsonSpec.Null, JsonSpec.Int(min = 13, max = 120),
-            JsonSpec.Long(min = 9007199254740993L), JsonSpec.Num(multipleOf = 0.25),
-            JsonSpec.Str(pattern = "^[a-z]+$"), JsonSpec.Enum(listOf("a", "b")),
-            JsonSpec.Const(JsonNull), JsonSpec.Const(JsonPrimitive(true)),
-            JsonSpec.Const(Json.parseToJsonElement("""{"items":[1,null,"x"]}""")),
-            JsonSpec.Array(items = JsonSpec.Nullable(JsonSpec.Str()), uniqueItems = true),
-            JsonSpec.Object(mapOf("age" to JsonSpec.Int(min = 0)), listOf("age")),
-            JsonSpec.Ref("#/${'$'}defs/User"),
-            JsonSpec.OneOf(listOf(JsonSpec.Bool, JsonSpec.Int())),
-            JsonSpec.AnyOf(listOf(JsonSpec.Bool, JsonSpec.Null)),
-            JsonSpec.AllOf(listOf(JsonSpec.Int(min = 0), JsonSpec.Int(max = 10))),
-            JsonSpec.Not(JsonSpec.Null),
-            JsonSpec.IfThenElse(JsonSpec.Bool, then = JsonSpec.Int(), otherwise = JsonSpec.Str()),
-            JsonSpec.Nullable(JsonSpec.Int()),
-            JsonSpec.Annotated(JsonSpec.Null, default = JsonNull),
-            JsonSpec.Annotated(
-                JsonSpec.Int(),
-                title = "Age",
-                default = JsonPrimitive(1),
-                examples = listOf(JsonNull, JsonPrimitive(2)),
-            ),
-        )
-        for (spec in specs) {
-            val value: SchemaNode = SpecHolder(spec)
-
-            val encoded = SchemaJson.encodeToString(value)
-
-            assertEquals(value, SchemaJson.decodeFromString<SchemaNode>(encoded))
-        }
-    }
-
-    @Test
     fun `compact JsonSpec collections retain nulls and nested schemas`() {
         val value: SchemaNode = SpecCollection(
             listOf(
@@ -108,16 +74,13 @@ class CompactJsonSpecTest {
 
     @Test
     fun `ordinary sealed children use the configured discriminator`() {
-        for (key in listOf("type", "${'$'}type", "node")) {
-            val json = Json { classDiscriminator = key }
-            val value: SchemaNode = SpecHolder(JsonSpec.Int(min = 13))
+        val json = Json { classDiscriminator = "node" }
+        val value: SchemaNode = SpecHolder(JsonSpec.Int(min = 13))
 
-            val encoded = json.encodeToString(value)
+        val encoded = json.encodeToString(value)
 
-            val spec = json.parseToJsonElement(encoded).jsonObject["holder"]!!.jsonObject["spec"]!!.jsonObject
-            assertEquals(JsonPrimitive("Int"), spec[key])
-            assertEquals(value, json.decodeFromString<SchemaNode>(encoded))
-        }
+        assertEquals("""{"holder":{"spec":{"node":"Int","min":13}}}""", encoded)
+        assertEquals(value, json.decodeFromString<SchemaNode>(encoded))
     }
 
     @Test

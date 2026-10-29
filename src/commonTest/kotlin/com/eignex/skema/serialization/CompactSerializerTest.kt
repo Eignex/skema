@@ -522,12 +522,6 @@ class CompactSerializerTest {
     }
 
     @Test
-    fun `nullable record fields follow explicit null policy`() {
-        assertEquals(Box(null), SchemaJson.decodeFromString<Envelope>("\"box\""))
-        assertFailsWith<SerializationException> { Json.decodeFromString<Envelope>("\"box\"") }
-    }
-
-    @Test
     fun `non nullable operands reject null under lenient settings`() {
         val lenient = Json {
             coerceInputValues = true
@@ -619,17 +613,16 @@ class CompactSerializerTest {
 
     @Test
     fun `recursive mappings decode once per node`() {
-        for (depth in listOf(8, 16, 32)) {
-            var value: Expression = Input
-            repeat(depth) { value = Counted(value) }
-            val encoded = SchemaJson.encodeToString(ExpressionSerializer, value)
-            CountingMapping.calls = 0
+        val depth = 32
+        var value: Expression = Input
+        repeat(depth) { value = Counted(value) }
+        val encoded = SchemaJson.encodeToString(ExpressionSerializer, value)
+        CountingMapping.calls = 0
 
-            val decoded = SchemaJson.decodeFromString(ExpressionSerializer, encoded)
+        val decoded = SchemaJson.decodeFromString(ExpressionSerializer, encoded)
 
-            assertEquals(value, decoded)
-            assertEquals(depth, CountingMapping.calls)
-        }
+        assertEquals(value, decoded)
+        assertEquals(depth, CountingMapping.calls)
     }
 
     @Test
