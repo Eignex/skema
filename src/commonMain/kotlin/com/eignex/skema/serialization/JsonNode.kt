@@ -51,7 +51,6 @@ class JsonNode(
     val shape: JsonNodeShape = JsonNodeShape.Fields,
     /** Serialized field names for single or positional operands. */
     val operands: List<String> = emptyList(),
-    /** Custom mapping; takes precedence over [shape]. */
     val mapping: JsonPayloadMapping? = null,
     /**
      * Fields implied by [name] and omitted from the payload; selects among nodes sharing [type].
@@ -131,7 +130,7 @@ class JsonNode(
     internal fun pathAt(path: String): String = if (shape == JsonNodeShape.Literal) path else "$path.$name"
 }
 
-/** Declares a node using its generated body serializer. */
+/** Declares a node using the serializer for [T]. */
 inline fun <reified T : Any> jsonNode(
     name: String,
     shape: JsonNodeShape = JsonNodeShape.Fields,

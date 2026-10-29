@@ -27,7 +27,6 @@ eignexBuild {
 }
 
 tasks.withType<org.gradle.api.tasks.testing.AbstractTestTask>().configureEach {
-    // Do not reuse results produced with the old aggregate-only failure policy.
     inputs.property("kotlin.tests.individualTaskReports", providers.gradleProperty("kotlin.tests.individualTaskReports"))
 }
 

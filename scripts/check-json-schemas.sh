@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Use the project's JVM toolchain for draft 2020-12 validation without Python.
 project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 report_dir="${1:-$project_dir/build/test-results/jvmTest}"
 if [[ "$report_dir" != /* ]]; then
