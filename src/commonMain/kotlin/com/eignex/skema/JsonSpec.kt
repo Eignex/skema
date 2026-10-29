@@ -44,7 +44,6 @@ sealed interface JsonSpec {
         val max: kotlin.Int? = null,
         val exclusiveMin: kotlin.Int? = null,
         val exclusiveMax: kotlin.Int? = null,
-        /** Required divisor; must be positive when supplied. */
         val multipleOf: kotlin.Int? = null,
     ) : JsonSpec
 
@@ -56,7 +55,6 @@ sealed interface JsonSpec {
         val max: kotlin.Long? = null,
         val exclusiveMin: kotlin.Long? = null,
         val exclusiveMax: kotlin.Long? = null,
-        /** Required divisor; must be positive when supplied. */
         val multipleOf: kotlin.Long? = null,
     ) : JsonSpec
 
@@ -68,7 +66,6 @@ sealed interface JsonSpec {
         val max: Double? = null,
         val exclusiveMin: Double? = null,
         val exclusiveMax: Double? = null,
-        /** Required divisor; must be positive when supplied. */
         val multipleOf: Double? = null,
     ) : JsonSpec
 

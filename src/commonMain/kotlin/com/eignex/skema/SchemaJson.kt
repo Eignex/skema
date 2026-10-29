@@ -10,5 +10,4 @@ val schemaJsonConfig: JsonBuilder.() -> Unit = {
     explicitNulls = false
 }
 
-/** Shared [Json] instance using [schemaJsonConfig]. */
 val SchemaJson: Json = Json { schemaJsonConfig() }

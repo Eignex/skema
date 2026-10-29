@@ -4,10 +4,7 @@ import kotlinx.serialization.Serializable
 
 /** Serializable entries from a [Schema]. */
 @Serializable
-data class SchemaDef<C>(
-    /** Entries keyed by name, in declaration order. */
-    val entries: Map<String, C>,
-) {
+data class SchemaDef<C>(val entries: Map<String, C>) {
     val size: Int get() = entries.size
 
     val names: Set<String> get() = entries.keys
