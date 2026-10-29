@@ -20,6 +20,3 @@ local.properties
 .specstory/
 .aider*
 *.local.md
-
-### Python CI helpers ###
-__pycache__/
