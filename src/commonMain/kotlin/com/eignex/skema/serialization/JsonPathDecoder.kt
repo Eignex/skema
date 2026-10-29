@@ -22,7 +22,8 @@ import kotlinx.serialization.json.*
  * Strictly decodes [element], reporting errors at paths from the document root.
  * [catalog] must include all nested compact vocabularies. Integer fields accept integral
  * tokens by value; integer map keys require decimal digits within the key type's range,
- * with an optional minus sign for signed types. Content-based polymorphic serializers
+ * with an optional minus sign for signed types. Delegated compact descriptors use the
+ * catalog's canonical serializer. Content-based polymorphic serializers
  * and custom polymorphic serializers without an exposed subtype are rejected.
  */
 fun <T> Json.decodeFromJsonElement(
@@ -65,7 +66,12 @@ internal class JsonPathDecoder(
         } else if (deserializer is AbstractPolymorphicSerializer<*>) {
             decodePolymorphic(deserializer) as T
         } else if (deserializer.requiresExposedSubtype()) {
-            invalid(path, "Custom polymorphic serializers do not expose their subtype for strict decoding")
+            val compact = shape.compactSerializer(deserializer.descriptor)
+            if (compact == null || compact.descriptor !== deserializer.descriptor) {
+                invalid(path, "Custom polymorphic serializers do not expose their subtype for strict decoding")
+            }
+            // Reuse the registered decoder so wrappers cannot bypass compact payload validation.
+            compact.deserialize(this) as T
         } else if (deserializer.descriptor.kind == SerialKind.CONTEXTUAL) {
             // Let ContextualSerializer resolve the type, then validate before decoding.
             deserializer.deserialize(object : JsonDecoder by this {

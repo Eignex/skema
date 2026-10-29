@@ -15,6 +15,9 @@ internal class JsonShape(
     private val integerKeyPatterns = mutableMapOf<SerialDescriptor, Regex>()
     private val fieldIndices = mutableMapOf<SerialDescriptor, Map<String, Int>>()
 
+    fun compactSerializer(descriptor: SerialDescriptor): CompactSerializer<*>? =
+        if (descriptor.nonNullableSerialName() == owner?.serialName) owner else catalog.find(descriptor)
+
     fun validateJson(descriptor: SerialDescriptor, element: JsonElement, path: String): JsonElement {
         // Contextual serializers resolve their actual descriptor during decoding, including nullability.
         if (descriptor.kind == SerialKind.CONTEXTUAL) return element
@@ -38,9 +41,8 @@ internal class JsonShape(
         }
         descriptor.integerBounds()?.let { return it.validate(element, path) }
         if (descriptor.isInline) return validateJson(descriptor.getElementDescriptor(0), element, path)
-        val serializer = if (name == owner?.serialName) owner else catalog.find(descriptor)
         // Compact children validate their own bodies when decoded, retaining the caller's path.
-        if (serializer != null) return element
+        if (compactSerializer(descriptor) != null) return element
         return when (descriptor.kind) {
             // Polymorphic serializers validate the selected subtype during decoding.
             is PolymorphicKind -> element
