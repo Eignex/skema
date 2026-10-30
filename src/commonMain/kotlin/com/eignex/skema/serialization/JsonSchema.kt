@@ -3,7 +3,6 @@
 package com.eignex.skema.serialization
 
 import com.eignex.skema.SchemaJson
-import com.eignex.skema.typedSchema
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.json.*
@@ -266,4 +265,9 @@ internal fun tupleSchema(items: List<JsonElement>): JsonObject = typedSchema("ar
 private fun alternatives(schemas: List<JsonObject>): JsonObject = when (schemas.size) {
     1 -> schemas.single()
     else -> buildJsonObject { put("anyOf", JsonArray(schemas)) }
+}
+
+internal fun typedSchema(type: String, constraints: JsonObjectBuilder.() -> Unit = {}): JsonObject = buildJsonObject {
+    put("type", type)
+    constraints()
 }

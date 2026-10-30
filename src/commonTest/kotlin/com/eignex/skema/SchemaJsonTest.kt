@@ -9,8 +9,8 @@ import kotlin.test.assertFailsWith
 class SchemaJsonTest {
     @Test
     fun `default configs use stable discriminators and omit optional fields`() {
-        val def = SchemaDef(mapOf("count" to JsonSpec.Int(), "label" to JsonSpec.Str()))
-        val serializer = SchemaDef.serializer(JsonSpec.serializer())
+        val def = SchemaDef(mapOf("count" to TestSpec.Int(), "label" to TestSpec.Str()))
+        val serializer = SchemaDef.serializer(TestSpec.serializer())
         val wire = """{"entries":{"count":{"${'$'}type":"Int"},"label":{"${'$'}type":"String"}}}"""
 
         assertEquals(wire, SchemaJson.encodeToString(serializer, def))
@@ -25,16 +25,16 @@ class SchemaJsonTest {
         }
         val wire = """{"${'$'}type":"Int","min":1,"futureField":true}"""
 
-        assertEquals(JsonSpec.Int(min = 1), json.decodeFromString(JsonSpec.serializer(), wire))
+        assertEquals(TestSpec.Int(min = 1), json.decodeFromString(TestSpec.serializer(), wire))
     }
 
     @Test
     fun `SchemaJson rejects unknown fields and unknown variants`() {
         assertFailsWith<SerializationException> {
-            SchemaJson.decodeFromString(JsonSpec.serializer(), """{"${'$'}type":"Int","futureField":true}""")
+            SchemaJson.decodeFromString(TestSpec.serializer(), """{"${'$'}type":"Int","futureField":true}""")
         }
         assertFailsWith<SerializationException> {
-            SchemaJson.decodeFromString(JsonSpec.serializer(), """{"${'$'}type":"FutureVariant"}""")
+            SchemaJson.decodeFromString(TestSpec.serializer(), """{"${'$'}type":"FutureVariant"}""")
         }
     }
 }
