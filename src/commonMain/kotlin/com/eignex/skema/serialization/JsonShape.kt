@@ -168,15 +168,24 @@ internal class JsonShape(
         val primitive = element as? JsonPrimitive ?: invalid(path, "expected ${descriptor.kind}")
         val valid = when (descriptor.kind) {
             PrimitiveKind.BOOLEAN -> !primitive.isString && primitive.booleanOrNull != null
-            PrimitiveKind.FLOAT, PrimitiveKind.DOUBLE -> descriptor.numberBounds()!!.contains(primitive)
+
+            // Tokens beyond the type's range would decode as infinity, which JSON cannot encode.
+            PrimitiveKind.FLOAT -> primitive.isJsonNumber() && primitive.content.toFloat().isFinite()
+
+            PrimitiveKind.DOUBLE -> primitive.isJsonNumber() && primitive.content.toDouble().isFinite()
+
             PrimitiveKind.CHAR -> primitive.isString && primitive.content.length == 1
+
             PrimitiveKind.STRING -> primitive.isString
+
             else -> true
         }
         if (!valid) invalid(path, "expected ${descriptor.kind}")
         return primitive
     }
 }
+
+private fun JsonPrimitive.isJsonNumber(): Boolean = !isString && JSON_NUMBER.matches(content)
 
 internal fun JsonElement.objectAt(path: String): JsonObject = this as? JsonObject ?: invalid(path, "expected an object")
 

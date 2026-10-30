@@ -2,6 +2,7 @@
 
 package com.eignex.skema.serialization
 
+import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.json.*
 
@@ -11,6 +12,11 @@ internal fun SerialDescriptor.classDiscriminator(json: Json): String =
 
 internal fun SerialDescriptor.isJsonFieldRequired(index: Int, json: Json): Boolean =
     !isElementOptional(index) && (json.configuration.explicitNulls || !getElementDescriptor(index).isNullable)
+
+internal fun SerialDescriptor.isFloatingPoint(): Boolean = when {
+    isInline -> getElementDescriptor(0).isFloatingPoint()
+    else -> kind == PrimitiveKind.FLOAT || kind == PrimitiveKind.DOUBLE
+}
 
 internal fun SerialDescriptor.nonNullableSerialName(): String =
     if (isNullable) serialName.removeSuffix("?") else serialName
