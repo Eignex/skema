@@ -17,7 +17,6 @@ import kotlin.reflect.KClass
 /**
  * Encodes JSON as operator objects, names for empty objects, or numeric literals;
  * other formats use sealed-class serialization. Decoding is strict regardless of caller settings.
- * Integer fields accept integral tokens in range (`2.0`, `1e2`) and encode as plain integers.
  * Numeric body fields must be finite, even when the caller allows special floating-point values.
  * Requires polymorphic class discriminators and no JSON naming strategy.
  */
@@ -95,7 +94,9 @@ open class CompactSerializer<T : Any>(
         if (candidates.isEmpty()) invalid("$", "unsupported $serialName implementation")
         return candidates.singleOrNull()?.takeIf { it.fixed.isEmpty() } ?: run {
             val fields = candidates.flatMapTo(mutableSetOf()) { it.fixed.keys }
-            val values = candidates.first().fieldValues(value, json, fields)
+            // Forces defaults, so fixed fields are present however the caller configures Json.
+            val body = JsonOperandSerializer(candidates.first().serializer)
+            val values = json.encodeToJsonElement(body, value).objectAt("$")
             val missing = fields - values.keys
             if (missing.isNotEmpty()) {
                 invalid(

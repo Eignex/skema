@@ -102,9 +102,6 @@ class JsonNode(
         }
     }
 
-    internal fun fieldValues(value: Any, json: Json, fields: Set<String>): Map<String, JsonElement> =
-        FieldCaptureEncoder(json, fields).also { it.encodeSerializableValue(serializer, value) }.values
-
     internal fun encode(body: JsonObject): JsonElement {
         val fields = if (fixed.isEmpty()) body else JsonObject(body - fixed.keys)
         if (mapping == null && shape != JsonNodeShape.Fields) {

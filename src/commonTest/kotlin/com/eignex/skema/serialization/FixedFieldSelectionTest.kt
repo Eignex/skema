@@ -4,13 +4,12 @@ package com.eignex.skema.serialization
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class FieldCaptureEncoderTest {
+class FixedFieldSelectionTest {
     @Serializable
     private sealed interface EncodingValue
 
@@ -38,21 +37,6 @@ class FieldCaptureEncoderTest {
             composite.endStructure(descriptor)
         }
     }
-
-    private object CountingOperandSerializer : KSerializer<Int> by Int.serializer() {
-        var calls: Int = 0
-
-        override fun serialize(encoder: Encoder, value: Int) {
-            calls++
-            encoder.encodeInt(value)
-        }
-    }
-
-    @Serializable
-    private data class CapturedRecord(
-        val fixed: Boolean,
-        @Serializable(with = CountingOperandSerializer::class) val operand: Int,
-    ) : EncodingValue
 
     @Test
     fun `JSON transforming bodies can select fixed fields`() {
@@ -90,20 +74,5 @@ class FieldCaptureEncoderTest {
             assertEquals("\"maximum\"", encoded)
             assertEquals(value, Json.decodeFromString(serializer, encoded))
         }
-    }
-
-    @Test
-    fun `fixed selection skips other generated fields`() {
-        val serializer = CompactSerializer("CapturedRecord", EncodingValue::class) {
-            listOf(jsonNode<CapturedRecord>("captured", fixed = mapOf("fixed" to JsonPrimitive(true))))
-        }
-        val value = CapturedRecord(fixed = true, operand = 5)
-        CountingOperandSerializer.calls = 0
-
-        val encoded = Json.encodeToString(serializer, value)
-
-        assertEquals("""{"captured":{"operand":5}}""", encoded)
-        assertEquals(1, CountingOperandSerializer.calls)
-        assertEquals(value, Json.decodeFromString(serializer, encoded))
     }
 }
