@@ -19,9 +19,8 @@ import kotlinx.serialization.json.*
 
 /**
  * Strictly decodes [element], reporting errors at paths from the document root.
- * [catalog] must include all nested compact vocabularies. Integer fields accept integral
- * tokens by value; integer map keys require decimal digits within the key type's range,
- * with an optional minus sign for signed types. Delegated compact descriptors use the
+ * [catalog] must include all nested compact vocabularies. Integer fields and map keys
+ * require plain integer tokens within the type's range. Delegated compact descriptors use the
  * catalog's canonical serializer. Content-based polymorphic serializers
  * and custom polymorphic serializers without an exposed subtype are rejected.
  * JSON transforming serializers decode their own input with this Json, as they would
@@ -64,18 +63,10 @@ internal class JsonPathDecoder(
         if (deserializer is JsonTransformingSerializer<*>) return deserializer.deserialize(this)
         // The nullable wrapper delegates back here with its value serializer.
         if (deserializer::class != nullableSerializerClass) {
-            val checked = if (mapKey) {
+            if (mapKey) {
                 shape.validateMapKey(deserializer.descriptor, element.jsonPrimitive.content, path)
-                element
             } else {
                 shape.validateJson(deserializer.descriptor, element, path, fieldPath)
-            }
-            // Normalized children must reach Json's tree decoder, so decode the checked copy.
-            if (checked !== element) {
-                return json.decodeFromJsonElement(
-                    JsonPathSerializer(deserializer, checked, path, shape, fieldPath, mapKey),
-                    checked,
-                )
             }
         }
         return decodeChecked(deserializer)
