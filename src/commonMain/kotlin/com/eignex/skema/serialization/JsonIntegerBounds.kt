@@ -6,34 +6,41 @@ import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.JsonUnquotedLiteral
 
-// Decimal strings retain the full ULong range on every target.
+// Decimal strings retain the full ULong range on every target, without floating-point rounding.
 internal class JsonIntegerBounds(private val minimum: String, private val maximum: String) {
-    private val signed = minimum.startsWith('-')
+    val unsigned: Boolean = !minimum.startsWith('-')
 
-    /** Schema pattern for map keys; the decoder also checks the range. */
-    val keyPattern: String get() = if (signed) "^-?[0-9]+$" else "^[0-9]+$"
+    /** Map keys are plain decimal digits; the decoder also checks the range. */
+    val keyPattern: String get() = if (unsigned) "^[0-9]+$" else "^-?[0-9]+$"
 
-    val unsigned: Boolean get() = !signed
-
-    fun validate(element: JsonElement, path: String) {
-        val primitive = element as? JsonPrimitive
-        if (primitive == null || primitive.isString || !contains(primitive.content)) {
-            invalid(path, "expected an integer in $minimum..$maximum")
-        }
+    fun validate(element: JsonElement, path: String): JsonPrimitive {
+        val primitive = element as? JsonPrimitive ?: invalid(path, "expected an integer")
+        return normalize(primitive) ?: invalid(path, "expected an integer in $minimum..$maximum")
     }
 
-    fun contains(token: String): Boolean = if (signed) {
-        val value = token.takeIf { SIGNED_INTEGER.matches(it) }?.toLongOrNull()
-        value != null && value >= minimum.toLong() && value <= maximum.toLong()
+    /** Plain integer token for an in-range integral [primitive], or null when it is not one. */
+    fun normalize(primitive: JsonPrimitive): JsonPrimitive? {
+        val integer = if (primitive.isString) null else normalizeInteger(primitive.content)
+        if (integer == null || !contains(integer)) return null
+        return if (primitive.content == integer) primitive else JsonUnquotedLiteral(integer)
+    }
+
+    private fun contains(integer: String): Boolean = if (integer.startsWith('-')) {
+        minimum.startsWith('-') && magnitudeAtMost(integer.drop(1), minimum.drop(1))
     } else {
-        val value = token.takeIf { UNSIGNED_INTEGER.matches(it) }?.toULongOrNull()
-        value != null && value <= maximum.toULong()
+        magnitudeAtMost(integer, maximum)
+    }
+
+    fun containsKey(key: String): Boolean {
+        if (!(if (unsigned) UNSIGNED_KEY else SIGNED_KEY).matches(key)) return false
+        return normalizeInteger(key)?.let(::contains) == true
     }
 }
 
-private val SIGNED_INTEGER = Regex("-?[0-9]+")
-private val UNSIGNED_INTEGER = Regex("[0-9]+")
+private val SIGNED_KEY = Regex("-?[0-9]+")
+private val UNSIGNED_KEY = Regex("[0-9]+")
 
 internal fun SerialDescriptor.integerBounds(): JsonIntegerBounds? {
     if (isInline) {
@@ -56,6 +63,14 @@ internal fun SerialDescriptor.integerBounds(): JsonIntegerBounds? {
 }
 
 internal val JSON_NUMBER = Regex("""(-?)(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?""")
+private const val MAX_INTEGER_DIGITS = 20
+
+// JSON Schema integers are defined by value, so 2.0 and 1e2 are integers too.
+private fun normalizeInteger(token: String): String? {
+    val (significant, power) = canonicalNumber(token) ?: return null
+    if (power < 0 || power > MAX_INTEGER_DIGITS - significant.trimStart('-').length) return null
+    return significant + "0".repeat(power.toInt())
+}
 
 // Exact decimal value as significant digits and a power of ten, so 2, 2.0 and 2e0 compare equal.
 internal fun canonicalNumber(token: String): Pair<String, Long>? {
@@ -67,3 +82,6 @@ internal fun canonicalNumber(token: String): Pair<String, Long>? {
     val power = groups[4].ifEmpty { "0" }.toLongOrNull() ?: return null
     return sign + significant to power - fraction.length + (digits.length - significant.length)
 }
+
+private fun magnitudeAtMost(value: String, maximum: String): Boolean =
+    value.length < maximum.length || (value.length == maximum.length && value <= maximum)

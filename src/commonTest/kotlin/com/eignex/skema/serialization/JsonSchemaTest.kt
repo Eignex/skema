@@ -230,12 +230,12 @@ class JsonSchemaTest {
     }
 
     @Test
-    fun `integer schemas are plain and decoding accepts only in-range integer tokens`() {
+    fun `integer schemas are plain and decoding accepts integral tokens in range`() {
         val serializer = SchemaBox.serializer(Int.serializer())
         val document = serializer.toJsonSchema(JsonNodeCatalog())
         val value = resolve(document, document).getValue("properties").jsonObject.getValue("value").jsonObject
-        val admitted = listOf("2147483647", "-2147483648", "-0")
-        val refused = listOf("2147483648", "-2147483649", "2.0", "1e2", "2.5", "\"2\"")
+        val admitted = listOf("2147483647", "2147483647.0", "2.147483647e9", "-2.147483648E+9", "100e-2", "-0.0")
+        val refused = listOf("2147483648", "2.147483648e9", "-2147483649.0", "2.5", "1e-1", "\"2\"")
 
         val accepted = (admitted + refused).filter { token ->
             val element = SchemaJson.parseToJsonElement("""{"value":$token}""")
