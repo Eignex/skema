@@ -230,19 +230,26 @@ class JsonWireConformanceTest {
     }
 
     @Test
-    fun `unsigned literals keep the full ULong range`() {
-        val maximum = SchemaJson.parseToJsonElement("18446744073709551615")
-        assertEquals(UnsignedLiteral(ULong.MAX_VALUE), SchemaJson.decodeFromJsonElement(WireValueSerializer, maximum))
+    fun `unsigned integral decimal and exponent tokens normalize exactly`() {
+        val accepted = listOf("18446744073709551615.0", "1.8446744073709551615e19", "184467440737095516150e-1")
+        for (token in accepted) {
+            val element = SchemaJson.parseToJsonElement(token)
+            assertEquals(
+                UnsignedLiteral(ULong.MAX_VALUE),
+                SchemaJson.decodeFromJsonElement(WireValueSerializer, element),
+            )
+        }
         val encoded = roundTrip<WireValue>(WireValueSerializer, UnsignedLiteral(ULong.MAX_VALUE))
-        assertEquals(maximum, encoded)
+        assertEquals("18446744073709551615", encoded.toString())
         roundTrip<WireValue>(WireValueSerializer, WrappedUnsigned(UnsignedId(ULong.MAX_VALUE)))
-        for (token in listOf("18446744073709551616", "1.0")) invalidWire(WireValueSerializer, token)
+        listOf("18446744073709551616.0", "1.8446744073709551616e19").forEach { invalidWire(WireValueSerializer, it) }
+        val invalid = listOf("-1", "1e-1").map { invalidWire(WireValueSerializer, it) }
 
         schemaExamples(
             "unsigned literals",
             WireValueSerializer.toJsonSchema(),
-            listOf(encoded),
-            listOf("-1", "1e-1").map { invalidWire(WireValueSerializer, it) },
+            accepted.map(SchemaJson::parseToJsonElement) + encoded,
+            invalid,
         )
     }
 

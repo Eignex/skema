@@ -398,8 +398,44 @@ class CompactSerializerTest {
     }
 
     @Test
-    fun `non-integer quoted and out of range integer tokens are rejected at their paths`() {
-        for (token in listOf("2.5", "2.0", "1e2", "\"2\"", "-2147483649", "2147483648", "1e400")) {
+    fun `integral number tokens decode by value and encode as integer tokens`() {
+        val cases = mapOf(
+            "2.0" to 2,
+            "1e2" to 100,
+            "1.5E+1" to 15,
+            "100e-2" to 1,
+            "-0.0" to 0,
+            "2147483647.0" to Int.MAX_VALUE,
+            "-2.147483648e9" to Int.MIN_VALUE,
+        )
+        for ((token, number) in cases) {
+            val decoded = SchemaJson.decodeFromString<Comparison>("""{"lt":[$token,{"ref":"x"}]}""")
+
+            assertEquals(Compare(Bound(number), CompareOp.Less, Reference("x")), decoded, token)
+            assertEquals("""{"lt":[$number,{"ref":"x"}]}""", SchemaJson.encodeToString(decoded), token)
+        }
+    }
+
+    @Test
+    fun `integral long tokens decode exactly beyond binary64 integer precision`() {
+        val serializer = CompactSerializer("LongExpression", Expression::class) {
+            listOf(jsonNode<LongLiteral>("long", JsonNodeShape.Literal, "value"))
+        }
+        val cases = mapOf(
+            "9007199254740993.0" to 9007199254740993L,
+            "9.007199254740993e15" to 9007199254740993L,
+            "9.223372036854775807e18" to Long.MAX_VALUE,
+            "-9223372036854775808.000" to Long.MIN_VALUE,
+        )
+
+        for ((token, number) in cases) {
+            assertEquals(LongLiteral(number), SchemaJson.decodeFromString(serializer, token), token)
+        }
+    }
+
+    @Test
+    fun `fractional quoted and out of range integer tokens are rejected at their paths`() {
+        for (token in listOf("2.5", "1e-1", "\"2\"", "2147483648.0", "2.147483648e9", "-2147483649", "1e400")) {
             val error = assertFailsWith<SerializationException>(token) {
                 SchemaJson.decodeFromString<Comparison>("""{"gt":[{"ref":"x"},{"closed":{"low":0,"high":$token}}]}""")
             }
@@ -409,8 +445,8 @@ class CompactSerializerTest {
     }
 
     @Test
-    fun `integer fields decode inside records lists and maps`() {
-        val item = """{"byte":1,"short":2,"int":3,"long":40,"char":"a"}"""
+    fun `integral tokens decode inside records lists and maps`() {
+        val item = """{"byte":1.0,"short":2e0,"int":3.0,"long":4e1,"char":"a"}"""
 
         val decoded = SchemaJson.decodeFromString<Expression>("""{"primitives":{"values":[{"item":$item}]}}""")
 
