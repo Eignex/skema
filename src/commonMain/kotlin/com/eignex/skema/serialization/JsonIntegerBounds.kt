@@ -61,17 +61,9 @@ private const val MAX_INTEGER_DIGITS = 20
 
 // JSON Schema integers are defined by value, so 2.0 and 1e2 are integers too.
 private fun normalizeInteger(token: String): String? {
-    val groups = JSON_NUMBER.matchEntire(token)?.groupValues ?: return null
-    val (sign, whole, fraction) = groups.subList(1, 4)
-    val digits = (whole + fraction).trimStart('0')
-    if (digits.isEmpty()) return "0"
-    val shift = (groups[4].ifEmpty { "0" }.toIntOrNull() ?: return null).toLong() - fraction.length
-    val trailingZeros = digits.length - digits.trimEnd('0').length
-    if (shift < -trailingZeros) return null
-    val mantissa = if (shift < 0) digits.dropLast((-shift).toInt()) else digits
-    val zeros = maxOf(shift, 0L)
-    if (mantissa.length + zeros > MAX_INTEGER_DIGITS) return null
-    return sign + mantissa + "0".repeat(zeros.toInt())
+    val (significant, power) = canonicalNumber(token) ?: return null
+    if (power < 0 || power > MAX_INTEGER_DIGITS - significant.trimStart('-').length) return null
+    return significant + "0".repeat(power.toInt())
 }
 
 // Exact decimal value as significant digits and a power of ten, so 2, 2.0 and 2e0 compare equal.
