@@ -2,8 +2,8 @@
 
 package com.eignex.skema.serialization
 
-import com.eignex.skema.TestSpec
 import com.eignex.skema.SchemaJson
+import com.eignex.skema.TestSpec
 import com.eignex.skema.schemaJsonConfig
 import kotlinx.serialization.Polymorphic
 import kotlinx.serialization.SerialName

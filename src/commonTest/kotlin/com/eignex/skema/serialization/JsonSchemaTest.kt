@@ -2,9 +2,9 @@
 
 package com.eignex.skema.serialization
 
-import com.eignex.skema.TestSpec
 import com.eignex.skema.SchemaDef
 import com.eignex.skema.SchemaJson
+import com.eignex.skema.TestSpec
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable

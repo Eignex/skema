@@ -251,9 +251,5 @@ private fun DeserializationStrategy<*>.requiresExposedSubtype(): Boolean {
     if (descriptor.kind !is PolymorphicKind || this is CompactSerializer<*> || this::class == nullableSerializerClass) {
         return false
     }
-    return descriptor.nonNullableSerialName() !in setOf(
-        JsonElement.serializer().descriptor.serialName,
-        JsonPrimitive.serializer().descriptor.serialName,
-        JsonNull.serializer().descriptor.serialName,
-    )
+    return descriptor.nonNullableSerialName() !in jsonTreeSerialNames
 }
