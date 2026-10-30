@@ -93,33 +93,3 @@ encodes nodes as operator objects, names, or numeric literals.
 and [strict decoding](src/commonMain/kotlin/com/eignex/skema/serialization/JsonPathDecoder.kt)
 use a `JsonNodeCatalog` for nested compact vocabularies. Compact JSON requires the default
 polymorphic discriminator mode and no JSON naming strategy.
-
-## Build validation
-
-Routine builds run `./gradlew check lintDocs koverXmlReport` on JDK 17 for JVM
-and Linux x64. Gradle runs on JDK 21, as required by kbuild 1.3.6.
-Tagged releases enable `-Ptargets.full`, rerunning Linux/web
-checks alongside Windows and macOS/iOS simulator tests in parallel. Publication
-waits for every platform to pass. The build workflow's `fullTargets` input runs
-the same checks without publishing.
-
-Gradle dependencies, task outputs, the host's Kotlin Native toolchain and encrypted
-configuration state are cached. Configuration state requires the encryption secret.
-Automatic main snapshots publish all targets after the routine build passes.
-
-ABI references live in `api/` and `api-full/`. Update both with
-`./gradlew updateKotlinAbi` and `./gradlew updateKotlinAbi -Ptargets.full`.
-Commit JavaScript and Wasm lockfiles under `kotlin-js-store/`; update them with
-`./gradlew kotlinUpgradeYarnLock kotlinWasmUpgradeYarnLock -Ptargets.full`.
-
-### Tagged releases
-
-Push an explicit SemVer tag: `vX.Y.Z` publishes to Maven Central and creates a
-GitHub release; `vX.Y.Z-rc.N` publishes all targets and checksums to a GitHub
-prerelease only. RCs never publish to Maven. Versions come directly from tags;
-there is no manual release mode or automatic RC numbering.
-
-```sh
-git tag v0.3.1-rc.1
-git push origin v0.3.1-rc.1
-```
