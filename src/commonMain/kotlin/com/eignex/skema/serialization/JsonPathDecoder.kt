@@ -11,7 +11,6 @@ import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.descriptors.PolymorphicKind
 import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.descriptors.SerialKind
 import kotlinx.serialization.descriptors.StructureKind
 import kotlinx.serialization.encoding.CompositeDecoder
 import kotlinx.serialization.encoding.Decoder
@@ -25,6 +24,8 @@ import kotlinx.serialization.json.*
  * with an optional minus sign for signed types. Delegated compact descriptors use the
  * catalog's canonical serializer. Content-based polymorphic serializers
  * and custom polymorphic serializers without an exposed subtype are rejected.
+ * JSON transforming serializers decode their own input with this Json, as they would
+ * without strict decoding; compact vocabularies they contain still validate themselves.
  */
 fun <T> Json.decodeFromJsonElement(
     deserializer: DeserializationStrategy<T>,
@@ -32,8 +33,7 @@ fun <T> Json.decodeFromJsonElement(
     catalog: JsonNodeCatalog,
 ): T {
     val shape = JsonShape(deserializer as? CompactSerializer<*>, catalog, this)
-    val checked = shape.validateJson(deserializer.descriptor, element, "$")
-    return decodeFromJsonElement(JsonPathSerializer(deserializer, checked, "$", shape), checked)
+    return decodeFromJsonElement(JsonPathSerializer(deserializer, element, "$", shape), element)
 }
 
 internal class JsonPathSerializer<T>(
@@ -59,8 +59,30 @@ internal class JsonPathDecoder(
     private val fieldPath: (String) -> String = { "$path.$it" },
     private val mapKey: Boolean = false,
 ) : JsonDecoder by decoder {
+    override fun <T> decodeSerializableValue(deserializer: DeserializationStrategy<T>): T {
+        // Transformers read their raw input and decode the result outside this decoder.
+        if (deserializer is JsonTransformingSerializer<*>) return deserializer.deserialize(this)
+        // The nullable wrapper delegates back here with its value serializer.
+        if (deserializer::class != nullableSerializerClass) {
+            val checked = if (mapKey) {
+                shape.validateMapKey(deserializer.descriptor, element.jsonPrimitive.content, path)
+                element
+            } else {
+                shape.validateJson(deserializer.descriptor, element, path, fieldPath)
+            }
+            // Normalized children must reach Json's tree decoder, so decode the checked copy.
+            if (checked !== element) {
+                return json.decodeFromJsonElement(
+                    JsonPathSerializer(deserializer, checked, path, shape, fieldPath, mapKey),
+                    checked,
+                )
+            }
+        }
+        return decodeChecked(deserializer)
+    }
+
     @Suppress("UNCHECKED_CAST")
-    override fun <T> decodeSerializableValue(deserializer: DeserializationStrategy<T>): T =
+    private fun <T> decodeChecked(deserializer: DeserializationStrategy<T>): T =
         if (deserializer is JsonContentPolymorphicSerializer<*>) {
             invalid(path, "Content-based polymorphic serializers do not expose their subtype for strict decoding")
         } else if (deserializer is AbstractPolymorphicSerializer<*>) {
@@ -72,23 +94,8 @@ internal class JsonPathDecoder(
             }
             // Reuse the registered decoder so wrappers cannot bypass compact payload validation.
             compact.deserialize(this) as T
-        } else if (deserializer.descriptor.kind == SerialKind.CONTEXTUAL) {
-            // Let ContextualSerializer resolve the type, then validate before decoding.
-            deserializer.deserialize(object : JsonDecoder by this {
-                override fun <V> decodeSerializableValue(deserializer: DeserializationStrategy<V>): V {
-                    val checked = if (mapKey) {
-                        shape.validateMapKey(deserializer.descriptor, element.jsonPrimitive.content, path)
-                        element
-                    } else {
-                        shape.validateJson(deserializer.descriptor, element, path)
-                    }
-                    return json.decodeFromJsonElement(
-                        JsonPathSerializer(deserializer, checked, path, shape, fieldPath, mapKey),
-                        checked,
-                    )
-                }
-            })
         } else {
+            // ContextualSerializer resolves its type and decodes it back through this decoder.
             deserializer.deserialize(this)
         }
 
@@ -119,8 +126,7 @@ internal class JsonPathDecoder(
         val name = (type as? JsonPrimitive)?.contentOrNull
         val selected = deserializer.findPolymorphicSerializerOrNull(this, name)
             ?: invalid(typePath, "unknown polymorphic type '${name ?: "<missing>"}'")
-        val checked = shape.validateJson(selected.descriptor, body, bodyPath)
-        return json.decodeFromJsonElement(JsonPathSerializer(selected, checked, bodyPath, shape), checked)
+        return json.decodeFromJsonElement(JsonPathSerializer(selected, body, bodyPath, shape), body)
     }
 
     override fun <T : Any> decodeNullableSerializableValue(deserializer: DeserializationStrategy<T?>): T? =
@@ -138,26 +144,83 @@ internal class JsonPathDecoder(
     override fun beginStructure(descriptor: SerialDescriptor): CompositeDecoder {
         val composite = decoder.beginStructure(descriptor)
         val mapElements = if (descriptor.kind == StructureKind.MAP) JsonMapElements(element, path) else null
-        fun <T> child(index: Int, deserializer: DeserializationStrategy<T>): JsonPathSerializer<T> {
-            val (value, childPath) = when (descriptor.kind) {
-                StructureKind.LIST -> element.jsonArray[index] to "$path[$index]"
+        fun valueAt(index: Int): Pair<JsonElement, String> = when (descriptor.kind) {
+            StructureKind.LIST -> element.jsonArray[index] to "$path[$index]"
 
-                StructureKind.MAP -> mapElements!!.child(index)
+            StructureKind.MAP -> mapElements!!.child(index)
 
-                else -> {
-                    val name = shape.fieldName(descriptor, index, element.jsonObject, path)
-                    (element.jsonObject[name] ?: JsonNull) to fieldPath(name)
-                }
+            else -> {
+                val name = shape.fieldName(descriptor, index, element.jsonObject, path)
+                (element.jsonObject[name] ?: JsonNull) to fieldPath(name)
             }
-            return JsonPathSerializer(
-                deserializer,
-                value,
-                childPath,
-                shape,
-                mapKey = mapElements?.isObjectKey(index) == true,
-            )
+        }
+        fun isMapKey(index: Int) = mapElements?.isObjectKey(index) == true
+        fun <T> child(index: Int, deserializer: DeserializationStrategy<T>): JsonPathSerializer<T> {
+            val (value, childPath) = valueAt(index)
+            return JsonPathSerializer(deserializer, value, childPath, shape, mapKey = isMapKey(index))
+        }
+
+        // Json reads primitive elements directly, without a serializer passing through this decoder.
+        fun check(index: Int) {
+            val (value, childPath) = valueAt(index)
+            val child = descriptor.getElementDescriptor(index)
+            if (isMapKey(index)) {
+                shape.validateMapKey(child, value.jsonPrimitive.content, childPath)
+            } else {
+                shape.validateJson(child, value, childPath)
+            }
         }
         return object : CompositeDecoder by composite {
+            override fun decodeBooleanElement(descriptor: SerialDescriptor, index: Int): Boolean {
+                check(index)
+                return composite.decodeBooleanElement(descriptor, index)
+            }
+
+            override fun decodeByteElement(descriptor: SerialDescriptor, index: Int): Byte {
+                check(index)
+                return composite.decodeByteElement(descriptor, index)
+            }
+
+            override fun decodeShortElement(descriptor: SerialDescriptor, index: Int): Short {
+                check(index)
+                return composite.decodeShortElement(descriptor, index)
+            }
+
+            override fun decodeIntElement(descriptor: SerialDescriptor, index: Int): Int {
+                check(index)
+                return composite.decodeIntElement(descriptor, index)
+            }
+
+            override fun decodeLongElement(descriptor: SerialDescriptor, index: Int): Long {
+                check(index)
+                return composite.decodeLongElement(descriptor, index)
+            }
+
+            override fun decodeFloatElement(descriptor: SerialDescriptor, index: Int): Float {
+                check(index)
+                return composite.decodeFloatElement(descriptor, index)
+            }
+
+            override fun decodeDoubleElement(descriptor: SerialDescriptor, index: Int): Double {
+                check(index)
+                return composite.decodeDoubleElement(descriptor, index)
+            }
+
+            override fun decodeCharElement(descriptor: SerialDescriptor, index: Int): Char {
+                check(index)
+                return composite.decodeCharElement(descriptor, index)
+            }
+
+            override fun decodeStringElement(descriptor: SerialDescriptor, index: Int): String {
+                check(index)
+                return composite.decodeStringElement(descriptor, index)
+            }
+
+            override fun decodeInlineElement(descriptor: SerialDescriptor, index: Int): Decoder {
+                check(index)
+                return composite.decodeInlineElement(descriptor, index)
+            }
+
             override fun <T> decodeSerializableElement(
                 descriptor: SerialDescriptor,
                 index: Int,

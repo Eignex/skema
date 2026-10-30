@@ -32,6 +32,15 @@ private value class EdgeNullableInt(val value: Int?)
 
 @Serializable private data class EdgeNamed(val camelCase: String) : EdgeValue
 
+@Serializable private data class EdgeCompare(val op: String, val value: Int) : EdgeValue
+
+@Serializable private data class EdgeScale(
+    val factor: Double,
+    val nested: JsonObject = JsonObject(
+        emptyMap(),
+    ),
+) : EdgeValue
+
 class CompactEdgeCasesTest {
     @Test fun compactNumericFieldsRejectSpecialFloatingPointValues() {
         val json = Json { allowSpecialFloatingPointValues = true }
@@ -170,5 +179,43 @@ class CompactEdgeCasesTest {
             SchemaJson.decodeFromString(serializer, "2.5")
         }
         assertTrue("ambiguous" in error.message.orEmpty(), error.message)
+    }
+
+    @Test fun fixedNumbersMatchByValue() {
+        val serializer = CompactSerializer("FixedNumbers", EdgeValue::class) {
+            listOf(
+                jsonNode<EdgeScale>(
+                    "double",
+                    fixed = mapOf(
+                        "factor" to JsonPrimitive(2),
+                        "nested" to buildJsonObject { put("limit", JsonUnquotedLiteral("1e2")) },
+                    ),
+                ),
+            )
+        }
+        val value = EdgeScale(2.0, buildJsonObject { put("limit", 100.0) })
+        assertEquals("\"double\"", SchemaJson.encodeToString(serializer, value))
+        assertEquals(value.factor, (SchemaJson.decodeFromString(serializer, "\"double\"") as EdgeScale).factor)
+        assertFailsWith<SerializationException> { SchemaJson.encodeToString(serializer, EdgeScale(2.5)) }
+    }
+
+    @Test fun mostSpecificFixedNodeEncodesItsValues() {
+        val serializer = CompactSerializer("SpecificFixed", EdgeValue::class) {
+            listOf(
+                jsonNode<EdgeCompare>("compare"),
+                jsonNode<EdgeCompare>("greater", fixed = mapOf("op" to JsonPrimitive(">"))),
+            )
+        }
+        for ((value, wire) in listOf(
+            EdgeCompare(">", 1) to """{"greater":{"value":1}}""",
+            EdgeCompare("<", 1) to """{"compare":{"op":"<","value":1}}""",
+        )) {
+            assertEquals(wire, SchemaJson.encodeToString(serializer, value))
+            assertEquals(value, SchemaJson.decodeFromString(serializer, wire))
+        }
+        assertEquals(
+            EdgeCompare(">", 1),
+            SchemaJson.decodeFromString(serializer, """{"compare":{"op":">","value":1}}"""),
+        )
     }
 }

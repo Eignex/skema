@@ -6,7 +6,11 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.json.*
 
-/** Validates JSON before decoding, normalizing integral tokens in integer fields. */
+/**
+ * Validates one level of JSON as its serializer decodes it, normalizing integral tokens in
+ * direct integer children. Nested values are validated when their own serializers decode them,
+ * so JSON transforming serializers see their raw input.
+ */
 internal class JsonShape(
     private val owner: CompactSerializer<*>?,
     private val catalog: JsonNodeCatalog,
@@ -18,7 +22,12 @@ internal class JsonShape(
     fun compactSerializer(descriptor: SerialDescriptor): CompactSerializer<*>? =
         if (descriptor.nonNullableSerialName() == owner?.serialName) owner else catalog.find(descriptor)
 
-    fun validateJson(descriptor: SerialDescriptor, element: JsonElement, path: String): JsonElement {
+    fun validateJson(
+        descriptor: SerialDescriptor,
+        element: JsonElement,
+        path: String,
+        fieldPath: (String) -> String = { "$path.$it" },
+    ): JsonElement {
         // Contextual serializers resolve their actual descriptor during decoding, including nullability.
         if (descriptor.kind == SerialKind.CONTEXTUAL) return element
         val name = descriptor.nonNullableSerialName()
@@ -40,23 +49,24 @@ internal class JsonShape(
             return element
         }
         descriptor.integerBounds()?.let { return it.validate(element, path) }
-        if (descriptor.isInline) return validateJson(descriptor.getElementDescriptor(0), element, path)
+        if (descriptor.isInline) return validateJson(descriptor.getElementDescriptor(0), element, path, fieldPath)
         // Compact children validate their own bodies when decoded, retaining the caller's path.
         if (compactSerializer(descriptor) != null) return element
         return when (descriptor.kind) {
             // Polymorphic serializers validate the selected subtype during decoding.
             is PolymorphicKind -> element
 
-            StructureKind.CLASS, StructureKind.OBJECT -> validateRecord(descriptor, element.objectAt(path), path)
+            StructureKind.CLASS, StructureKind.OBJECT ->
+                validateRecord(descriptor, element.objectAt(path), path, fieldPath)
 
             StructureKind.LIST -> {
                 val array = element as? JsonArray ?: invalid(path, "expected an array")
                 val child = descriptor.getElementDescriptor(0)
-                val items = array.mapIndexed { index, value -> validateJson(child, value, "$path[$index]") }
+                val items = array.map { normalize(child, it) }
                 if (items.indices.all { items[it] === array[it] }) array else JsonArray(items)
             }
 
-            StructureKind.MAP -> validateJsonMap(json, descriptor, element, path, ::validateJson, ::validateMapKey)
+            StructureKind.MAP -> validateJsonMap(json, descriptor, element, path, ::normalize)
 
             SerialKind.ENUM -> {
                 val literal = element as? JsonPrimitive
@@ -86,11 +96,11 @@ internal class JsonShape(
         }
     }
 
-    fun validateRecord(
+    private fun validateRecord(
         descriptor: SerialDescriptor,
         body: JsonObject,
         path: String,
-        fieldPath: (String) -> String = { "$path.$it" },
+        fieldPath: (String) -> String,
     ): JsonObject {
         val fields = fields(descriptor, path)
         val supplied = mutableMapOf<Int, String>()
@@ -108,12 +118,28 @@ internal class JsonShape(
             if (value == null) {
                 if (descriptor.isJsonFieldRequired(index, json)) invalid(fieldPath(name), "missing operand '$name'")
             } else {
-                val checked = validateJson(child, value, fieldPath(name))
+                // Json coerces these values without decoding them, so check them before it can.
+                if (json.configuration.coerceInputValues) validateCoercible(child, value, fieldPath(name))
+                val checked = normalize(child, value)
                 if (checked !== value) rewritten[name] = checked
             }
         }
         if (rewritten.isEmpty()) return body
         return JsonObject(body.mapValues { (name, value) -> rewritten[name] ?: value })
+    }
+
+    private fun validateCoercible(descriptor: SerialDescriptor, element: JsonElement, path: String) {
+        if (element == JsonNull) {
+            if (!descriptor.acceptsJsonNull()) invalid(path, "null is not allowed")
+        } else if (descriptor.kind == SerialKind.ENUM) {
+            validateJson(descriptor, element, path)
+        }
+    }
+
+    // Leaves anything else for the child's serializer, which may transform its input.
+    private fun normalize(descriptor: SerialDescriptor, element: JsonElement): JsonElement {
+        if (element !is JsonPrimitive || element == JsonNull) return element
+        return descriptor.integerBounds()?.normalize(element) ?: element
     }
 
     fun fieldName(descriptor: SerialDescriptor, index: Int, body: JsonObject, path: String): String {
