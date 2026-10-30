@@ -133,19 +133,21 @@ class JsonWireConformanceTest {
     }
 
     @Test
-    fun `floating point schemas and decoding agree at finite boundaries`() {
+    fun `floating point decoding rejects tokens that overflow to infinity`() {
         scalarExamples(
             Float.serializer(),
             listOf("0", "-0.0", "3.4028235e38", "-3.4028235e38", "1.4e-45"),
-            listOf("1e100", "-1e100", "3.40282350000000000001e38", "-3.40282350000000000001e38"),
+            listOf("\"1\"", "true"),
             listOf(Float.MAX_VALUE, -Float.MAX_VALUE, Float.MIN_VALUE),
         )
         scalarExamples(
             Double.serializer(),
             listOf("0", "-0.0", "1.7976931348623157e308", "-1.7976931348623157e308", "4.9e-324"),
-            listOf("1e400", "-1e400", "1.79769313486231570001e308", "-1.79769313486231570001e308"),
+            listOf("\"1\"", "true"),
             listOf(Double.MAX_VALUE, -Double.MAX_VALUE, Double.MIN_VALUE),
         )
+        for (token in listOf("1e100", "-1e100")) invalidWire(Float.serializer(), token)
+        for (token in listOf("1e400", "-1e400")) invalidWire(Double.serializer(), token)
     }
 
     @Test

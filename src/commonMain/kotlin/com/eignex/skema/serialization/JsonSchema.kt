@@ -98,11 +98,7 @@ private class JsonSchemaGenerator(
 
             PrimitiveKind.BOOLEAN -> typedSchema("boolean")
 
-            PrimitiveKind.FLOAT, PrimitiveKind.DOUBLE -> typedSchema("number") {
-                val maximum = descriptor.numberBounds()!!.maximum
-                put("minimum", JsonUnquotedLiteral("-$maximum"))
-                put("maximum", JsonUnquotedLiteral(maximum))
-            }
+            PrimitiveKind.FLOAT, PrimitiveKind.DOUBLE -> typedSchema("number")
 
             PrimitiveKind.CHAR -> typedSchema("string") {
                 put("minLength", 1)

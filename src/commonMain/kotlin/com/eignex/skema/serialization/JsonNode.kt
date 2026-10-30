@@ -97,7 +97,7 @@ class JsonNode(
         if (shape == JsonNodeShape.Literal) {
             val literal = descriptor.getElementDescriptor(descriptor.getElementIndex(operands.single()))
             require(
-                !literal.acceptsJsonNull() && (literal.integerBounds() != null || literal.numberBounds() != null),
+                !literal.acceptsJsonNull() && (literal.integerBounds() != null || literal.isFloatingPoint()),
             ) { "JSON literal node '$name' requires a non-null numeric field" }
         }
     }
