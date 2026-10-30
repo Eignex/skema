@@ -6,35 +6,34 @@ import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.JsonUnquotedLiteral
 
-// Decimal strings retain the full ULong range on every target, without floating-point rounding.
-internal class JsonIntegerBounds(val minimum: String, val maximum: String) {
-    fun validate(element: JsonElement, path: String): JsonPrimitive {
-        val primitive = element as? JsonPrimitive ?: invalid(path, "expected an integer")
-        return normalize(primitive) ?: invalid(path, "expected an integer in $minimum..$maximum")
+// Decimal strings retain the full ULong range on every target.
+internal class JsonIntegerBounds(private val minimum: String, private val maximum: String) {
+    private val signed = minimum.startsWith('-')
+
+    /** Schema pattern for map keys; the decoder also checks the range. */
+    val keyPattern: String get() = if (signed) "^-?[0-9]+$" else "^[0-9]+$"
+
+    val unsigned: Boolean get() = !signed
+
+    fun validate(element: JsonElement, path: String) {
+        val primitive = element as? JsonPrimitive
+        if (primitive == null || primitive.isString || !contains(primitive.content)) {
+            invalid(path, "expected an integer in $minimum..$maximum")
+        }
     }
 
-    /** Plain integer token for an in-range integral [primitive], or null when it is not one. */
-    fun normalize(primitive: JsonPrimitive): JsonPrimitive? {
-        val integer = if (primitive.isString) null else normalizeInteger(primitive.content)
-        if (integer == null || !contains(integer)) return null
-        return if (primitive.content == integer) primitive else JsonUnquotedLiteral(integer)
-    }
-
-    private fun contains(integer: String): Boolean = if (integer.startsWith('-')) {
-        minimum.startsWith('-') && magnitudeAtMost(integer.drop(1), minimum.drop(1))
+    fun contains(token: String): Boolean = if (signed) {
+        val value = token.takeIf { SIGNED_INTEGER.matches(it) }?.toLongOrNull()
+        value != null && value >= minimum.toLong() && value <= maximum.toLong()
     } else {
-        magnitudeAtMost(integer, maximum)
-    }
-
-    fun keyPattern(): String {
-        val positive = "0*(?:${magnitudePattern(maximum)})"
-        val negative = if (minimum.startsWith('-')) "|-0*(?:${magnitudePattern(minimum.drop(1))})" else ""
-        // Unlike $, this end assertion also rejects a trailing newline in a property name.
-        return "^(?:$positive$negative)(?![\\s\\S])"
+        val value = token.takeIf { UNSIGNED_INTEGER.matches(it) }?.toULongOrNull()
+        value != null && value <= maximum.toULong()
     }
 }
+
+private val SIGNED_INTEGER = Regex("-?[0-9]+")
+private val UNSIGNED_INTEGER = Regex("[0-9]+")
 
 internal fun SerialDescriptor.integerBounds(): JsonIntegerBounds? {
     if (isInline) {
@@ -57,14 +56,6 @@ internal fun SerialDescriptor.integerBounds(): JsonIntegerBounds? {
 }
 
 internal val JSON_NUMBER = Regex("""(-?)(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?""")
-private const val MAX_INTEGER_DIGITS = 20
-
-// JSON Schema integers are defined by value, so 2.0 and 1e2 are integers too.
-private fun normalizeInteger(token: String): String? {
-    val (significant, power) = canonicalNumber(token) ?: return null
-    if (power < 0 || power > MAX_INTEGER_DIGITS - significant.trimStart('-').length) return null
-    return significant + "0".repeat(power.toInt())
-}
 
 // Exact decimal value as significant digits and a power of ten, so 2, 2.0 and 2e0 compare equal.
 internal fun canonicalNumber(token: String): Pair<String, Long>? {
@@ -75,24 +66,4 @@ internal fun canonicalNumber(token: String): Pair<String, Long>? {
     val significant = digits.trimEnd('0')
     val power = groups[4].ifEmpty { "0" }.toLongOrNull() ?: return null
     return sign + significant to power - fraction.length + (digits.length - significant.length)
-}
-
-private fun magnitudeAtMost(value: String, maximum: String): Boolean =
-    value.length < maximum.length || (value.length == maximum.length && value <= maximum)
-
-// A bounded decimal range represented lexically, since JSON property names are strings.
-private fun magnitudePattern(maximum: String): String {
-    val branches = mutableListOf("0")
-    if (maximum.length > 1) branches += "[1-9][0-9]{0,${maximum.length - 2}}"
-    for (index in maximum.indices) {
-        val low = if (index == 0) '1' else '0'
-        val high = maximum[index] - 1
-        if (high < low) continue
-        val digit = if (low == high) low.toString() else "[$low-$high]"
-        val remaining = maximum.length - index - 1
-        val tail = if (remaining == 0) "" else "[0-9]{$remaining}"
-        branches += maximum.take(index) + digit + tail
-    }
-    branches += maximum
-    return branches.joinToString("|")
 }

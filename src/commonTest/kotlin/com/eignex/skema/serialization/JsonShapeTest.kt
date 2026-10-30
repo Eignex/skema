@@ -23,11 +23,11 @@ class JsonShapeTest {
     }
 
     @Test
-    fun `field aliases accept integral tokens and report input paths`() {
+    fun `field aliases decode and report input paths`() {
         val serializer = AliasedCount.serializer()
         assertEquals(
             AliasedCount(2),
-            Json.decodeFromJsonElement(serializer, Json.parseToJsonElement("""{"oldCount":2.0}"""), JsonNodeCatalog()),
+            Json.decodeFromJsonElement(serializer, Json.parseToJsonElement("""{"oldCount":2}"""), JsonNodeCatalog()),
         )
         assertSerializationFails("$.legacyCount:") {
             Json.decodeFromJsonElement(
@@ -75,7 +75,7 @@ class JsonShapeTest {
         val map = MapSerializer(serializer, Int.serializer())
         assertEquals(
             mapOf(AliasedMode.Current to 2),
-            Json.decodeFromJsonElement(map, Json.parseToJsonElement("""{"legacy":2.0}"""), catalog),
+            Json.decodeFromJsonElement(map, Json.parseToJsonElement("""{"legacy":2}"""), catalog),
         )
         val json = Json { useAlternativeNames = false }
         assertSerializationFails("$: expected one of") {

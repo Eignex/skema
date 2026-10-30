@@ -215,11 +215,13 @@ class JsonWireConformanceTest {
             UnsignedValues(UByte.MAX_VALUE, UShort.MAX_VALUE, UInt.MAX_VALUE, ULong.MAX_VALUE),
         )
         val encoded = values.map { roundTrip<WireValue>(WireValueSerializer, it) }
-        val invalid = listOf(
+        listOf(
             """{"unsigned":{"byte":256,"short":0,"int":0,"long":0}}""",
             """{"unsigned":{"byte":0,"short":65536,"int":0,"long":0}}""",
             """{"unsigned":{"byte":0,"short":0,"int":4294967296,"long":0}}""",
             """{"unsigned":{"byte":0,"short":0,"int":0,"long":18446744073709551616}}""",
+        ).forEach { invalidWire(WireValueSerializer, it) }
+        val invalid = listOf(
             """{"unsigned":{"byte":0,"short":0,"int":0,"long":-1}}""",
             """{"unsigned":{"byte":0,"short":0,"int":0,"long":"1"}}""",
         ).map { invalidWire(WireValueSerializer, it) }
@@ -228,26 +230,19 @@ class JsonWireConformanceTest {
     }
 
     @Test
-    fun `unsigned integral decimal and exponent tokens normalize exactly`() {
-        val accepted = listOf("18446744073709551615.0", "1.8446744073709551615e19", "184467440737095516150e-1")
-        for (token in accepted) {
-            val element = SchemaJson.parseToJsonElement(token)
-            assertEquals(
-                UnsignedLiteral(ULong.MAX_VALUE),
-                SchemaJson.decodeFromJsonElement(WireValueSerializer, element),
-            )
-        }
+    fun `unsigned literals keep the full ULong range`() {
+        val maximum = SchemaJson.parseToJsonElement("18446744073709551615")
+        assertEquals(UnsignedLiteral(ULong.MAX_VALUE), SchemaJson.decodeFromJsonElement(WireValueSerializer, maximum))
         val encoded = roundTrip<WireValue>(WireValueSerializer, UnsignedLiteral(ULong.MAX_VALUE))
-        assertEquals("18446744073709551615", encoded.toString())
+        assertEquals(maximum, encoded)
         roundTrip<WireValue>(WireValueSerializer, WrappedUnsigned(UnsignedId(ULong.MAX_VALUE)))
-        val invalid = listOf("18446744073709551616.0", "1.8446744073709551616e19", "1e-1")
-            .map { invalidWire(WireValueSerializer, it) }
+        for (token in listOf("18446744073709551616", "1.0")) invalidWire(WireValueSerializer, token)
 
         schemaExamples(
             "unsigned literals",
             WireValueSerializer.toJsonSchema(),
-            accepted.map(SchemaJson::parseToJsonElement) + encoded,
-            invalid,
+            listOf(encoded),
+            listOf("-1", "1e-1").map { invalidWire(WireValueSerializer, it) },
         )
     }
 
@@ -284,24 +279,41 @@ class JsonWireConformanceTest {
     }
 
     @Test
-    fun `integer map schemas constrain names and bounds for every integer type`() {
-        mapExamples(Byte.serializer(), listOf("0", "127", "-128", "000127", "-0"), listOf("128", "-129"))
-        mapExamples(Short.serializer(), listOf("32767", "-32768"), listOf("32768", "-32769"))
-        mapExamples(Int.serializer(), listOf("2147483647", "-2147483648"), listOf("2147483648", "-2147483649"))
+    fun `integer map keys require digits and decode within each type's range`() {
+        mapExamples(
+            Byte.serializer(),
+            listOf("0", "127", "-128", "000127", "-0"),
+            listOf("1.0"),
+            outOfRange = listOf("128", "-129"),
+        )
+        mapExamples(Short.serializer(), listOf("32767", "-32768"), emptyList(), outOfRange = listOf("32768", "-32769"))
+        mapExamples(
+            Int.serializer(),
+            listOf("2147483647", "-2147483648"),
+            emptyList(),
+            outOfRange = listOf("2147483648", "-2147483649"),
+        )
         mapExamples(
             Long.serializer(),
             listOf("9223372036854775807", "-9223372036854775808"),
-            listOf("9223372036854775808"),
+            emptyList(),
+            outOfRange = listOf("9223372036854775808"),
         )
-        mapExamples(UByte.serializer(), listOf("0", "255"), listOf("256", "-1"))
-        mapExamples(UShort.serializer(), listOf("65535"), listOf("65536"))
-        mapExamples(UInt.serializer(), listOf("4294967295"), listOf("4294967296"))
-        mapExamples(ULong.serializer(), listOf("18446744073709551615"), listOf("18446744073709551616"))
+        mapExamples(UByte.serializer(), listOf("0", "255"), listOf("-1"), outOfRange = listOf("256"))
+        mapExamples(UShort.serializer(), listOf("65535"), emptyList(), outOfRange = listOf("65536"))
+        mapExamples(UInt.serializer(), listOf("4294967295"), emptyList(), outOfRange = listOf("4294967296"))
+        mapExamples(
+            ULong.serializer(),
+            listOf("18446744073709551615"),
+            emptyList(),
+            outOfRange = listOf("18446744073709551616"),
+        )
         mapExamples(
             ContextualSerializer(Int::class),
             listOf("2147483647", "-2147483648"),
-            listOf("2147483648", "-2147483649", "2.0"),
+            listOf("2.0"),
             json = Json { serializersModule = SerializersModule { contextual(Int.serializer()) } },
+            outOfRange = listOf("2147483648", "-2147483649"),
         )
     }
 
@@ -363,6 +375,7 @@ class JsonWireConformanceTest {
         invalid: List<String>,
         numeric: Boolean = true,
         json: Json = SchemaJson,
+        outOfRange: List<String> = emptyList(),
     ) {
         val serializer = MapSerializer(key, String.serializer())
         fun record(name: String): JsonObject = buildJsonObject { put(name, "value") }
@@ -372,7 +385,11 @@ class JsonWireConformanceTest {
             roundTrip(serializer, value, json)
             element
         }
-        val bad = (invalid + if (numeric) listOf("bogus", "1\n", "") else emptyList()).map { name ->
+        val bad = (invalid + if (numeric) listOf("bogus", "") else emptyList()).map { name ->
+            invalidWire(serializer, record(name).toString(), json)
+        }
+        // The schema only constrains the digits, so these are rejected by decoding alone.
+        for (name in outOfRange + if (numeric) listOf("1\n") else emptyList()) {
             invalidWire(serializer, record(name).toString(), json)
         }
         schemaExamples("map ${key.descriptor.serialName}", serializer.toJsonSchema(JsonNodeCatalog(), json), good, bad)

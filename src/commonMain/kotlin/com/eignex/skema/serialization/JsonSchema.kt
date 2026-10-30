@@ -67,10 +67,7 @@ private class JsonSchemaGenerator(
         }
         if (descriptor.kind == SerialKind.CONTEXTUAL) return schema(contextualDescriptor(descriptor), owner)
         descriptor.integerBounds()?.let { bounds ->
-            return typedSchema("integer") {
-                put("minimum", JsonUnquotedLiteral(bounds.minimum))
-                put("maximum", JsonUnquotedLiteral(bounds.maximum))
-            }
+            return typedSchema("integer") { if (bounds.unsigned) put("minimum", 0) }
         }
         if (descriptor.isInline) return schema(descriptor.getElementDescriptor(0), owner)
         val compact = if (name == owner?.serialName) {
@@ -165,7 +162,7 @@ private class JsonSchemaGenerator(
         ) { "Nullable map keys require an explicit JSON Schema: ${descriptor.serialName}" }
         if (descriptor.kind == SerialKind.CONTEXTUAL) return mapKeySchema(contextualDescriptor(descriptor))
         descriptor.integerBounds()?.let { bounds ->
-            return buildJsonObject { put("pattern", bounds.keyPattern()) }
+            return buildJsonObject { put("pattern", bounds.keyPattern) }
         }
         if (descriptor.isInline) return mapKeySchema(descriptor.getElementDescriptor(0))
         return when (descriptor.kind) {

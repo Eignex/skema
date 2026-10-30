@@ -19,28 +19,17 @@ private fun SerialDescriptor.mapKeyCarrier(json: Json): SerialDescriptor = when 
     else -> this
 }
 
-internal fun validateJsonMap(
-    json: Json,
-    descriptor: SerialDescriptor,
-    element: JsonElement,
-    path: String,
-    normalize: (SerialDescriptor, JsonElement) -> JsonElement,
-): JsonElement {
-    val key = descriptor.getElementDescriptor(0)
-    val value = descriptor.getElementDescriptor(1)
-    val carrier = key.mapKeyCarrier(json)
+internal fun validateJsonMap(json: Json, descriptor: SerialDescriptor, element: JsonElement, path: String) {
+    val carrier = descriptor.getElementDescriptor(0).mapKeyCarrier(json)
     if (carrier.kind is PrimitiveKind || carrier.kind == SerialKind.ENUM) {
-        val map = element.objectAt(path)
-        val values = map.mapValues { (_, entry) -> normalize(value, entry) }
-        return if (values.all { (name, entry) -> entry === map.getValue(name) }) map else JsonObject(values)
+        element.objectAt(path)
+        return
     }
     if (!json.configuration.allowStructuredMapKeys) {
         invalid(path, "structured map keys require allowStructuredMapKeys = true")
     }
     val array = element as? JsonArray ?: invalid(path, "expected an array for structured map keys")
     if (array.size % 2 != 0) invalid("$path[${array.lastIndex}]", "expected a value after the map key")
-    val values = array.mapIndexed { index, entry -> normalize(if (index % 2 == 0) key else value, entry) }
-    return if (values.indices.all { values[it] === array[it] }) array else JsonArray(values)
 }
 
 /** Child values and paths for either of Json's two map representations. */

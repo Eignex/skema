@@ -85,7 +85,7 @@ class JsonMapShapeTest {
         }
         val structured = MapSerializer(ContextualSerializer(StructuredKey::class), String.serializer())
         val structuredValue = mapOf(StructuredKey(1) to "value")
-        val array = format.parseToJsonElement("""[{"id":1.0},"value"]""")
+        val array = format.parseToJsonElement("""[{"id":1},"value"]""")
         assertEquals(structuredValue, format.decodeFromJsonElement(structured, array, JsonNodeCatalog()))
         failsAt("$[0].id") {
             format.decodeFromJsonElement(
@@ -104,9 +104,9 @@ class JsonMapShapeTest {
     }
 
     @Test
-    fun `nested structured keys and values normalize integers and retain array paths`() {
+    fun `nested structured keys and values retain array paths`() {
         val serializer = StructuredMapHolder.serializer()
-        val valid = json.parseToJsonElement("""{"values":[[{"id":1e0},{"count":2.0}]]}""")
+        val valid = json.parseToJsonElement("""{"values":[[{"id":1},{"count":2}]]}""")
         assertEquals(
             StructuredMapHolder(listOf(mapOf(StructuredKey(1) to StructuredValue(2)))),
             json.decodeFromJsonElement(serializer, valid, JsonNodeCatalog()),
@@ -127,7 +127,7 @@ class JsonMapShapeTest {
         assertEquals(mapOf(2 to "value"), json.decodeFromJsonElement(serializer, encoded, JsonNodeCatalog()))
         assertEquals(
             mapOf(2 to "value"),
-            json.decodeFromJsonElement(serializer, json.parseToJsonElement("[2.0,\"value\"]"), JsonNodeCatalog()),
+            json.decodeFromJsonElement(serializer, json.parseToJsonElement("[2,\"value\"]"), JsonNodeCatalog()),
         )
         failsAt("$[0]") {
             json.decodeFromJsonElement(serializer, json.parseToJsonElement("[\"2\",\"value\"]"), JsonNodeCatalog())
@@ -141,7 +141,7 @@ class JsonMapShapeTest {
         val value = mapOf<StructuredCompactKey, String>(StructuredCompactId(2) to "value")
         assertEquals(
             value,
-            json.decodeFromJsonElement(serializer, json.parseToJsonElement("""[{"key":2.0},"value"]"""), catalog),
+            json.decodeFromJsonElement(serializer, json.parseToJsonElement("""[{"key":2},"value"]"""), catalog),
         )
         failsAt("$[0].key") {
             json.decodeFromJsonElement(serializer, json.parseToJsonElement("""[{"key":"2"},"value"]"""), catalog)
