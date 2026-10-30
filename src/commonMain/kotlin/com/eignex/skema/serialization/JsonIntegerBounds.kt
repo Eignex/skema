@@ -12,8 +12,13 @@ import kotlinx.serialization.json.JsonUnquotedLiteral
 internal class JsonIntegerBounds(val minimum: String, val maximum: String) {
     fun validate(element: JsonElement, path: String): JsonPrimitive {
         val primitive = element as? JsonPrimitive ?: invalid(path, "expected an integer")
+        return normalize(primitive) ?: invalid(path, "expected an integer in $minimum..$maximum")
+    }
+
+    /** Plain integer token for an in-range integral [primitive], or null when it is not one. */
+    fun normalize(primitive: JsonPrimitive): JsonPrimitive? {
         val integer = if (primitive.isString) null else normalizeInteger(primitive.content)
-        if (integer == null || !contains(integer)) invalid(path, "expected an integer in $minimum..$maximum")
+        if (integer == null || !contains(integer)) return null
         return if (primitive.content == integer) primitive else JsonUnquotedLiteral(integer)
     }
 
@@ -67,6 +72,17 @@ private fun normalizeInteger(token: String): String? {
     val zeros = maxOf(shift, 0L)
     if (mantissa.length + zeros > MAX_INTEGER_DIGITS) return null
     return sign + mantissa + "0".repeat(zeros.toInt())
+}
+
+// Exact decimal value as significant digits and a power of ten, so 2, 2.0 and 2e0 compare equal.
+internal fun canonicalNumber(token: String): Pair<String, Long>? {
+    val groups = JSON_NUMBER.matchEntire(token)?.groupValues ?: return null
+    val (sign, whole, fraction) = groups.subList(1, 4)
+    val digits = (whole + fraction).trimStart('0')
+    if (digits.isEmpty()) return "0" to 0L
+    val significant = digits.trimEnd('0')
+    val power = groups[4].ifEmpty { "0" }.toLongOrNull() ?: return null
+    return sign + significant to power - fraction.length + (digits.length - significant.length)
 }
 
 private fun magnitudeAtMost(value: String, maximum: String): Boolean =

@@ -103,8 +103,16 @@ open class CompactSerializer<T : Any>(
                     "fixed fields $missing were omitted by their body serializer; do not use @EncodeDefault(NEVER)",
                 )
             }
-            candidates.singleOrNull { candidate -> candidate.fixed.all { (field, fixed) -> values[field] == fixed } }
-                ?: invalid("$", "no unique $serialName node matches the fixed fields")
+            val matches = candidates.filter { candidate ->
+                candidate.fixed.all { (field, fixed) -> sameJsonValue(values[field], fixed) }
+            }
+            // A node fixing a strict superset of another match's fields is the more specific choice.
+            matches.singleOrNull { candidate ->
+                matches.all { other ->
+                    other === candidate ||
+                        (other.fixed.size < candidate.fixed.size && candidate.fixed.keys.containsAll(other.fixed.keys))
+                }
+            } ?: invalid("$", "no unique $serialName node matches the fixed fields")
         }
     }
 
@@ -117,12 +125,26 @@ open class CompactSerializer<T : Any>(
         val path = node.pathAt(parentPath)
         val shape = JsonShape(this, catalog, decoder.json)
         val fieldPath: (String) -> String = { node.fieldPath(it, path) }
-        val body = shape.validateRecord(node.serializer.descriptor, node.decode(payload, path), path, fieldPath)
+        val body = node.decode(payload, path)
         return withJsonPath(path) {
             val serializer = JsonPathSerializer(node.serializer, body, path, shape, fieldPath)
             decoder.json.decodeFromJsonElement(serializer, body) as T
         }
     }
+}
+
+// Fixed values match by JSON value, so numbers compare equal however they are written.
+private fun sameJsonValue(value: JsonElement?, fixed: JsonElement): Boolean = when {
+    value is JsonObject && fixed is JsonObject ->
+        value.keys == fixed.keys && value.all { (name, entry) -> sameJsonValue(entry, fixed.getValue(name)) }
+
+    value is JsonArray && fixed is JsonArray ->
+        value.size == fixed.size && value.indices.all { sameJsonValue(value[it], fixed[it]) }
+
+    value is JsonPrimitive && fixed is JsonPrimitive && !value.isString && !fixed.isString ->
+        canonicalNumber(value.content)?.let { it == canonicalNumber(fixed.content) } ?: (value == fixed)
+
+    else -> value == fixed
 }
 
 private fun checkJsonConfiguration(json: Json) {

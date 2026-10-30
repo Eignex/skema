@@ -24,16 +24,14 @@ internal fun validateJsonMap(
     descriptor: SerialDescriptor,
     element: JsonElement,
     path: String,
-    validateJson: (SerialDescriptor, JsonElement, String) -> JsonElement,
-    validateMapKey: (SerialDescriptor, String, String) -> Unit,
+    normalize: (SerialDescriptor, JsonElement) -> JsonElement,
 ): JsonElement {
     val key = descriptor.getElementDescriptor(0)
     val value = descriptor.getElementDescriptor(1)
     val carrier = key.mapKeyCarrier(json)
     if (carrier.kind is PrimitiveKind || carrier.kind == SerialKind.ENUM) {
         val map = element.objectAt(path)
-        map.keys.forEach { validateMapKey(key, it, "$path.$it") }
-        val values = map.mapValues { (name, entry) -> validateJson(value, entry, "$path.$name") }
+        val values = map.mapValues { (_, entry) -> normalize(value, entry) }
         return if (values.all { (name, entry) -> entry === map.getValue(name) }) map else JsonObject(values)
     }
     if (!json.configuration.allowStructuredMapKeys) {
@@ -41,9 +39,7 @@ internal fun validateJsonMap(
     }
     val array = element as? JsonArray ?: invalid(path, "expected an array for structured map keys")
     if (array.size % 2 != 0) invalid("$path[${array.lastIndex}]", "expected a value after the map key")
-    val values = array.mapIndexed { index, entry ->
-        validateJson(if (index % 2 == 0) key else value, entry, "$path[$index]")
-    }
+    val values = array.mapIndexed { index, entry -> normalize(if (index % 2 == 0) key else value, entry) }
     return if (values.indices.all { values[it] === array[it] }) array else JsonArray(values)
 }
 

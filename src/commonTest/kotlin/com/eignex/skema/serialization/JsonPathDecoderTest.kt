@@ -6,12 +6,50 @@ import kotlinx.serialization.Contextual
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.nullable
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.*
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
 import kotlin.test.Test
 import kotlin.test.assertEquals
+
+private object OneOrMany : JsonTransformingSerializer<List<Int>>(ListSerializer(Int.serializer())) {
+    override fun transformDeserialize(element: JsonElement): JsonElement =
+        element as? JsonArray ?: JsonArray(listOf(element))
+}
+
+@Serializable
+private enum class Level { LOW, HIGH }
+
+private object CaseInsensitiveLevel : JsonTransformingSerializer<Level>(Level.serializer()) {
+    override fun transformDeserialize(element: JsonElement): JsonElement =
+        JsonPrimitive(element.jsonPrimitive.content.uppercase())
+}
+
+@Serializable
+private data class Transformed(
+    @Serializable(with = OneOrMany::class) val counts: List<Int>,
+    val levels: List<
+        @Serializable(with = CaseInsensitiveLevel::class)
+        Level,
+        > = emptyList(),
+    val total: Int = 0,
+)
+
+@Serializable(with = TransformedNodeSerializer::class)
+private sealed interface TransformedNode
+
+@Serializable
+private data class TransformedLeaf(val value: Transformed) : TransformedNode
+
+private object TransformedNodeSerializer : CompactSerializer<TransformedNode>(
+    "TransformedNode",
+    TransformedNode::class,
+    nodes = { listOf(jsonNode<TransformedLeaf>("leaf", JsonNodeShape.Operand, "value")) },
+)
 
 class JsonPathDecoderTest {
     @Serializable
@@ -128,11 +166,22 @@ class JsonPathDecoderTest {
     }
 
     @Test
-    fun `catalog compact descriptors decode through the canonical serializer`() {
+    fun `transformers around compact serializers validate the transformed payload`() {
         val transformed = object : JsonTransformingSerializer<DelegatedNode>(CanonicalNodeSerializer) {
-            override fun transformDeserialize(element: JsonElement): JsonElement =
-                Json.parseToJsonElement("""{"count":{"value":0}}""")
+            override fun transformDeserialize(element: JsonElement): JsonElement = if (element is JsonPrimitive) {
+                buildJsonObject {
+                    putJsonObject(
+                        "count",
+                    ) { put("value", element) }
+                }
+            } else {
+                element
+            }
         }
+        assertEquals(
+            DelegatedCount(2),
+            Json.decodeFromJsonElement(transformed, JsonPrimitive(2), delegatedCatalog),
+        )
         assertSerializationFails("$.count.extra:") {
             Json.decodeFromJsonElement(
                 transformed,
@@ -179,17 +228,23 @@ class JsonPathDecoderTest {
     @Test
     fun `polymorphic wrappers cannot decode their delegate outside strict validation`() {
         val json = Json { ignoreUnknownKeys = true }
-        val serializers = listOf(
-            DelegatedContentSerializer,
-            TransformedContentSerializer,
-            NullableTransformedContentSerializer,
-            DelegatedContentSerializer.nullable,
-        )
-        for (serializer in serializers) {
-            val document = json.parseToJsonElement("""{"count":"2","extra":3}""")
+        val document = json.parseToJsonElement("""{"count":"2","extra":3}""")
+        for (serializer in listOf(DelegatedContentSerializer, DelegatedContentSerializer.nullable)) {
             assertSerializationFails("$: Custom polymorphic serializers") {
                 json.decodeFromJsonElement(serializer, document, JsonNodeCatalog())
             }
+        }
+    }
+
+    @Test
+    fun `transformers decode their input as Json does`() {
+        val json = Json { ignoreUnknownKeys = true }
+        val document = json.parseToJsonElement("""{"count":2,"extra":3}""")
+        for (serializer in listOf(TransformedContentSerializer, NullableTransformedContentSerializer)) {
+            assertEquals(
+                json.decodeFromJsonElement(serializer, document),
+                json.decodeFromJsonElement(serializer, document, JsonNodeCatalog()),
+            )
         }
     }
 
@@ -210,5 +265,35 @@ class JsonPathDecoderTest {
             json.decodeFromJsonElement(ContentCountSerializer, ordinary, JsonNodeCatalog())
         }
         assertEquals(null, json.decodeFromJsonElement(ContentCountSerializer.nullable, JsonNull, JsonNodeCatalog()))
+    }
+
+    @Test
+    fun `transformed fields accept what Json accepts while siblings stay strict`() {
+        val wire = """{"counts":2e0,"levels":["low","High"],"total":3.0}"""
+        val expected = Transformed(listOf(2), listOf(Level.LOW, Level.HIGH), 3)
+        assertEquals(expected, Json.decodeFromString<Transformed>(wire.replace("3.0", "3")))
+        assertEquals(
+            expected,
+            Json.decodeFromJsonElement(Transformed.serializer(), Json.parseToJsonElement(wire), JsonNodeCatalog()),
+        )
+        assertEquals(TransformedLeaf(expected), Json.decodeFromString(TransformedNodeSerializer, """{"leaf":$wire}"""))
+        assertSerializationFails("$.leaf.total:") {
+            Json.decodeFromString(TransformedNodeSerializer, """{"leaf":{"counts":2,"total":3.5}}""")
+        }
+        assertSerializationFails("$.leaf.extra:") {
+            Json.decodeFromString(TransformedNodeSerializer, """{"leaf":{"counts":2,"extra":1}}""")
+        }
+    }
+
+    @Test
+    fun `coerced values are rejected before Json can replace them`() {
+        val json = Json { coerceInputValues = true }
+        assertSerializationFails("$.total: null is not allowed") {
+            json.decodeFromJsonElement(
+                Transformed.serializer(),
+                json.parseToJsonElement("""{"counts":[1],"total":null}"""),
+                JsonNodeCatalog(),
+            )
+        }
     }
 }
