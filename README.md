@@ -82,11 +82,6 @@ The JSON contains the entry names and configuration:
 Consumers share the configuration types and read definition.entries without needing
 the original schema object. Applications handle field values and input validation.
 
-Definitions also support [diffs](src/commonMain/kotlin/com/eignex/skema/SchemaDiff.kt),
-[composition and namespaces](src/commonMain/kotlin/com/eignex/skema/SchemaComposition.kt),
-and [JSON Schema export](src/commonMain/kotlin/com/eignex/skema/JsonSpec.kt).
-Namespacing prefixes entry keys; applications must update references inside configurations.
-
 [Compact JSON](src/commonMain/kotlin/com/eignex/skema/serialization/CompactSerializer.kt)
 encodes nodes as operator objects, names, or numeric literals.
 [Serializer-derived JSON Schema](src/commonMain/kotlin/com/eignex/skema/serialization/JsonSchema.kt)

@@ -2,7 +2,7 @@
 
 package com.eignex.skema.serialization
 
-import com.eignex.skema.JsonSpec
+import com.eignex.skema.TestSpec
 import com.eignex.skema.SchemaJson
 import com.eignex.skema.schemaJsonConfig
 import kotlinx.serialization.Polymorphic
@@ -23,10 +23,10 @@ import kotlin.test.assertTrue
 private sealed interface SchemaNode
 
 @Serializable
-private data class SpecHolder(val spec: JsonSpec) : SchemaNode
+private data class SpecHolder(val spec: TestSpec) : SchemaNode
 
 @Serializable
-private data class SpecCollection(val values: List<Map<String, JsonSpec?>>) : SchemaNode
+private data class SpecCollection(val values: List<Map<String, TestSpec?>>) : SchemaNode
 
 @Serializable
 private data class LegacyHolder(val value: LegacyNode) : SchemaNode
@@ -46,7 +46,7 @@ private interface PluginSpec
 
 @Serializable
 @SerialName("plugin")
-private data class JsonPlugin(val spec: JsonSpec) : PluginSpec
+private data class JsonPlugin(val spec: TestSpec) : PluginSpec
 
 private object SchemaNodeSerializer : CompactSerializer<SchemaNode>("SchemaNode", SchemaNode::class, nodes = {
     listOf(
@@ -57,13 +57,13 @@ private object SchemaNodeSerializer : CompactSerializer<SchemaNode>("SchemaNode"
     )
 })
 
-class CompactJsonSpecTest {
+class CompactSealedChildTest {
     @Test
-    fun `compact JsonSpec collections retain nulls and nested schemas`() {
+    fun `compact TestSpec collections retain nulls and nested schemas`() {
         val value: SchemaNode = SpecCollection(
             listOf(
-                linkedMapOf("empty" to null, "schema" to JsonSpec.Nullable(JsonSpec.Int(min = 0))),
-                mapOf("constant" to JsonSpec.Const(JsonArray(listOf(JsonNull, JsonPrimitive(1))))),
+                linkedMapOf("empty" to null, "schema" to TestSpec.Nullable(TestSpec.Int(min = 0))),
+                mapOf("constant" to TestSpec.Const(JsonArray(listOf(JsonNull, JsonPrimitive(1))))),
             ),
         )
 
@@ -75,7 +75,7 @@ class CompactJsonSpecTest {
     @Test
     fun `ordinary sealed children use the configured discriminator`() {
         val json = Json { classDiscriminator = "node" }
-        val value: SchemaNode = SpecHolder(JsonSpec.Int(min = 13))
+        val value: SchemaNode = SpecHolder(TestSpec.Int(min = 13))
 
         val encoded = json.encodeToString(value)
 
@@ -86,7 +86,7 @@ class CompactJsonSpecTest {
     @Test
     fun `ordinary sealed children retain array polymorphism`() {
         val json = Json { useArrayPolymorphism = true }
-        val value: SchemaNode = SpecHolder(JsonSpec.Int(min = 13))
+        val value: SchemaNode = SpecHolder(TestSpec.Int(min = 13))
 
         val encoded = json.encodeToString(value)
 
@@ -97,7 +97,7 @@ class CompactJsonSpecTest {
     @Test
     fun `mixed sealed and compact trees honor discriminator annotations`() {
         val json = Json { classDiscriminator = "other" }
-        val value: SchemaNode = LegacyHolder(LegacyBranch(SpecHolder(JsonSpec.Bool)))
+        val value: SchemaNode = LegacyHolder(LegacyBranch(SpecHolder(TestSpec.Bool)))
 
         val encoded = json.encodeToString(value)
 
@@ -172,7 +172,7 @@ class CompactJsonSpecTest {
                 polymorphic(PluginSpec::class) { subclass(JsonPlugin::class, JsonPlugin.serializer()) }
             }
         }
-        val value: SchemaNode = PluginHolder(JsonPlugin(JsonSpec.Int(min = 0)))
+        val value: SchemaNode = PluginHolder(JsonPlugin(TestSpec.Int(min = 0)))
 
         val encoded = json.encodeToString(value)
 
@@ -192,6 +192,6 @@ class CompactJsonSpecTest {
             """{"plugin":{"value":{"spec":{"${'$'}type":"Bool"}}}}""",
         )
 
-        assertEquals(PluginHolder(JsonPlugin(JsonSpec.Bool)), decoded)
+        assertEquals(PluginHolder(JsonPlugin(TestSpec.Bool)), decoded)
     }
 }

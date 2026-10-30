@@ -2,7 +2,7 @@
 
 package com.eignex.skema.serialization
 
-import com.eignex.skema.JsonSpec
+import com.eignex.skema.TestSpec
 import com.eignex.skema.SchemaDef
 import com.eignex.skema.SchemaJson
 import kotlinx.serialization.Contextual
@@ -35,7 +35,7 @@ private sealed interface SchemaWire
 
 @Serializable private data class SchemaLabels(val values: Map<String, String> = emptyMap()) : SchemaWire
 
-@Serializable private data class SchemaLegacy(val spec: JsonSpec) : SchemaWire
+@Serializable private data class SchemaLegacy(val spec: TestSpec) : SchemaWire
 
 @Serializable private data class SchemaMapped(val name: String, val negated: Boolean = false) : SchemaWire
 
@@ -158,7 +158,7 @@ class JsonSchemaTest {
             SchemaOptions(SchemaInput, strict = true),
             SchemaLabels(),
             SchemaLabels(mapOf("label" to "value")),
-            SchemaLegacy(JsonSpec.Int(min = 0)),
+            SchemaLegacy(TestSpec.Int(min = 0)),
             SchemaMapped("enabled", true),
         )
         val invalid = listOf(

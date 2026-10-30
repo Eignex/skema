@@ -1,6 +1,5 @@
 package com.eignex.skema.serialization
 
-import com.eignex.skema.typedSchema
 import kotlinx.serialization.json.*
 
 internal class JsonSchemaShorthands {
