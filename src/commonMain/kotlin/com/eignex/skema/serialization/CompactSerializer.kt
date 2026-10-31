@@ -48,18 +48,16 @@ open class CompactSerializer<T : Any>(
 
     private fun select(element: JsonElement): Pair<JsonNode, JsonElement> {
         if (element is JsonPrimitive && !element.isString && element.doubleOrNull != null) {
-            return catalog.select(literalNodes, element) { "$serialName has no numeric literals" } to element
+            return catalog.select(literalNodes, element) { "unexpected number $element" } to element
         }
         val obj = if (element is JsonPrimitive && element.isString) {
             JsonObject(mapOf(element.content to JsonObject(emptyMap())))
         } else {
-            element as? JsonObject ?: throw SerializationException("expected a $serialName operator, got $element")
+            element as? JsonObject ?: throw SerializationException("expected an operator, got $element")
         }
         val (operator, payload) = obj.entries.singleOrNull()
-            ?: throw SerializationException("expected exactly one $serialName operator, got ${obj.keys}")
-        val node = catalog.select(operatorsByName[operator].orEmpty(), payload) {
-            "unknown $serialName operator '$operator'"
-        }
+            ?: throw SerializationException("expected exactly one operator, got ${obj.keys}")
+        val node = catalog.select(operatorsByName[operator].orEmpty(), payload) { "unknown operator '$operator'" }
         return node to payload
     }
 

@@ -473,7 +473,7 @@ class CompactSerializerTest {
         val payloads = listOf("{}", "[]", "true", "false", "null", """{"input":{},"offset":{}}""")
 
         for (payload in payloads) {
-            assertFailsWithMessage("Expression operator", payload) { SchemaJson.decodeFromString<Expression>(payload) }
+            assertFailsWithMessage("operator", payload) { SchemaJson.decodeFromString<Expression>(payload) }
         }
     }
 
@@ -483,7 +483,7 @@ class CompactSerializerTest {
 
         val error = assertFailsWith<SerializationException> { SchemaJson.decodeFromString(serializer, "2.5") }
 
-        assertEquals("OnlyInput has no numeric literals", error.message)
+        assertEquals("unexpected number 2.5", error.message)
     }
 
     @Test
