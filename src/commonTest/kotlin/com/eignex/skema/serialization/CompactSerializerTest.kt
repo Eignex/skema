@@ -256,7 +256,12 @@ class CompactSerializerTest {
         }
         val long = SchemaJson.decodeFromString(longBoundSerializer, "9.223372036854775807e18")
         assertEquals(LongBound(Long.MAX_VALUE), long)
-        for (token in listOf("2.5", "1e-1", "\"2\"", "2147483648.0", "2.147483648e9", "-2147483649", "1e400")) {
+        val rejected = listOf(
+            "2.5", "1e-1", "\"2\"", "2147483648.0", "2.147483648e9", "-2147483649", "1e400",
+            // Exponents that would overflow Int arithmetic.
+            "1e2147483647", "11e2147483646", "1.5e-2147483648", "1e99999999999999999999",
+        )
+        for (token in rejected) {
             assertFailsWith<SerializationException>(token) {
                 SchemaJson.decodeFromString<Comparison>("""{"lt":[$token,{"ref":"x"}]}""")
             }
