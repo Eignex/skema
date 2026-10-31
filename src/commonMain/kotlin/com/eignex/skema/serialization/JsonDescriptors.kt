@@ -39,11 +39,12 @@ internal fun JsonPrimitive.integral(): JsonPrimitive {
     val digits = (whole + fraction).trimStart('0')
     if (digits.isEmpty()) return JsonPrimitive(0)
     val significant = digits.trimEnd('0')
-    val power = (groups[4].ifEmpty { "0" }.toIntOrNull() ?: return this) - fraction.length +
+    // Long so extreme exponents cannot overflow past the bounds check.
+    val power = (groups[4].ifEmpty { "0" }.toLongOrNull() ?: return this) - fraction.length +
         (digits.length - significant.length)
     // Left for the decoder to reject.
     if (power < 0 || significant.length + power > MAX_INTEGER_DIGITS) return this
-    return JsonUnquotedLiteral(sign + significant + "0".repeat(power))
+    return JsonUnquotedLiteral(sign + significant + "0".repeat(power.toInt()))
 }
 
 private const val MAX_INTEGER_DIGITS = 20
