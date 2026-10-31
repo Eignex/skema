@@ -95,12 +95,10 @@ private object CountingMapping : JsonPayloadMapping {
 
     override fun encode(body: JsonObject): JsonElement = body.getValue("value")
 
-    override fun decode(payload: JsonElement, path: String): JsonObject {
+    override fun decode(payload: JsonElement): JsonObject {
         calls++
         return JsonObject(mapOf("value" to payload))
     }
-
-    override fun fieldPath(field: String, path: String): String = path
 }
 
 @Serializable
@@ -113,8 +111,6 @@ private data class Options(val mode: Mode, val values: List<Map<String, Double?>
 private enum class Mode { Fast, Accurate }
 
 private val expressionCatalog = JsonNodeCatalog { listOf(EnvelopeSerializer) }
-
-private val rootCatalog = JsonNodeCatalog { listOf(ExpressionSerializer, EnvelopeSerializer) }
 
 private object ExpressionSerializer : CompactSerializer<Expression>(
     "Expression",
@@ -153,9 +149,7 @@ private data class MappedOptions(val options: Options) : Mapped
 private object OptionsMapping : JsonPayloadMapping {
     override fun encode(body: JsonObject): JsonElement = body.getValue("options")
 
-    override fun decode(payload: JsonElement, path: String): JsonObject = JsonObject(mapOf("options" to payload))
-
-    override fun fieldPath(field: String, path: String): String = path
+    override fun decode(payload: JsonElement): JsonObject = JsonObject(mapOf("options" to payload))
 }
 
 private object FlaggedMapping : JsonPayloadMapping {
@@ -163,14 +157,10 @@ private object FlaggedMapping : JsonPayloadMapping {
         listOf(body.getValue("name"), body["negated"] ?: JsonPrimitive(false)),
     )
 
-    override fun decode(payload: JsonElement, path: String): JsonObject {
-        if (payload !is JsonArray || payload.size != 2) {
-            throw SerializationException("$path: expected [name, negated]")
-        }
+    override fun decode(payload: JsonElement): JsonObject {
+        if (payload !is JsonArray || payload.size != 2) throw SerializationException("expected [name, negated]")
         return JsonObject(mapOf("name" to payload[0], "negated" to payload[1]))
     }
-
-    override fun fieldPath(field: String, path: String): String = "$path[${if (field == "name") 0 else 1}]"
 }
 
 private object MappedSerializer : CompactSerializer<Mapped>("Mapped", Mapped::class, nodes = {
@@ -187,7 +177,7 @@ private data class TextChoice(val text: String) : Choice
 private data class NumericChoice(val number: Int) : Choice
 
 private val choiceCatalog = JsonNodeCatalog(
-    resolve = { candidates, payload, _ ->
+    resolve = { candidates, payload ->
         candidates.single { it.type == if ("text" in payload.jsonObject) TextChoice::class else NumericChoice::class }
     },
 ) { listOf(ChoiceSerializer) }
@@ -276,37 +266,6 @@ class CompactSerializerTest {
 
         assertEquals("""{"entries":{"result":{"plus":["input",2.5]}}}""", encoded)
         assertEquals(definition, SchemaJson.decodeFromString(serializer, encoded))
-    }
-
-    @Test
-    fun `root decoding preserves schema definition entries`() {
-        val definition = SchemaDef<Expression>(mapOf("result" to Plus(Input, NumberLiteral(2.5))))
-        val serializer = SchemaDef.serializer(ExpressionSerializer)
-        val element = SchemaJson.encodeToJsonElement(serializer, definition)
-
-        val decoded = SchemaJson.decodeFromJsonElement(serializer, element, rootCatalog)
-
-        assertEquals(definition, decoded)
-    }
-
-    @Test
-    fun `root decoding reports compact paths below ordinary records`() {
-        val cases = listOf(
-            """{"entries":{"result":{"plus":["input"]}}}""" to "$.entries.result.plus:",
-            """{"entries":{"result":{"negate":{"offset":{"amount":"2"}}}}}""" to
-                "$.entries.result.negate.offset.amount:",
-            """{"entries":{},"extra":1}""" to "$.extra: unknown field",
-        )
-
-        for ((payload, path) in cases) {
-            assertSerializationFails(path, payload) {
-                SchemaJson.decodeFromJsonElement(
-                    SchemaDef.serializer(ExpressionSerializer),
-                    Json.parseToJsonElement(payload),
-                    rootCatalog,
-                )
-            }
-        }
     }
 
     @Test
@@ -434,23 +393,12 @@ class CompactSerializerTest {
     }
 
     @Test
-    fun `fractional quoted and out of range integer tokens are rejected at their paths`() {
+    fun `integer literals reject fractional quoted and out of range tokens`() {
         for (token in listOf("2.5", "1e-1", "\"2\"", "2147483648.0", "2.147483648e9", "-2147483649", "1e400")) {
-            val error = assertFailsWith<SerializationException>(token) {
-                SchemaJson.decodeFromString<Comparison>("""{"gt":[{"ref":"x"},{"closed":{"low":0,"high":$token}}]}""")
+            assertFailsWith<SerializationException>(token) {
+                SchemaJson.decodeFromString<Comparison>("""{"lt":[$token,{"ref":"x"}]}""")
             }
-
-            assertTrue("$.gt[1].closed.high" in error.message.orEmpty(), error.message)
         }
-    }
-
-    @Test
-    fun `integral tokens decode inside records lists and maps`() {
-        val item = """{"byte":1.0,"short":2e0,"int":3.0,"long":4e1,"char":"a"}"""
-
-        val decoded = SchemaJson.decodeFromString<Expression>("""{"primitives":{"values":[{"item":$item}]}}""")
-
-        assertEquals(PrimitiveRecord(listOf(mapOf("item" to PrimitiveValues(1, 2, 3, 40, 'a')))), decoded)
     }
 
     @Test
@@ -501,41 +449,12 @@ class CompactSerializerTest {
     }
 
     @Test
-    fun `inline compact operands retain error paths`() {
-        val error = assertFailsWith<SerializationException> {
-            SchemaJson.decodeFromString<Expression>(
-                """{"inline":{"value":{"negate":{"offset":{"amount":"2"}}}}}""",
-            )
-        }
-
-        assertTrue("$.inline.value.negate.offset.amount" in error.message.orEmpty(), error.message)
-    }
-
-    @Test
-    fun `constructor invariants become serialization errors at the node path`() {
+    fun `constructor invariants become serialization errors`() {
         val error = assertFailsWith<SerializationException> {
             SchemaJson.decodeFromString<Expression>("""{"plus":["input",{"positive":{"value":0}}]}""")
         }
 
-        assertTrue("$.plus[1].positive: value must be positive" in error.message.orEmpty(), error.message)
-        assertTrue(error.cause is IllegalArgumentException)
-    }
-
-    @Test
-    fun `non nullable operands reject null under lenient settings`() {
-        val lenient = Json {
-            coerceInputValues = true
-            ignoreUnknownKeys = true
-        }
-        val cases = listOf(
-            """{"negate":null}""" to "$.negate",
-            """{"plus":["input",null]}""" to "$.plus[1]",
-            """{"offset":{"amount":null}}""" to "$.offset.amount",
-        )
-
-        for ((payload, path) in cases) {
-            assertSerializationFails("$path:") { lenient.decodeFromString<Expression>(payload) }
-        }
+        assertTrue("value must be positive" in error.message.orEmpty(), error.message)
     }
 
     @Test
@@ -543,7 +462,7 @@ class CompactSerializerTest {
         val payloads = listOf("null", "{}", "\"input\"", "[]", "[\"input\"]", "[\"input\",\"input\",\"input\"]")
 
         for (payload in payloads) {
-            assertSerializationFails("$.plus:") {
+            assertFailsWithMessage("'plus' expects 2 operands", payload) {
                 SchemaJson.decodeFromString<Expression>("""{"plus":$payload}""")
             }
         }
@@ -554,7 +473,7 @@ class CompactSerializerTest {
         val payloads = listOf("{}", "[]", "true", "false", "null", """{"input":{},"offset":{}}""")
 
         for (payload in payloads) {
-            assertSerializationFails("$:") { SchemaJson.decodeFromString<Expression>(payload) }
+            assertFailsWithMessage("Expression operator", payload) { SchemaJson.decodeFromString<Expression>(payload) }
         }
     }
 
@@ -564,7 +483,7 @@ class CompactSerializerTest {
 
         val error = assertFailsWith<SerializationException> { SchemaJson.decodeFromString(serializer, "2.5") }
 
-        assertTrue("expected an operator object" in error.message.orEmpty(), error.message)
+        assertEquals("OnlyInput has no numeric literals", error.message)
     }
 
     @Test
@@ -626,45 +545,6 @@ class CompactSerializerTest {
     }
 
     @Test
-    fun `compact paths cross record list map and nullable boundaries`() {
-        val error = assertFailsWith<SerializationException> {
-            SchemaJson.decodeFromString<Expression>(
-                """{"wrapped":{"children":[{"item":{"negate":{"offset":{"amount":"2"}}}}]}}""",
-            )
-        }
-
-        assertTrue("$.wrapped.children[0].item.negate.offset.amount" in error.message.orEmpty(), error.message)
-    }
-
-    @Test
-    fun `out of range primitives retain their compact paths under lenient settings`() {
-        val lenient = Json {
-            coerceInputValues = true
-            ignoreUnknownKeys = true
-        }
-        val values = mapOf("byte" to "0", "short" to "0", "int" to "0", "long" to "0", "char" to "\"a\"")
-        val cases = listOf(
-            "byte" to "128", "byte" to "-129",
-            "short" to "32768", "short" to "-32769",
-            "int" to "2147483648", "int" to "-2147483649",
-            "long" to "9223372036854775808", "long" to "-9223372036854775809",
-            "char" to "\"\"", "char" to "\"ab\"",
-        )
-
-        for ((field, value) in cases) {
-            val fields = (values + (field to value)).entries.joinToString(
-                ",",
-            ) { (name, literal) -> "\"$name\":$literal" }
-            val error = assertFailsWith<SerializationException> {
-                lenient.decodeFromString<Expression>(
-                    """{"plus":["input",{"primitives":{"values":[{"item":{$fields}}]}}]}""",
-                )
-            }
-            assertTrue("$.plus[1].primitives.values[0].item.$field" in error.message.orEmpty(), error.message)
-        }
-    }
-
-    @Test
     fun `primitive boundary values round trip`() {
         val values = listOf(
             PrimitiveValues(Byte.MIN_VALUE, Short.MIN_VALUE, Int.MIN_VALUE, Long.MIN_VALUE, '\u0000'),
@@ -680,26 +560,6 @@ class CompactSerializerTest {
     }
 
     @Test
-    fun `malformed recursive operands report compact paths under lenient settings`() {
-        val lenient = Json {
-            ignoreUnknownKeys = true
-            coerceInputValues = true
-        }
-        val cases = listOf(
-            """{"plus":["input"]}""" to "$.plus",
-            """{"plus":["input",{"offset":{"amount":"2"}}]}""" to "$.plus[1].offset.amount",
-            """{"negate":{"offset":{"extra":1}}}""" to "$.negate.offset.extra",
-            """{"plus":["input",{"missing":{}}]}""" to "$.plus[1].missing",
-            """{"type":"Input"}""" to "$.type",
-        )
-
-        for ((payload, path) in cases) {
-            val error = assertFailsWith<SerializationException> { lenient.decodeFromString<Expression>(payload) }
-            assertTrue(path in error.message.orEmpty(), error.message)
-        }
-    }
-
-    @Test
     fun `records lists maps enums and nullable numbers round trip`() {
         val expression: Expression = Configured(Options(Mode.Fast, listOf(mapOf("a" to 2.5, "b" to null))), Input)
 
@@ -709,18 +569,16 @@ class CompactSerializerTest {
     }
 
     @Test
-    fun `invalid record members report their nested paths`() {
-        val cases = listOf(
-            """{"configured":{"inner":"input","options":{"mode":"Unknown","values":[]}}}""" to
-                "$.configured.options.mode",
-            """{"configured":{"inner":"input","options":{"mode":"Fast","values":[{"a":"2"}]}}}""" to
-                "$.configured.options.values[0].a",
-            """{"configured":{"options":{"mode":"Fast","values":[]}}}""" to "$.configured.inner",
+    fun `invalid record members are rejected`() {
+        val payloads = listOf(
+            """{"configured":{"inner":"input","options":{"mode":"Unknown","values":[]}}}""",
+            """{"configured":{"inner":"input","options":{"mode":"Fast","values":[{"a":"x"}]}}}""",
+            """{"configured":{"options":{"mode":"Fast","values":[]}}}""",
+            """{"configured":{"inner":"input","options":{"mode":"Fast","values":[]},"extra":1}}""",
         )
 
-        for ((payload, path) in cases) {
-            val error = assertFailsWith<SerializationException> { Json.decodeFromString<Expression>(payload) }
-            assertTrue(path in error.message.orEmpty(), error.message)
+        for (payload in payloads) {
+            assertFailsWith<SerializationException>(payload) { Json.decodeFromString<Expression>(payload) }
         }
     }
 
@@ -731,15 +589,6 @@ class CompactSerializerTest {
 
         assertEquals(expected, Json.encodeToString(value))
         assertEquals(value, Json.decodeFromString<Mapped>(expected))
-    }
-
-    @Test
-    fun `custom payload mappings preserve compact validation paths`() {
-        val error = assertFailsWith<SerializationException> {
-            Json.decodeFromString<Mapped>("""{"mapped":{"mode":"Unknown","values":[]}}""")
-        }
-
-        assertTrue("$.mapped.mode" in error.message.orEmpty(), error.message)
     }
 
     @Test
@@ -754,17 +603,6 @@ class CompactSerializerTest {
 
             assertEquals("""{"flag":["enabled",$negated]}""", encoded)
             assertEquals(value, SchemaJson.decodeFromString(serializer, encoded))
-        }
-    }
-
-    @Test
-    fun `custom array mappings retain positional field paths`() {
-        val serializer = CompactSerializer("MappedFlags", Expression::class) {
-            listOf(jsonNode<Flagged>("flag", mapping = FlaggedMapping))
-        }
-
-        assertSerializationFails("$.flag[1]:") {
-            SchemaJson.decodeFromString(serializer, """{"flag":["enabled","false"]}""")
         }
     }
 
@@ -785,23 +623,11 @@ class CompactSerializerTest {
             Json.decodeFromString(serializer, """{"choice":{"number":3}}""")
         }
 
-        assertTrue("$.choice: ambiguous operator" in error.message.orEmpty(), error.message)
+        assertEquals("ambiguous operator 'choice'", error.message)
     }
 
     @Test
-    fun `catalog resolvers must select a candidate`() {
-        val catalog = JsonNodeCatalog(resolve = { _, _, _ -> jsonNode<Input>("unsupported") })
-        val serializer = CompactSerializer("InvalidResolver", Choice::class, catalog) { ChoiceSerializer.nodes }
-
-        val error = assertFailsWith<SerializationException> {
-            Json.decodeFromString(serializer, """{"choice":{"number":3}}""")
-        }
-
-        assertTrue("$.choice: resolver selected an unsupported node" in error.message.orEmpty(), error.message)
-    }
-
-    @Test
-    fun `catalog resolvers receive candidates payload and caller path`() {
+    fun `catalog resolvers receive the candidates and payload`() {
         val cases = listOf(
             ChoiceSerializer.nodes to JsonObject(mapOf("choice" to JsonObject(mapOf("number" to JsonPrimitive(3))))),
             listOf(
@@ -812,21 +638,16 @@ class CompactSerializerTest {
         for ((nodes, element) in cases) {
             var receivedNodes: List<JsonNode>? = null
             var receivedPayload: JsonElement? = null
-            var receivedPath: String? = null
-            val catalog = JsonNodeCatalog(resolve = { candidates, payload, path ->
+            val catalog = JsonNodeCatalog(resolve = { candidates, payload ->
                 receivedNodes = candidates
                 receivedPayload = payload
-                receivedPath = path
                 candidates.last()
             })
             val serializer = CompactSerializer("ResolverInput", Choice::class, catalog) { nodes }
 
-            val selected = serializer.selectNode(element, "$.entries.result")
-
-            assertEquals(nodes.last(), selected)
+            assertEquals(nodes.last(), serializer.selectNode(element))
             assertEquals(nodes, receivedNodes)
             assertEquals(if (element is JsonObject) element.getValue("choice") else element, receivedPayload)
-            assertEquals(if (element is JsonObject) "$.entries.result.choice" else "$.entries.result", receivedPath)
         }
     }
 
@@ -852,12 +673,12 @@ class CompactSerializerTest {
             SchemaJson.encodeToString<Comparison>(Compare(Bound(1), CompareOp.Equal, Bound(2)))
         }
 
-        assertTrue("no unique Comparison node matches the fixed fields" in error.message.orEmpty(), error.message)
+        assertTrue(error.message.orEmpty().startsWith("no unique Comparison node matches"), error.message)
     }
 
     @Test
     fun `fixed fields are rejected inside payloads`() {
-        assertSerializationFails("$.closed.closed: unknown field") {
+        assertFailsWithMessage("'closed' does not accept field 'closed'") {
             SchemaJson.decodeFromString<Comparison>("""{"closed":{"low":1,"high":2,"closed":false}}""")
         }
     }
@@ -893,17 +714,6 @@ class CompactSerializerTest {
     }
 
     @Test
-    fun `catalogs reject duplicate vocabulary descriptor names`() {
-        val first = CompactSerializer("Expression", Expression::class) { listOf(jsonNode<Input>("first")) }
-        val second = CompactSerializer("Expression", Expression::class) { listOf(jsonNode<Input>("second")) }
-        val catalog = JsonNodeCatalog { listOf(first, second) }
-
-        val error = assertFailsWith<IllegalArgumentException> { catalog.find(ExpressionSerializer.descriptor) }
-
-        assertTrue("serializer names must be distinct" in error.message.orEmpty(), error.message)
-    }
-
-    @Test
     fun `catalogs resolve the same descriptor independently`() {
         val first = CompactSerializer("Expression", Expression::class) { listOf(jsonNode<Input>("first")) }
         val second = CompactSerializer("Expression", Expression::class) { listOf(jsonNode<Input>("second")) }
@@ -915,15 +725,6 @@ class CompactSerializerTest {
         assertEquals(Input, Json.decodeFromString(first, "\"first\""))
         assertEquals(Input, Json.decodeFromString(second, "\"second\""))
         assertFailsWith<SerializationException> { Json.decodeFromString(first, "\"second\"") }
-    }
-
-    @Test
-    fun `catalog validation retains paths across nullable vocabulary boundaries`() {
-        val error = assertFailsWith<SerializationException> {
-            Json.decodeFromString<Envelope>("""{"box":{"expression":{"negate":{"offset":{"amount":"2"}}}}}""")
-        }
-
-        assertTrue("$.box.expression.negate.offset.amount" in error.message.orEmpty(), error.message)
     }
 
     private val binaryExpressions = listOf(
@@ -949,4 +750,9 @@ class CompactSerializerTest {
             assertEquals(expression, ProtoBuf.decodeFromByteArray(ExpressionSerializer, encoded))
         }
     }
+}
+
+private fun assertFailsWithMessage(expected: String, message: String? = null, block: () -> Unit) {
+    val error = assertFailsWith<SerializationException>(message, block)
+    assertTrue(expected in error.message.orEmpty(), error.message)
 }

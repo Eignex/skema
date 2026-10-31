@@ -1,35 +1,28 @@
 package com.eignex.skema.serialization
 
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.json.JsonElement
 
 /**
  * Shared compact serializers, loaded lazily to allow recursive types.
- * The resolver handles duplicate wire names and must return one of its candidates.
+ * The resolver picks one of several nodes sharing a wire name.
  */
 class JsonNodeCatalog(
-    private val resolve: ((candidates: List<JsonNode>, payload: JsonElement, path: String) -> JsonNode)? = null,
+    private val resolve: ((candidates: List<JsonNode>, payload: JsonElement) -> JsonNode)? = null,
     private val serializers: () -> List<CompactSerializer<*>> = { emptyList() },
 ) {
-    private val entries by lazy {
-        val supplied = serializers()
-        val byName = supplied.associateBy { it.serialName }
-        require(byName.size == supplied.size) { "Compact serializer names must be distinct within a catalog" }
-        byName
-    }
+    private val entries by lazy { serializers().associateBy { it.serialName } }
 
     internal fun find(descriptor: SerialDescriptor): CompactSerializer<*>? = entries[descriptor.nonNullableSerialName()]
 
-    internal fun select(candidates: List<JsonNode>, payload: JsonElement, path: String, missing: String): JsonNode =
+    internal fun select(candidates: List<JsonNode>, payload: JsonElement, missing: () -> String): JsonNode =
         when (candidates.size) {
-            0 -> invalid(path, missing)
-            1 -> candidates.single()
-            else -> resolve(candidates, payload, path)
-        }
+            0 -> throw SerializationException(missing())
 
-    private fun resolve(candidates: List<JsonNode>, payload: JsonElement, path: String): JsonNode {
-        val node = resolve?.invoke(candidates, payload, path) ?: invalid(path, "ambiguous operator")
-        if (node !in candidates) invalid(path, "resolver selected an unsupported node")
-        return node
-    }
+            1 -> candidates.single()
+
+            else -> resolve?.invoke(candidates, payload)
+                ?: throw SerializationException("ambiguous operator '${candidates.first().name}'")
+        }
 }

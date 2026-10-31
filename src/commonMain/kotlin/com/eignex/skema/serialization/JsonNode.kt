@@ -1,6 +1,7 @@
 package com.eignex.skema.serialization
 
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.StructureKind
 import kotlinx.serialization.descriptors.elementNames
@@ -28,16 +29,13 @@ interface JsonPayloadMapping {
     /** Converts body fields to the wire payload. */
     fun encode(body: JsonObject): JsonElement
 
-    /** Restores serialized fields, reporting malformed input at [path]. */
-    fun decode(payload: JsonElement, path: String): JsonObject
-
-    /** Location of a serialized field in the compact payload. */
-    fun fieldPath(field: String, path: String): String = "$path.$field"
+    /** Restores serialized fields, throwing [SerializationException] for malformed input. */
+    fun decode(payload: JsonElement): JsonObject
 
     /**
      * Schema for the payload, given the [body] schema without fixed fields. Skema adds the
-     * operator key and a bare-name shorthand for objects without required fields; literals
-     * stand alone. References used to determine shorthand must resolve within the document.
+     * operator key, and a bare-name shorthand when this is an inline object schema without
+     * required fields; literals stand alone.
      */
     fun payloadSchema(body: JsonObject): JsonObject =
         error("Custom payload mappings require an explicit payload schema")
@@ -60,7 +58,7 @@ class JsonNode(
     val fixed: Map<String, JsonElement> = emptyMap(),
     serializer: () -> KSerializer<*>,
 ) {
-    internal val payloadMapping: JsonPayloadMapping by lazy { mapping ?: shape.payloadMapping(operands) }
+    internal val payloadMapping: JsonPayloadMapping by lazy { mapping ?: shape.payloadMapping(name, operands) }
 
     @Suppress("UNCHECKED_CAST")
     internal val serializer: KSerializer<Any> by lazy {
@@ -73,6 +71,10 @@ class JsonNode(
         } else {
             this.serializer
         }
+    }
+
+    private val integerLiteral by lazy {
+        shape == JsonNodeShape.Literal && literalDescriptor(this.serializer.descriptor).isInteger()
     }
 
     init {
@@ -95,36 +97,29 @@ class JsonNode(
             "JSON node '$name' operands must cover every body field: $fields"
         }
         if (shape == JsonNodeShape.Literal) {
-            val literal = descriptor.getElementDescriptor(descriptor.getElementIndex(operands.single()))
-            require(
-                !literal.acceptsJsonNull() && (literal.integerBounds() != null || literal.isFloatingPoint()),
-            ) { "JSON literal node '$name' requires a non-null numeric field" }
-        }
-    }
-
-    internal fun encode(body: JsonObject): JsonElement {
-        val fields = if (fixed.isEmpty()) body else JsonObject(body - fixed.keys)
-        if (mapping == null && shape != JsonNodeShape.Fields) {
-            operands.firstOrNull { it !in fields }?.let { field ->
-                invalid(
-                    "$.$name",
-                    "operand '$field' was omitted by its body serializer; do not use @EncodeDefault(NEVER)",
-                )
+            val literal = literalDescriptor(descriptor)
+            require(!literal.isNullable && (literal.isInteger() || literal.isFloatingPoint())) {
+                "JSON literal node '$name' requires a non-null numeric field"
             }
         }
-        return payloadMapping.encode(fields)
     }
 
-    internal fun decode(payload: JsonElement, path: String): JsonObject {
-        val body = payloadMapping.decode(payload, path)
+    private fun literalDescriptor(body: SerialDescriptor): SerialDescriptor =
+        body.getElementDescriptor(body.getElementIndex(operands.single()))
+
+    internal fun encode(body: JsonObject): JsonElement =
+        payloadMapping.encode(if (fixed.isEmpty()) body else JsonObject(body - fixed.keys))
+
+    internal fun decode(payload: JsonElement): JsonObject {
+        val body = payloadMapping.decode(if (integerLiteral) (payload as JsonPrimitive).integral() else payload)
         if (fixed.isEmpty()) return body
-        body.keys.firstOrNull { it in fixed }?.let { invalid(fieldPath(it, path), "unknown field '$it'") }
+        body.keys.firstOrNull { it in fixed }?.let {
+            throw SerializationException(
+                "'$name' does not accept field '$it'",
+            )
+        }
         return JsonObject(body + fixed)
     }
-
-    internal fun fieldPath(field: String, path: String): String = payloadMapping.fieldPath(field, path)
-
-    internal fun pathAt(path: String): String = if (shape == JsonNodeShape.Literal) path else "$path.$name"
 }
 
 /** Declares a node using the serializer for [T]. */

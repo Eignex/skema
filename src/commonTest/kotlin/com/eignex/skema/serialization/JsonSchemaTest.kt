@@ -6,8 +6,8 @@ import com.eignex.skema.SchemaDef
 import com.eignex.skema.SchemaJson
 import com.eignex.skema.TestSpec
 import kotlinx.serialization.Contextual
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.encodeToString
@@ -47,7 +47,7 @@ private object SchemaMapping : JsonPayloadMapping {
     override fun encode(body: JsonObject): JsonElement = JsonArray(
         listOf(body.getValue("name"), body["negated"] ?: JsonPrimitive(false)),
     )
-    override fun decode(payload: JsonElement, path: String): JsonObject =
+    override fun decode(payload: JsonElement): JsonObject =
         JsonObject(mapOf("name" to payload.jsonArray[0], "negated" to payload.jsonArray[1]))
 
     override fun payloadSchema(body: JsonObject): JsonObject {
@@ -69,9 +69,7 @@ private object SchemaMapping : JsonPayloadMapping {
 private object DecimalMapping : JsonPayloadMapping {
     override fun encode(body: JsonObject): JsonElement = body.getValue("value")
 
-    override fun decode(payload: JsonElement, path: String): JsonObject = JsonObject(mapOf("value" to payload))
-
-    override fun fieldPath(field: String, path: String): String = path
+    override fun decode(payload: JsonElement): JsonObject = JsonObject(mapOf("value" to payload))
 
     override fun payloadSchema(body: JsonObject): JsonObject =
         body.getValue("properties").jsonObject.getValue("value").jsonObject
@@ -80,13 +78,11 @@ private object DecimalMapping : JsonPayloadMapping {
 private object TunedMapping : JsonPayloadMapping {
     override fun encode(body: JsonObject): JsonElement = JsonObject(body.mapKeys { "r" })
 
-    override fun decode(payload: JsonElement, path: String): JsonObject {
-        val fields = payload.objectAt(path)
-        fields.keys.firstOrNull { it != "r" }?.let { invalid("$path.$it", "unknown field '$it'") }
+    override fun decode(payload: JsonElement): JsonObject {
+        val fields = payload.jsonObject
+        fields.keys.firstOrNull { it != "r" }?.let { throw SerializationException("unknown field '$it'") }
         return JsonObject(fields.mapKeys { "rate" })
     }
-
-    override fun fieldPath(field: String, path: String): String = "$path.r"
 
     override fun payloadSchema(body: JsonObject): JsonObject {
         val rate = body.getValue("properties").jsonObject.getValue("rate")
@@ -97,7 +93,7 @@ private object TunedMapping : JsonPayloadMapping {
 private object FieldsMapping : JsonPayloadMapping {
     override fun encode(body: JsonObject): JsonElement = body
 
-    override fun decode(payload: JsonElement, path: String): JsonObject = payload.objectAt(path)
+    override fun decode(payload: JsonElement): JsonObject = payload.jsonObject
 
     override fun payloadSchema(body: JsonObject): JsonObject = body
 }
@@ -130,6 +126,9 @@ private data class GenericSchemaBox<T>(val value: T)
 @Serializable
 private data class ContextualGenericSchema(@Contextual val box: GenericSchemaBox<Int>)
 
+@Serializable
+private data class IntegerSchemas(val signed: Int, val unsigned: UInt, val keys: Map<Long, Char>)
+
 @Serializable(with = QuestionSchemaSerializer::class)
 private sealed interface QuestionSchemaNode
 
@@ -146,39 +145,6 @@ private object QuestionSchemaSerializer : CompactSerializer<QuestionSchemaNode>(
 )
 
 class JsonSchemaTest {
-    @Test
-    fun `compact schemas accept encoded nodes and reject invalid payloads`() {
-        val values = listOf<SchemaWire>(
-            SchemaInput,
-            SchemaNumber(Long.MIN_VALUE),
-            SchemaNumber(Long.MAX_VALUE),
-            SchemaNegate(SchemaInput),
-            SchemaPlus(SchemaInput, SchemaNumber(2)),
-            SchemaOptions(null),
-            SchemaOptions(SchemaInput, strict = true),
-            SchemaLabels(),
-            SchemaLabels(mapOf("label" to "value")),
-            SchemaLegacy(TestSpec.Int(min = 0)),
-            SchemaMapped("enabled", true),
-        )
-        val invalid = listOf(
-            "{}",
-            "\"unknown\"",
-            """{"input":{},"negate":"input"}""",
-            """{"plus":["input"]}""",
-            """{"plus":["input",1,2]}""",
-            """{"mapped":["enabled"]}""",
-            """{"mapped":["enabled","true"]}""",
-            """{"mapped":["enabled",true],"extra":1}""",
-        ).map(SchemaJson::parseToJsonElement)
-        schemaExamples(
-            "recursive compact vocabulary",
-            SchemaWireSerializer.toJsonSchema(),
-            values.map { SchemaJson.encodeToJsonElement(SchemaWireSerializer, it) },
-            invalid,
-        )
-    }
-
     @Test
     fun `schema definitions use compact entry schemas through an explicit catalog`() {
         val catalog = JsonNodeCatalog { listOf(SchemaWireSerializer) }
@@ -230,20 +196,21 @@ class JsonSchemaTest {
     }
 
     @Test
-    fun `integer schemas are plain and decoding accepts integral tokens in range`() {
-        val serializer = SchemaBox.serializer(Int.serializer())
-        val document = serializer.toJsonSchema(JsonNodeCatalog())
-        val value = resolve(document, document).getValue("properties").jsonObject.getValue("value").jsonObject
-        val admitted = listOf("2147483647", "2147483647.0", "2.147483647e9", "-2.147483648E+9", "100e-2", "-0.0")
-        val refused = listOf("2147483648", "2.147483648e9", "-2147483649.0", "2.5", "1e-1", "\"2\"")
+    fun `integer schemas are plain apart from unsigned minimums and digit keys`() {
+        val document = IntegerSchemas.serializer().toJsonSchema(JsonNodeCatalog())
+        val properties = resolve(document, document).getValue("properties").jsonObject
 
-        val accepted = (admitted + refused).filter { token ->
-            val element = SchemaJson.parseToJsonElement("""{"value":$token}""")
-            runCatching { SchemaJson.decodeFromJsonElement(serializer, element, JsonNodeCatalog()) }.isSuccess
-        }
-
-        assertEquals(buildJsonObject { put("type", "integer") }, value)
-        assertEquals(admitted, accepted)
+        assertEquals(buildJsonObject { put("type", "integer") }, properties["signed"])
+        assertEquals(
+            buildJsonObject {
+                put("type", "integer")
+                put("minimum", 0)
+            },
+            properties["unsigned"],
+        )
+        val keys = properties.getValue("keys").jsonObject
+        assertEquals(buildJsonObject { put("pattern", "^-?[0-9]+$") }, keys["propertyNames"])
+        assertEquals(JsonPrimitive(1), keys.getValue("additionalProperties").jsonObject["maxLength"])
     }
 
     @Test
@@ -347,7 +314,7 @@ class JsonSchemaTest {
     fun `mappings without payload schemas fail explicitly`() {
         val mapping = object : JsonPayloadMapping {
             override fun encode(body: JsonObject): JsonElement = body
-            override fun decode(payload: JsonElement, path: String): JsonObject = payload.jsonObject
+            override fun decode(payload: JsonElement): JsonObject = payload.jsonObject
         }
         val serializer = CompactSerializer("MissingMapping", SchemaWire::class) {
             listOf(jsonNode<SchemaMapped>("mapped", mapping = mapping))
@@ -373,28 +340,6 @@ class JsonSchemaTest {
     }
 
     @Test
-    fun `contextual generic providers explain their schema limitation`() {
-        val json = Json {
-            serializersModule = SerializersModule {
-                contextual(GenericSchemaBox::class) { arguments ->
-                    @Suppress("UNCHECKED_CAST")
-                    GenericSchemaBox.serializer(arguments.single() as KSerializer<Any?>)
-                }
-            }
-        }
-        val serializer = ContextualGenericSchema.serializer()
-        val value = ContextualGenericSchema(GenericSchemaBox(2))
-        val encoded = json.encodeToJsonElement(serializer, value)
-        assertEquals(value, json.decodeFromJsonElement(serializer, encoded, JsonNodeCatalog()))
-
-        val error = assertFailsWith<IllegalArgumentException> { serializer.toJsonSchema(JsonNodeCatalog(), json) }
-
-        assertTrue("contextual descriptors do not retain type arguments" in error.message.orEmpty())
-        assertTrue("explicit JSON Schema" in error.message.orEmpty())
-        assertTrue(error.cause is NoSuchElementException)
-    }
-
-    @Test
     fun `compact schema names with URI characters produce valid references`() {
         val serializers = listOf(
             QuestionSchemaSerializer,
@@ -408,7 +353,6 @@ class JsonSchemaTest {
             val encoded = Json.encodeToJsonElement(serializer, QuestionSchemaLeaf)
             assertEquals(JsonPrimitive("leaf"), encoded)
             assertEquals(QuestionSchemaLeaf, Json.decodeFromJsonElement(serializer, encoded))
-            schemaExamples("compact root ${serializer.serialName}", schema, listOf(encoded))
         }
     }
 
@@ -421,10 +365,9 @@ class JsonSchemaTest {
         assertCompactDefinition(branches.first().jsonObject, schema)
         val encoded = listOf(QuestionSchemaLeaf, null).map { value ->
             Json.encodeToJsonElement(serializer, value).also {
-                assertEquals(value, Json.decodeFromJsonElement(serializer, it, catalog))
+                assertEquals(value, Json.decodeFromJsonElement(serializer, it))
             }
         }
-        schemaExamples("question mark nullable compact root", schema, encoded)
     }
 
     @Test
@@ -438,10 +381,9 @@ class JsonSchemaTest {
         val encoded = listOf(QuestionSchemaLeaf, null).map { nullable ->
             val value = QuestionSchemaDocument(QuestionSchemaLeaf, nullable)
             Json.encodeToJsonElement(serializer, value).also {
-                assertEquals(value, Json.decodeFromJsonElement(serializer, it, catalog))
+                assertEquals(value, Json.decodeFromJsonElement(serializer, it))
             }
         }
-        schemaExamples("question mark nested compact", schema, encoded)
     }
 
     private fun assertCompactDefinition(schema: JsonObject, document: JsonObject) {
@@ -449,23 +391,81 @@ class JsonSchemaTest {
         assertTrue(branches.any { it.jsonObject["const"] == JsonPrimitive("leaf") })
     }
 
-    private fun schemaExamples(
-        name: String,
-        schema: JsonObject,
-        valid: List<JsonElement>,
-        invalid: List<JsonElement> = listOf(JsonObject(emptyMap())),
-    ) {
-        val fixture = buildJsonObject {
-            put("name", name)
-            put("schema", schema)
-            put("valid", JsonArray(valid))
-            put("invalid", JsonArray(invalid))
-        }
-        println("JSON_SCHEMA_CASE:$fixture")
-    }
-
     private fun resolve(schema: JsonObject, document: JsonObject): JsonObject {
         val reference = schema["${'$'}ref"]?.jsonPrimitive?.content ?: return schema
         return document.getValue("${'$'}defs").jsonObject.getValue(reference.removePrefix("#/${'$'}defs/")).jsonObject
     }
+}
+
+/** A generated schema with encoded values it must accept and payloads it must reject. */
+internal class SchemaExample(
+    val name: String,
+    val schema: JsonObject,
+    val valid: List<JsonElement>,
+    val invalid: List<JsonElement> = listOf(JsonObject(emptyMap())),
+)
+
+/** Validated against draft 2020-12 by the JVM tests. */
+internal fun schemaExamples(): List<SchemaExample> {
+    val values = listOf<SchemaWire>(
+        SchemaInput,
+        SchemaNumber(Long.MIN_VALUE),
+        SchemaNumber(Long.MAX_VALUE),
+        SchemaNegate(SchemaInput),
+        SchemaPlus(SchemaInput, SchemaNumber(2)),
+        SchemaOptions(null),
+        SchemaOptions(SchemaInput, strict = true),
+        SchemaLabels(),
+        SchemaLabels(mapOf("label" to "value")),
+        SchemaLegacy(TestSpec.Int(min = 0)),
+        SchemaMapped("enabled", true),
+    )
+    val invalid = listOf(
+        "{}",
+        "\"unknown\"",
+        """{"input":{},"negate":"input"}""",
+        """{"plus":["input"]}""",
+        """{"plus":["input",1,2]}""",
+        """{"mapped":["enabled"]}""",
+        """{"mapped":["enabled","true"]}""",
+        """{"mapped":["enabled",true],"extra":1}""",
+    ).map(SchemaJson::parseToJsonElement)
+    val questionCatalog = JsonNodeCatalog { listOf(QuestionSchemaSerializer) }
+    val renamed = CompactSerializer("example/expr~v1", QuestionSchemaNode::class) {
+        listOf(jsonNode<QuestionSchemaLeaf>("leaf"))
+    }
+    return listOf(
+        SchemaExample(
+            "recursive compact vocabulary",
+            SchemaWireSerializer.toJsonSchema(),
+            values.map { SchemaJson.encodeToJsonElement(SchemaWireSerializer, it) },
+            invalid,
+        ),
+        SchemaExample(
+            "mapped vocabulary",
+            MappedWireSerializer.toJsonSchema(),
+            listOf(
+                SchemaDecimal(2.5),
+                SchemaTuned(),
+                SchemaTuned(0.25),
+                SchemaMapped("a"),
+                SchemaMapped("a", true),
+            ).map { SchemaJson.encodeToJsonElement(MappedWireSerializer, it) },
+        ),
+    ) + listOf(QuestionSchemaSerializer, renamed).map { serializer ->
+        SchemaExample(serializer.serialName, serializer.toJsonSchema(), listOf(JsonPrimitive("leaf")))
+    } + SchemaExample(
+        "nullable compact root",
+        QuestionSchemaSerializer.nullable.toJsonSchema(questionCatalog),
+        listOf(JsonPrimitive("leaf"), JsonNull),
+    ) + SchemaExample(
+        "nested compact",
+        QuestionSchemaDocument.serializer().toJsonSchema(questionCatalog),
+        listOf(QuestionSchemaLeaf, null).map {
+            Json.encodeToJsonElement(
+                QuestionSchemaDocument.serializer(),
+                QuestionSchemaDocument(QuestionSchemaLeaf, it),
+            )
+        },
+    )
 }

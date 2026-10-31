@@ -20,9 +20,8 @@ final enum class com.eignex.skema.serialization/JsonNodeShape : kotlin/Enum<com.
 }
 
 abstract interface com.eignex.skema.serialization/JsonPayloadMapping { // com.eignex.skema.serialization/JsonPayloadMapping|null[0]
-    abstract fun decode(kotlinx.serialization.json/JsonElement, kotlin/String): kotlinx.serialization.json/JsonObject // com.eignex.skema.serialization/JsonPayloadMapping.decode|decode(kotlinx.serialization.json.JsonElement;kotlin.String){}[0]
+    abstract fun decode(kotlinx.serialization.json/JsonElement): kotlinx.serialization.json/JsonObject // com.eignex.skema.serialization/JsonPayloadMapping.decode|decode(kotlinx.serialization.json.JsonElement){}[0]
     abstract fun encode(kotlinx.serialization.json/JsonObject): kotlinx.serialization.json/JsonElement // com.eignex.skema.serialization/JsonPayloadMapping.encode|encode(kotlinx.serialization.json.JsonObject){}[0]
-    open fun fieldPath(kotlin/String, kotlin/String): kotlin/String // com.eignex.skema.serialization/JsonPayloadMapping.fieldPath|fieldPath(kotlin.String;kotlin.String){}[0]
     open fun payloadSchema(kotlinx.serialization.json/JsonObject): kotlinx.serialization.json/JsonObject // com.eignex.skema.serialization/JsonPayloadMapping.payloadSchema|payloadSchema(kotlinx.serialization.json.JsonObject){}[0]
 }
 
@@ -96,7 +95,7 @@ final class com.eignex.skema.serialization/JsonNode { // com.eignex.skema.serial
 }
 
 final class com.eignex.skema.serialization/JsonNodeCatalog { // com.eignex.skema.serialization/JsonNodeCatalog|null[0]
-    constructor <init>(kotlin/Function3<kotlin.collections/List<com.eignex.skema.serialization/JsonNode>, kotlinx.serialization.json/JsonElement, kotlin/String, com.eignex.skema.serialization/JsonNode>? = ..., kotlin/Function0<kotlin.collections/List<com.eignex.skema.serialization/CompactSerializer<*>>> = ...) // com.eignex.skema.serialization/JsonNodeCatalog.<init>|<init>(kotlin.Function3<kotlin.collections.List<com.eignex.skema.serialization.JsonNode>,kotlinx.serialization.json.JsonElement,kotlin.String,com.eignex.skema.serialization.JsonNode>?;kotlin.Function0<kotlin.collections.List<com.eignex.skema.serialization.CompactSerializer<*>>>){}[0]
+    constructor <init>(kotlin/Function2<kotlin.collections/List<com.eignex.skema.serialization/JsonNode>, kotlinx.serialization.json/JsonElement, com.eignex.skema.serialization/JsonNode>? = ..., kotlin/Function0<kotlin.collections/List<com.eignex.skema.serialization/CompactSerializer<*>>> = ...) // com.eignex.skema.serialization/JsonNodeCatalog.<init>|<init>(kotlin.Function2<kotlin.collections.List<com.eignex.skema.serialization.JsonNode>,kotlinx.serialization.json.JsonElement,com.eignex.skema.serialization.JsonNode>?;kotlin.Function0<kotlin.collections.List<com.eignex.skema.serialization.CompactSerializer<*>>>){}[0]
 }
 
 open class <#A: kotlin/Any> com.eignex.skema.serialization/CompactSerializer : kotlinx.serialization/KSerializer<#A> { // com.eignex.skema.serialization/CompactSerializer|null[0]
@@ -109,7 +108,7 @@ open class <#A: kotlin/Any> com.eignex.skema.serialization/CompactSerializer : k
     open val descriptor // com.eignex.skema.serialization/CompactSerializer.descriptor|{}descriptor[0]
         open fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // com.eignex.skema.serialization/CompactSerializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
 
-    final fun selectNode(kotlinx.serialization.json/JsonElement, kotlin/String = ...): com.eignex.skema.serialization/JsonNode // com.eignex.skema.serialization/CompactSerializer.selectNode|selectNode(kotlinx.serialization.json.JsonElement;kotlin.String){}[0]
+    final fun selectNode(kotlinx.serialization.json/JsonElement): com.eignex.skema.serialization/JsonNode // com.eignex.skema.serialization/CompactSerializer.selectNode|selectNode(kotlinx.serialization.json.JsonElement){}[0]
     open fun deserialize(kotlinx.serialization.encoding/Decoder): #A // com.eignex.skema.serialization/CompactSerializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
     open fun serialize(kotlinx.serialization.encoding/Encoder, #A) // com.eignex.skema.serialization/CompactSerializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;1:0){}[0]
 }
@@ -121,6 +120,5 @@ final val com.eignex.skema/schemaJsonConfig // com.eignex.skema/schemaJsonConfig
 
 final fun (com.eignex.skema.serialization/CompactSerializer<*>).com.eignex.skema.serialization/toJsonSchema(kotlinx.serialization.json/Json = ...): kotlinx.serialization.json/JsonObject // com.eignex.skema.serialization/toJsonSchema|toJsonSchema@com.eignex.skema.serialization.CompactSerializer<*>(kotlinx.serialization.json.Json){}[0]
 final fun (kotlinx.serialization/KSerializer<*>).com.eignex.skema.serialization/toJsonSchema(com.eignex.skema.serialization/JsonNodeCatalog, kotlinx.serialization.json/Json = ...): kotlinx.serialization.json/JsonObject // com.eignex.skema.serialization/toJsonSchema|toJsonSchema@kotlinx.serialization.KSerializer<*>(com.eignex.skema.serialization.JsonNodeCatalog;kotlinx.serialization.json.Json){}[0]
-final fun <#A: kotlin/Any?> (kotlinx.serialization.json/Json).com.eignex.skema.serialization/decodeFromJsonElement(kotlinx.serialization/DeserializationStrategy<#A>, kotlinx.serialization.json/JsonElement, com.eignex.skema.serialization/JsonNodeCatalog): #A // com.eignex.skema.serialization/decodeFromJsonElement|decodeFromJsonElement@kotlinx.serialization.json.Json(kotlinx.serialization.DeserializationStrategy<0:0>;kotlinx.serialization.json.JsonElement;com.eignex.skema.serialization.JsonNodeCatalog){0§<kotlin.Any?>}[0]
 final inline fun <#A: reified kotlin/Any> com.eignex.skema.serialization/jsonNode(kotlin/String, com.eignex.skema.serialization/JsonNodeShape = ..., kotlin/Array<out kotlin/String>..., com.eignex.skema.serialization/JsonPayloadMapping? = ..., kotlin.collections/Map<kotlin/String, kotlinx.serialization.json/JsonElement> = ...): com.eignex.skema.serialization/JsonNode // com.eignex.skema.serialization/jsonNode|jsonNode(kotlin.String;com.eignex.skema.serialization.JsonNodeShape;kotlin.Array<out|kotlin.String>...;com.eignex.skema.serialization.JsonPayloadMapping?;kotlin.collections.Map<kotlin.String,kotlinx.serialization.json.JsonElement>){0§<kotlin.Any>}[0]
 final inline fun <#A: reified kotlin/Any> com.eignex.skema.serialization/jsonNode(kotlin/String, noinline kotlin/Function0<kotlinx.serialization/KSerializer<#A>>): com.eignex.skema.serialization/JsonNode // com.eignex.skema.serialization/jsonNode|jsonNode(kotlin.String;kotlin.Function0<kotlinx.serialization.KSerializer<0:0>>){0§<kotlin.Any>}[0]
