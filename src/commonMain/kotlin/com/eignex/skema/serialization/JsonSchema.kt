@@ -15,10 +15,7 @@ fun CompactSerializer<*>.toJsonSchema(json: Json = SchemaJson): JsonObject =
  * JSON Schema draft 2020-12 for a serialized document. [catalog] must list its compact
  * vocabularies, including those nested in records, collections and schema definitions.
  * Custom payload mappings supply [JsonPayloadMapping.payloadSchema]. Constructor invariants
- * and domain validation rules are not inferred. Contextual types require serializers registered
- * in the caller's module. Contextual providers requiring type arguments need an explicit schema;
- * contextual descriptors do not retain their type arguments. Floating-point, nullable and structured map
- * keys require an explicit schema; string, enum, boolean, character and integer keys are supported.
+ * are not inferred. Map keys must be strings, enums, booleans, characters or integers.
  */
 fun KSerializer<*>.toJsonSchema(catalog: JsonNodeCatalog, json: Json = SchemaJson): JsonObject =
     JsonSchemaGenerator(json, catalog, this as? CompactSerializer<*>).generate(descriptor)
@@ -32,7 +29,6 @@ private class JsonSchemaGenerator(
 
     private val names = mutableMapOf<Definition, String>()
     private val definitions = linkedMapOf<String, JsonObject>()
-    private val shorthands = JsonSchemaShorthands()
 
     fun generate(descriptor: SerialDescriptor): JsonObject {
         require(json.configuration.classDiscriminatorMode == ClassDiscriminatorMode.POLYMORPHIC) {
@@ -40,12 +36,11 @@ private class JsonSchemaGenerator(
         }
         require(json.configuration.namingStrategy == null) { "JSON naming strategies require explicit schemas" }
         val schema = schema(descriptor, root)
-        val document = buildJsonObject {
+        return buildJsonObject {
             put("\$schema", "https://json-schema.org/draft/2020-12/schema")
             schema.forEach { (name, value) -> put(name, value) }
             if (definitions.isNotEmpty()) put("\$defs", JsonObject(definitions))
         }
-        return shorthands.includeIn(document)
     }
 
     private fun schema(
@@ -66,9 +61,7 @@ private class JsonSchemaGenerator(
             }
         }
         if (descriptor.kind == SerialKind.CONTEXTUAL) return schema(contextualDescriptor(descriptor), owner)
-        descriptor.integerBounds()?.let { bounds ->
-            return typedSchema("integer") { if (bounds.unsigned) put("minimum", 0) }
-        }
+        if (descriptor.isInteger()) return typedSchema("integer") { if (descriptor.isUnsigned()) put("minimum", 0) }
         if (descriptor.isInline) return schema(descriptor.getElementDescriptor(0), owner)
         val compact = if (name == owner?.serialName) {
             owner
@@ -97,11 +90,7 @@ private class JsonSchemaGenerator(
 
             PrimitiveKind.FLOAT, PrimitiveKind.DOUBLE -> typedSchema("number")
 
-            PrimitiveKind.CHAR -> typedSchema("string") {
-                put("minLength", 1)
-                put("maxLength", 1)
-                put("pattern", CHAR_PATTERN)
-            }
+            PrimitiveKind.CHAR -> typedSchema("string") { singleCharacter() }
 
             PrimitiveKind.STRING -> typedSchema("string")
 
@@ -147,23 +136,29 @@ private class JsonSchemaGenerator(
     private fun compact(serializer: CompactSerializer<*>): JsonObject {
         require(serializer.nodes.isNotEmpty()) { "Cannot generate an empty vocabulary: ${serializer.serialName}" }
         val schemas = serializer.nodes.map { node ->
-            val descriptor = node.serializer.descriptor
-            val body = record(descriptor, serializer).withoutFields(node.fixed.keys)
+            val body = record(node.serializer.descriptor, serializer).withoutFields(node.fixed.keys)
             val payload = node.payloadMapping.payloadSchema(body)
-            if (node.shape == JsonNodeShape.Literal) return@map payload
-            shorthands.operator(node.name, payload)
+            val operator = typedSchema("object") {
+                put("properties", buildJsonObject { put(node.name, payload) })
+                put("required", JsonArray(listOf(JsonPrimitive(node.name))))
+                put("additionalProperties", false)
+            }
+            when {
+                node.shape == JsonNodeShape.Literal -> payload
+
+                // Encoding writes an empty payload object as the bare operator name.
+                node.shape == JsonNodeShape.Fields && payload["type"] == JsonPrimitive("object") &&
+                    "required" !in payload -> alternatives(listOf(operator, constant(node.name)))
+
+                else -> operator
+            }
         }
         return alternatives(schemas)
     }
 
     private fun mapKeySchema(descriptor: SerialDescriptor): JsonObject {
-        require(
-            !descriptor.acceptsJsonNull(),
-        ) { "Nullable map keys require an explicit JSON Schema: ${descriptor.serialName}" }
         if (descriptor.kind == SerialKind.CONTEXTUAL) return mapKeySchema(contextualDescriptor(descriptor))
-        descriptor.integerBounds()?.let { bounds ->
-            return buildJsonObject { put("pattern", bounds.keyPattern) }
-        }
+        if (descriptor.isInteger()) return buildJsonObject { put("pattern", "^-?[0-9]+$") }
         if (descriptor.isInline) return mapKeySchema(descriptor.getElementDescriptor(0))
         return when (descriptor.kind) {
             PrimitiveKind.STRING -> buildJsonObject {}
@@ -174,29 +169,16 @@ private class JsonSchemaGenerator(
                 put("enum", JsonArray(listOf(JsonPrimitive("true"), JsonPrimitive("false"))))
             }
 
-            PrimitiveKind.CHAR -> buildJsonObject { put("pattern", CHAR_PATTERN) }
+            PrimitiveKind.CHAR -> buildJsonObject { singleCharacter() }
 
             else -> error("Map keys require an explicit JSON Schema: ${descriptor.serialName}")
         }
     }
 
-    // User-supplied providers can fail when their type arguments are unavailable.
-    @Suppress("TooGenericExceptionCaught")
-    private fun contextualDescriptor(descriptor: SerialDescriptor): SerialDescriptor {
-        val resolved = try {
-            json.serializersModule.getContextualDescriptor(descriptor)
-        } catch (error: RuntimeException) {
-            throw IllegalArgumentException(
-                "Cannot resolve contextual type ${descriptor.capturedKClass} for JSON Schema: " +
-                    "contextual descriptors do not retain type arguments; " +
-                    "providers requiring type arguments need an explicit JSON Schema",
-                error,
-            )
+    private fun contextualDescriptor(descriptor: SerialDescriptor): SerialDescriptor =
+        requireNotNull(json.serializersModule.getContextualDescriptor(descriptor)) {
+            "Contextual type requires a registered serializer: ${descriptor.capturedKClass}"
         }
-        return requireNotNull(resolved) {
-            "Contextual type requires a registered serializer or an explicit JSON Schema: ${descriptor.capturedKClass}"
-        }
-    }
 
     private fun polymorphic(descriptor: SerialDescriptor, owner: CompactSerializer<*>?): JsonObject {
         val subtypes = if (descriptor.kind == PolymorphicKind.SEALED) {
@@ -240,7 +222,10 @@ private fun JsonObject.withoutFields(fields: Set<String>): JsonObject {
     }
 }
 
-private const val CHAR_PATTERN = "^[\\u0000-\\uFFFF](?![\\s\\S])"
+private fun JsonObjectBuilder.singleCharacter() {
+    put("minLength", 1)
+    put("maxLength", 1)
+}
 
 private fun enumeration(descriptor: SerialDescriptor): JsonObject = typedSchema("string") {
     put("enum", JsonArray(descriptor.elementNames.map(::JsonPrimitive)))

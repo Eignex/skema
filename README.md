@@ -84,7 +84,7 @@ the original schema object. Applications handle field values and input validatio
 
 [Compact JSON](src/commonMain/kotlin/com/eignex/skema/serialization/CompactSerializer.kt)
 encodes nodes as operator objects, names, or numeric literals.
+Node bodies decode with your `Json` settings.
 [Serializer-derived JSON Schema](src/commonMain/kotlin/com/eignex/skema/serialization/JsonSchema.kt)
-and [strict decoding](src/commonMain/kotlin/com/eignex/skema/serialization/JsonPathDecoder.kt)
-use a `JsonNodeCatalog` for nested compact vocabularies. Compact JSON requires the default
+uses a `JsonNodeCatalog` to find nested compact vocabularies. Compact JSON requires the default
 polymorphic discriminator mode and no JSON naming strategy.

@@ -1,13 +1,11 @@
-@file:OptIn(
-    kotlinx.serialization.InternalSerializationApi::class,
-    kotlinx.serialization.ExperimentalSerializationApi::class,
-)
+@file:OptIn(kotlinx.serialization.InternalSerializationApi::class)
 @file:Suppress("UNCHECKED_CAST")
 
 package com.eignex.skema.serialization
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SealedClassSerializer
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
@@ -16,8 +14,7 @@ import kotlin.reflect.KClass
 
 /**
  * Encodes JSON as operator objects, names for empty objects, or numeric literals;
- * other formats use sealed-class serialization. Decoding is strict regardless of caller settings.
- * Numeric body fields must be finite, even when the caller allows special floating-point values.
+ * other formats use sealed-class serialization. Node bodies decode with the caller's Json.
  * Requires polymorphic class discriminators and no JSON naming strategy.
  */
 open class CompactSerializer<T : Any>(
@@ -47,22 +44,22 @@ open class CompactSerializer<T : Any>(
     override val descriptor: SerialDescriptor get() = legacy.descriptor
 
     /** Uses the catalog resolver when multiple nodes match. */
-    fun selectNode(element: JsonElement, path: String = "$"): JsonNode = select(element, path).first
+    fun selectNode(element: JsonElement): JsonNode = select(element).first
 
-    internal fun select(element: JsonElement, path: String): Pair<JsonNode, JsonElement> {
+    private fun select(element: JsonElement): Pair<JsonNode, JsonElement> {
         if (element is JsonPrimitive && !element.isString && element.doubleOrNull != null) {
-            val literal = catalog.select(literalNodes, element, path, "expected an operator object")
-            return literal to element
+            return catalog.select(literalNodes, element) { "$serialName has no numeric literals" } to element
         }
         val obj = if (element is JsonPrimitive && element.isString) {
             JsonObject(mapOf(element.content to JsonObject(emptyMap())))
         } else {
-            element.objectAt(path)
+            element as? JsonObject ?: throw SerializationException("expected a $serialName operator, got $element")
         }
-        if (obj.size != 1) invalid(path, "expected exactly one operator")
-        val (operator, payload) = obj.entries.single()
-        val candidates = operatorsByName[operator].orEmpty()
-        val node = catalog.select(candidates, payload, "$path.$operator", "unknown operator or reference '$operator'")
+        val (operator, payload) = obj.entries.singleOrNull()
+            ?: throw SerializationException("expected exactly one $serialName operator, got ${obj.keys}")
+        val node = catalog.select(operatorsByName[operator].orEmpty(), payload) {
+            "unknown $serialName operator '$operator'"
+        }
         return node to payload
     }
 
@@ -71,86 +68,30 @@ open class CompactSerializer<T : Any>(
             encoder.encodeSerializableValue(legacy, value)
             return
         }
-        checkJsonConfiguration(encoder.json)
-        val json = if (encoder.json.configuration.allowSpecialFloatingPointValues) {
-            Json(encoder.json) { allowSpecialFloatingPointValues = false }
-        } else {
-            encoder.json
-        }
-        val node = selectNodeForValue(value, json)
-        val body = json.encodeToJsonElement(node.encodingSerializer, value).jsonObject
-        val payload = node.encode(body)
+        val node = nodeFor(value, encoder.json)
+        val payload = node.encode(encoder.json.encodeToJsonElement(node.encodingSerializer, value).jsonObject)
         encoder.encodeJsonElement(
             when {
                 node.shape == JsonNodeShape.Literal -> payload
-                payload is JsonObject && payload.isEmpty() -> JsonPrimitive(node.name)
+                node.shape == JsonNodeShape.Fields && payload == JsonObject(emptyMap()) -> JsonPrimitive(node.name)
                 else -> JsonObject(mapOf(node.name to payload))
             },
         )
     }
 
-    private fun selectNodeForValue(value: T, json: Json): JsonNode {
-        val candidates = nodesByType[value::class].orEmpty()
-        if (candidates.isEmpty()) invalid("$", "unsupported $serialName implementation")
-        return candidates.singleOrNull()?.takeIf { it.fixed.isEmpty() } ?: run {
-            val fields = candidates.flatMapTo(mutableSetOf()) { it.fixed.keys }
-            // Forces defaults, so fixed fields are present however the caller configures Json.
-            val body = JsonOperandSerializer(candidates.first().serializer)
-            val values = json.encodeToJsonElement(body, value).objectAt("$")
-            val missing = fields - values.keys
-            if (missing.isNotEmpty()) {
-                invalid(
-                    "$",
-                    "fixed fields $missing were omitted by their body serializer; do not use @EncodeDefault(NEVER)",
-                )
-            }
-            val matches = candidates.filter { candidate ->
-                candidate.fixed.all { (field, fixed) -> sameJsonValue(values[field], fixed) }
-            }
-            // A node fixing a strict superset of another match's fields is the more specific choice.
-            matches.singleOrNull { candidate ->
-                matches.all { other ->
-                    other === candidate ||
-                        (other.fixed.size < candidate.fixed.size && candidate.fixed.keys.containsAll(other.fixed.keys))
-                }
-            } ?: invalid("$", "no unique $serialName node matches the fixed fields")
-        }
+    private fun nodeFor(value: T, json: Json): JsonNode {
+        val candidates = nodesByType[value::class]
+            ?: throw SerializationException("unsupported $serialName implementation ${value::class}")
+        candidates.singleOrNull()?.takeIf { it.fixed.isEmpty() }?.let { return it }
+        // Forces defaults, so fixed fields are present however the caller configures Json.
+        val body = json.encodeToJsonElement(JsonOperandSerializer(candidates.first().serializer), value).jsonObject
+        return candidates.singleOrNull { node -> node.fixed.all { (field, fixed) -> body[field] == fixed } }
+            ?: throw SerializationException("no unique $serialName node matches $value")
     }
 
     override fun deserialize(decoder: Decoder): T {
         if (decoder !is JsonDecoder) return decoder.decodeSerializableValue(legacy)
-        checkJsonConfiguration(decoder.json)
-        val element = decoder.decodeJsonElement()
-        val parentPath = (decoder as? JsonPathDecoder)?.path ?: "$"
-        val (node, payload) = select(element, parentPath)
-        val path = node.pathAt(parentPath)
-        val shape = JsonShape(this, catalog, decoder.json)
-        val fieldPath: (String) -> String = { node.fieldPath(it, path) }
-        val body = node.decode(payload, path)
-        return withJsonPath(path) {
-            val serializer = JsonPathSerializer(node.serializer, body, path, shape, fieldPath)
-            decoder.json.decodeFromJsonElement(serializer, body) as T
-        }
-    }
-}
-
-// Fixed values match by JSON value, so numbers compare equal however they are written.
-private fun sameJsonValue(value: JsonElement?, fixed: JsonElement): Boolean = when {
-    value is JsonObject && fixed is JsonObject ->
-        value.keys == fixed.keys && value.all { (name, entry) -> sameJsonValue(entry, fixed.getValue(name)) }
-
-    value is JsonArray && fixed is JsonArray ->
-        value.size == fixed.size && value.indices.all { sameJsonValue(value[it], fixed[it]) }
-
-    value is JsonPrimitive && fixed is JsonPrimitive && !value.isString && !fixed.isString ->
-        canonicalNumber(value.content)?.let { it == canonicalNumber(fixed.content) } ?: (value == fixed)
-
-    else -> value == fixed
-}
-
-private fun checkJsonConfiguration(json: Json) {
-    if (json.configuration.namingStrategy != null) invalid("$", "Compact JSON does not support JSON naming strategies")
-    if (json.configuration.classDiscriminatorMode != ClassDiscriminatorMode.POLYMORPHIC) {
-        invalid("$", "Compact JSON requires polymorphic class discriminators")
+        val (node, payload) = select(decoder.decodeJsonElement())
+        return decoder.json.decodeFromJsonElement(node.serializer, node.decode(payload)) as T
     }
 }
