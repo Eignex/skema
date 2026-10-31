@@ -158,7 +158,9 @@ private class JsonSchemaGenerator(
 
     private fun mapKeySchema(descriptor: SerialDescriptor): JsonObject {
         if (descriptor.kind == SerialKind.CONTEXTUAL) return mapKeySchema(contextualDescriptor(descriptor))
-        if (descriptor.isInteger()) return buildJsonObject { put("pattern", "^-?[0-9]+$") }
+        if (descriptor.isInteger()) {
+            return buildJsonObject { put("pattern", if (descriptor.isUnsigned()) "^[0-9]+$" else "^-?[0-9]+$") }
+        }
         if (descriptor.isInline) return mapKeySchema(descriptor.getElementDescriptor(0))
         return when (descriptor.kind) {
             PrimitiveKind.STRING -> buildJsonObject {}

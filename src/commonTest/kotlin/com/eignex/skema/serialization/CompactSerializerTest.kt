@@ -302,6 +302,16 @@ class CompactSerializerTest {
     }
 
     @Test
+    fun `numeric fixed values match encoded numbers by value`() {
+        val unit = CompactSerializer("Unit", Expression::class) {
+            listOf(jsonNode<Offset>("unit", fixed = mapOf("amount" to JsonPrimitive(1))))
+        }
+
+        assertEquals("\"unit\"", SchemaJson.encodeToString(unit, Offset(1.0)))
+        assertEquals(Offset(1.0), SchemaJson.decodeFromString(unit, "\"unit\""))
+    }
+
+    @Test
     fun `invalid node declarations fail on first use`() {
         assertFailsWith<IllegalArgumentException> {
             jsonNode<Reference>("ref", JsonNodeShape.Operand, "name", fixed = fixed("name", "x"))

@@ -10,6 +10,7 @@ import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.*
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
+import kotlin.jvm.JvmInline
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -65,6 +66,9 @@ private object WireSerializer : CompactSerializer<Wire>("Wire/v~1?", Wire::class
 
 @Serializable private data class Holder<T>(val value: T)
 
+@Serializable @JvmInline
+private value class MaybeCount(val value: Int?)
+
 @Serializable
 private data class Shapes(
     val signed: Int,
@@ -74,6 +78,8 @@ private data class Shapes(
     val number: Holder<Int>,
     @Contextual val contextual: Holder<Boolean>,
     val wire: Wire?,
+    val unsignedKeys: Map<UInt, Char> = emptyMap(),
+    val maybe: MaybeCount = MaybeCount(null),
 )
 
 private val wireCatalog = JsonNodeCatalog { listOf(WireSerializer) }
@@ -105,6 +111,9 @@ class JsonSchemaTest {
         assertEquals(buildJsonObject { put("type", "integer") }, shapes.property("signed"))
         assertEquals(JsonPrimitive(0), shapes.property("unsigned")["minimum"])
         assertEquals(JsonPrimitive("^-?[0-9]+$"), shapes.property("keys")["propertyNames"]?.jsonObject?.get("pattern"))
+        val unsignedKeys = shapes.property("unsignedKeys")["propertyNames"]?.jsonObject
+        assertEquals(JsonPrimitive("^[0-9]+$"), unsignedKeys?.get("pattern"))
+        assertTrue("anyOf" in shapes.property("maybe"), "nullable inline values accept null")
         for ((name, expected) in listOf("text" to "string", "number" to "integer", "contextual" to "boolean")) {
             val box = document.definition(shapes.property(name))
             assertEquals(JsonPrimitive(expected), box.property("value")["type"], name)
@@ -191,7 +200,8 @@ internal fun schemaExamples(): List<SchemaExample> {
         """{"tuned":{"rate":1}}""",
     )
     val definition = SchemaDef(mapOf("a" to WireNegate(WireInput), "b" to WireNumber(1)))
-    val shapes = Shapes(1, 2u, mapOf(-3L to 'c'), Holder("t"), Holder(4), Holder(true), null)
+    val shapes =
+        Shapes(1, 2u, mapOf(-3L to 'c'), Holder("t"), Holder(4), Holder(true), null, mapOf(3u to 'd'), MaybeCount(null))
     return listOf(
         SchemaExample("compact vocabulary", WireSerializer.toJsonSchema(), values, invalid),
         SchemaExample(
