@@ -17,7 +17,7 @@ internal fun SerialDescriptor.nonNullableSerialName(): String =
     if (isNullable) serialName.removeSuffix("?") else serialName
 
 internal fun SerialDescriptor.isInteger(): Boolean = when {
-    isInline -> getElementDescriptor(0).isInteger()
+    isInline -> getElementDescriptor(0).let { !it.isNullable && it.isInteger() }
     else -> kind in setOf(PrimitiveKind.BYTE, PrimitiveKind.SHORT, PrimitiveKind.INT, PrimitiveKind.LONG)
 }
 
@@ -26,7 +26,7 @@ internal fun SerialDescriptor.isUnsigned(): Boolean =
         (isInline && getElementDescriptor(0).isUnsigned())
 
 internal fun SerialDescriptor.isFloatingPoint(): Boolean = when {
-    isInline -> getElementDescriptor(0).isFloatingPoint()
+    isInline -> getElementDescriptor(0).let { !it.isNullable && it.isFloatingPoint() }
     else -> kind == PrimitiveKind.FLOAT || kind == PrimitiveKind.DOUBLE
 }
 
