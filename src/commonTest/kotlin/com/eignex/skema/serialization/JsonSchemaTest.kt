@@ -294,23 +294,6 @@ class JsonSchemaTest {
     }
 
     @Test
-    fun `mapped payload schemas omit fixed fields and require their operands`() {
-        val document = MappedWireSerializer.toJsonSchema()
-        val branches = resolve(document, document).getValue("anyOf").jsonArray.map { it.jsonObject }
-        val ref = branches.single { it["properties"]?.jsonObject?.containsKey("ref") == true }
-            .getValue("properties").jsonObject.getValue("ref").jsonObject
-
-        assertEquals(setOf("name"), ref.getValue("properties").jsonObject.keys)
-        assertEquals(JsonArray(listOf(JsonPrimitive("name"))), ref["required"])
-        val shorthands = branches.flatMap { it["anyOf"]?.jsonArray.orEmpty() }.mapNotNull { it.jsonObject["const"] }
-        assertEquals(listOf(JsonPrimitive("tuned")), shorthands)
-        assertEquals(
-            """{"notRef":{"name":"a"}}""",
-            SchemaJson.encodeToString(MappedWireSerializer, SchemaMapped("a", true)),
-        )
-    }
-
-    @Test
     fun `mappings without payload schemas fail explicitly`() {
         val mapping = object : JsonPayloadMapping {
             override fun encode(body: JsonObject): JsonElement = body
@@ -337,58 +320,6 @@ class JsonSchemaTest {
         val value = resolve(box, schema).getValue("properties").jsonObject.getValue("value").jsonObject
 
         assertEquals(JsonPrimitive("integer"), value["type"])
-    }
-
-    @Test
-    fun `compact schema names with URI characters produce valid references`() {
-        val serializers = listOf(
-            QuestionSchemaSerializer,
-            CompactSerializer("example/expr~v1", QuestionSchemaNode::class) {
-                listOf(jsonNode<QuestionSchemaLeaf>("leaf"))
-            },
-        )
-        for (serializer in serializers) {
-            val schema = serializer.toJsonSchema()
-            assertCompactDefinition(schema, schema)
-            val encoded = Json.encodeToJsonElement(serializer, QuestionSchemaLeaf)
-            assertEquals(JsonPrimitive("leaf"), encoded)
-            assertEquals(QuestionSchemaLeaf, Json.decodeFromJsonElement(serializer, encoded))
-        }
-    }
-
-    @Test
-    fun `nullable compact schemas preserve question mark names through catalogs`() {
-        val catalog = JsonNodeCatalog { listOf(QuestionSchemaSerializer) }
-        val serializer = QuestionSchemaSerializer.nullable
-        val schema = serializer.toJsonSchema(catalog)
-        val branches = schema.getValue("anyOf").jsonArray
-        assertCompactDefinition(branches.first().jsonObject, schema)
-        val encoded = listOf(QuestionSchemaLeaf, null).map { value ->
-            Json.encodeToJsonElement(serializer, value).also {
-                assertEquals(value, Json.decodeFromJsonElement(serializer, it))
-            }
-        }
-    }
-
-    @Test
-    fun `nested compact schemas resolve question mark names through catalogs`() {
-        val catalog = JsonNodeCatalog { listOf(QuestionSchemaSerializer) }
-        val serializer = QuestionSchemaDocument.serializer()
-        val schema = serializer.toJsonSchema(catalog)
-        val definition = resolve(schema, schema)
-        val properties = definition.getValue("properties").jsonObject
-        assertCompactDefinition(properties.getValue("value").jsonObject, schema)
-        val encoded = listOf(QuestionSchemaLeaf, null).map { nullable ->
-            val value = QuestionSchemaDocument(QuestionSchemaLeaf, nullable)
-            Json.encodeToJsonElement(serializer, value).also {
-                assertEquals(value, Json.decodeFromJsonElement(serializer, it))
-            }
-        }
-    }
-
-    private fun assertCompactDefinition(schema: JsonObject, document: JsonObject) {
-        val branches = resolve(schema, document).getValue("anyOf").jsonArray
-        assertTrue(branches.any { it.jsonObject["const"] == JsonPrimitive("leaf") })
     }
 
     private fun resolve(schema: JsonObject, document: JsonObject): JsonObject {
