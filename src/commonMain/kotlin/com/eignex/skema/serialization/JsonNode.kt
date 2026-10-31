@@ -92,6 +92,7 @@ class JsonNode(
         }
         val fields = descriptor.elementNames.toList()
         require(fields.containsAll(fixed.keys)) { "JSON node '$name' fixes unknown fields: ${fixed.keys - fields}" }
+        require(fields.containsAll(operands)) { "JSON node '$name' has unknown operands: ${operands - fields}" }
         if (mapping != null || shape == JsonNodeShape.Fields) return
         require(operands.toSet() + fixed.keys == fields.toSet()) {
             "JSON node '$name' operands must cover every body field: $fields"

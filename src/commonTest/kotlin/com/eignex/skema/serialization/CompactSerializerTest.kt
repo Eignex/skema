@@ -322,6 +322,7 @@ class CompactSerializerTest {
             jsonNode<Flagged>("flag", JsonNodeShape.Operand, "name"),
             jsonNode<Flagged>("flag", JsonNodeShape.Operands, "name", "missing"),
             jsonNode<Bound>("bound", JsonNodeShape.Literal, "value", fixed = mapOf("missing" to JsonNull)),
+            jsonNode<Flagged>("flag", JsonNodeShape.Literal, "missing", mapping = FlaggedMapping),
         )
         for (node in nodes) {
             assertFailsWith<IllegalArgumentException>(node.name) { node.serializer }
