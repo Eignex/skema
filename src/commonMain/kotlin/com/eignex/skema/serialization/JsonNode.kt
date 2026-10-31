@@ -9,52 +9,44 @@ import kotlinx.serialization.json.*
 import kotlinx.serialization.serializer
 import kotlin.reflect.KClass
 
-/** Compact representation of a node's serialized fields. */
+/** Wire form of a node's fields. */
 enum class JsonNodeShape {
-    /** Object containing the ordinary named fields. */
+    /** Object of named fields. */
     Fields,
 
-    /** Bare numeric literal, without an enclosing node name. */
+    /** Bare number, without the node name. */
     Literal,
 
-    /** Value of a single named field. */
+    /** One field's value. */
     Operand,
 
-    /** Array of field values in the declared operand order. */
+    /** Array of field values in operand order. */
     Operands,
 }
 
-/** Reversible mapping between ordinary serialized fields and a node's JSON payload. */
+/** Maps a node's fields to and from its payload. */
 interface JsonPayloadMapping {
-    /** Converts body fields to the wire payload. */
+    /** Fields to payload. */
     fun encode(body: JsonObject): JsonElement
 
-    /** Restores serialized fields, throwing [SerializationException] for malformed input. */
+    /** Throws [SerializationException] on malformed input. */
     fun decode(payload: JsonElement): JsonObject
 
-    /**
-     * Schema for the payload, given the [body] schema without fixed fields. Skema adds the
-     * operator key, and a bare-name shorthand when this is an inline object schema without
-     * required fields; literals stand alone.
-     */
+    /** Payload schema, given the [body] schema minus fixed fields. */
     fun payloadSchema(body: JsonObject): JsonObject =
         error("Custom payload mappings require an explicit payload schema")
 }
 
-/** A concrete type and its compact JSON representation. */
+/** A concrete type and its compact JSON form. */
 class JsonNode(
     val type: KClass<*>,
-    /** Operator key or shorthand name on the wire. */
+    /** Operator key or bare name. */
     val name: String,
     val shape: JsonNodeShape = JsonNodeShape.Fields,
-    /** Serialized field names for single or positional operands. */
+    /** Fields for the operand shapes. */
     val operands: List<String> = emptyList(),
     val mapping: JsonPayloadMapping? = null,
-    /**
-     * Fields implied by [name] and omitted from the payload; selects among nodes sharing [type].
-     * The body serializer must emit fixed fields and operands, including defaults;
-     * `@EncodeDefault(NEVER)` is unsupported for these fields.
-     */
+    /** Implied by [name] and left off the wire; tells apart nodes of one [type]. */
     val fixed: Map<String, JsonElement> = emptyMap(),
     serializer: () -> KSerializer<*>,
 ) {
@@ -123,7 +115,7 @@ class JsonNode(
     }
 }
 
-/** Declares a node using the serializer for [T]. */
+/** Declares a node with [T]'s serializer. */
 inline fun <reified T : Any> jsonNode(
     name: String,
     shape: JsonNodeShape = JsonNodeShape.Fields,
@@ -132,6 +124,6 @@ inline fun <reified T : Any> jsonNode(
     fixed: Map<String, JsonElement> = emptyMap(),
 ): JsonNode = JsonNode(T::class, name, shape, operands.toList(), mapping, fixed) { serializer<T>() }
 
-/** Declares a node with an explicitly supplied body serializer. */
+/** Declares a fields node with a custom serializer. */
 inline fun <reified T : Any> jsonNode(name: String, noinline serializer: () -> KSerializer<T>): JsonNode =
     JsonNode(T::class, name, serializer = serializer)

@@ -9,7 +9,7 @@ data class SchemaDef<C>(val entries: Map<String, C>) {
 
     val names: Set<String> get() = entries.keys
 
-    /** Throws if [name] is absent. */
+    /** Throws if absent. */
     operator fun get(name: String): C = if (name in entries) {
         entries.getValue(name)
     } else {

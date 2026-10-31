@@ -4,10 +4,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.json.JsonElement
 
-/**
- * Shared compact serializers, loaded lazily to allow recursive types.
- * The resolver picks one of several nodes sharing a wire name.
- */
+/** Compact vocabularies by name; [resolve] breaks wire-name ties. */
 class JsonNodeCatalog(
     private val resolve: ((candidates: List<JsonNode>, payload: JsonElement) -> JsonNode)? = null,
     private val serializers: () -> List<CompactSerializer<*>> = { emptyList() },

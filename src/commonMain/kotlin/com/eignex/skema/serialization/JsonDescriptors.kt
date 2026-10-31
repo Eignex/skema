@@ -32,7 +32,7 @@ internal fun SerialDescriptor.isFloatingPoint(): Boolean = when {
 
 private val JSON_NUMBER = Regex("""(-?)(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?""")
 
-/** JSON numbers are integers by value, so integral tokens such as 2.0 and 1e2 become plain integers. */
+/** Rewrites integral tokens like 2.0 or 1e2 as integers. */
 internal fun JsonPrimitive.integral(): JsonPrimitive {
     val groups = JSON_NUMBER.matchEntire(content)?.groupValues ?: return this
     val (sign, whole, fraction) = groups.subList(1, 4)
@@ -41,7 +41,7 @@ internal fun JsonPrimitive.integral(): JsonPrimitive {
     val significant = digits.trimEnd('0')
     val power = (groups[4].ifEmpty { "0" }.toIntOrNull() ?: return this) - fraction.length +
         (digits.length - significant.length)
-    // Fractions and magnitudes beyond any integer type stay as they are, for the decoder to reject.
+    // Left for the decoder to reject.
     if (power < 0 || significant.length + power > MAX_INTEGER_DIGITS) return this
     return JsonUnquotedLiteral(sign + significant + "0".repeat(power))
 }

@@ -7,16 +7,11 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.json.*
 
-/** JSON Schema draft 2020-12 for this vocabulary's compact JSON representation. */
+/** JSON Schema (draft 2020-12) for this vocabulary's compact form. */
 fun CompactSerializer<*>.toJsonSchema(json: Json = SchemaJson): JsonObject =
     JsonSchemaGenerator(json, catalog, this).generate(descriptor)
 
-/**
- * JSON Schema draft 2020-12 for a serialized document. [catalog] must list its compact
- * vocabularies, including those nested in records, collections and schema definitions.
- * Custom payload mappings supply [JsonPayloadMapping.payloadSchema]. Constructor invariants
- * are not inferred. Map keys must be strings, enums, booleans, characters or integers.
- */
+/** JSON Schema (draft 2020-12); [catalog] must list every compact vocabulary reached. */
 fun KSerializer<*>.toJsonSchema(catalog: JsonNodeCatalog, json: Json = SchemaJson): JsonObject =
     JsonSchemaGenerator(json, catalog, this as? CompactSerializer<*>).generate(descriptor)
 
@@ -146,7 +141,7 @@ private class JsonSchemaGenerator(
             when {
                 node.shape == JsonNodeShape.Literal -> payload
 
-                // Encoding writes an empty payload object as the bare operator name.
+                // Empty payloads encode as the bare name.
                 node.shape == JsonNodeShape.Fields && payload["type"] == JsonPrimitive("object") &&
                     "required" !in payload -> alternatives(listOf(operator, constant(node.name)))
 

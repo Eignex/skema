@@ -12,19 +12,15 @@ import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.*
 import kotlin.reflect.KClass
 
-/**
- * Encodes JSON as operator objects, names for empty objects, or numeric literals;
- * other formats use sealed-class serialization. Node bodies decode with the caller's Json.
- * Requires polymorphic class discriminators and no JSON naming strategy.
- */
+/** Compact JSON form, sealed form elsewhere. Needs polymorphic discriminators and no naming strategy. */
 open class CompactSerializer<T : Any>(
-    /** Stable descriptor name, shared with the ordinary sealed serializer. */
+    /** Shared with the sealed fallback. */
     val serialName: String,
     base: KClass<T>,
     internal val catalog: JsonNodeCatalog = JsonNodeCatalog(),
     nodes: () -> List<JsonNode>,
 ) : KSerializer<T> {
-    /** Loaded lazily to allow recursive vocabularies. */
+    /** Lazy, for recursive vocabularies. */
     val nodes: List<JsonNode> by lazy(nodes)
 
     private val nodesByType by lazy { this.nodes.groupBy { it.type } }
@@ -43,7 +39,7 @@ open class CompactSerializer<T : Any>(
 
     override val descriptor: SerialDescriptor get() = legacy.descriptor
 
-    /** Uses the catalog resolver when multiple nodes match. */
+    /** Uses the catalog resolver on ambiguity. */
     fun selectNode(element: JsonElement): JsonNode = select(element).first
 
     private fun select(element: JsonElement): Pair<JsonNode, JsonElement> {
@@ -81,13 +77,13 @@ open class CompactSerializer<T : Any>(
         val candidates = nodesByType[value::class]
             ?: throw SerializationException("unsupported $serialName implementation ${value::class}")
         candidates.singleOrNull()?.takeIf { it.fixed.isEmpty() }?.let { return it }
-        // Forces defaults, so fixed fields are present however the caller configures Json.
+        // Forces defaults so fixed fields are always present.
         val body = json.encodeToJsonElement(JsonOperandSerializer(candidates.first().serializer), value).jsonObject
         return candidates.singleOrNull { node -> node.fixed.all { (field, fixed) -> body[field].matches(fixed) } }
             ?: throw SerializationException("no unique $serialName node matches $value")
     }
 
-    // Numbers match by value, so a fixed 1 selects an encoded 1.0.
+    // Numbers match by value: 1 matches 1.0.
     private fun JsonElement?.matches(fixed: JsonElement): Boolean =
         this == fixed || number()?.let { it == fixed.number() } == true
 

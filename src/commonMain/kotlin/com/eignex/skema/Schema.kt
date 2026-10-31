@@ -3,19 +3,19 @@ package com.eignex.skema
 import kotlin.properties.PropertyDelegateProvider
 import kotlin.properties.ReadOnlyProperty
 
-/** Schema builder with explicit names via [add] or property names via [register]. */
+/** Builds named entries via [add] or [register]. */
 @Suppress("AbstractClassCanBeConcreteClass")
 abstract class Schema<C : Any> {
     private val mutableEntries = LinkedHashMap<String, C>()
 
-    /** Read-only view of registered entries, in declaration order. See [definition] for a snapshot. */
+    /** Live view, in declaration order. */
     val entries: Map<String, C> get() = mutableEntries
 
     protected fun add(name: String, config: C) {
         addPublished(name, config)
     }
 
-    // Inlined register calls from other packages cannot access a protected JVM method.
+    // Reachable from inlined register calls in other packages.
     @PublishedApi
     internal fun addPublished(name: String, config: C) {
         require(name !in mutableEntries) {
@@ -24,7 +24,7 @@ abstract class Schema<C : Any> {
         mutableEntries[name] = config
     }
 
-    /** Registers under the delegated property's name and returns its key. */
+    /** Registers under the property's name. */
     protected inline fun <Key> register(config: C, crossinline keyOf: (name: String) -> Key) =
         PropertyDelegateProvider<Schema<C>, ReadOnlyProperty<Schema<C>, Key>> { _, property ->
             val name = property.name
@@ -33,10 +33,10 @@ abstract class Schema<C : Any> {
             ReadOnlyProperty { _, _ -> key }
         }
 
-    /** Override to enforce cross-entry invariants; called by [definition]. */
+    /** Checks cross-entry invariants. */
     protected open fun validate(entries: Map<String, C>) {}
 
-    /** Calls [validate] and returns a shallow snapshot of the entries. */
+    /** Validates and returns a snapshot. */
     open fun definition(): SchemaDef<C> {
         validate(mutableEntries)
         return SchemaDef(LinkedHashMap(mutableEntries))
