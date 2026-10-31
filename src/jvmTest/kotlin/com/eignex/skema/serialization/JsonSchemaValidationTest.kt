@@ -22,11 +22,10 @@ class JsonSchemaValidationTest {
             val schema = mapper.readTree(example.schema.toString())
             assertTrue(metaSchema.validate(schema).isEmpty(), "${example.name}: invalid schema")
             val validator = factory.getSchema(schema)
-            for ((instances, valid) in listOf(example.valid to true, example.invalid to false)) {
-                for (instance in instances) {
-                    val errors = validator.validate(mapper.readTree(instance.toString()))
-                    assertTrue(errors.isEmpty() == valid, "${example.name}: $instance; $errors")
-                }
+            val instances = example.valid.map { it.toString() to true } + example.invalid.map { it to false }
+            for ((instance, valid) in instances) {
+                val errors = validator.validate(mapper.readTree(instance))
+                assertTrue(errors.isEmpty() == valid, "${example.name}: $instance; $errors")
             }
         }
     }
