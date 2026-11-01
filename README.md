@@ -23,7 +23,7 @@ serializable data.
 Add to your JVM dependencies or Multiplatform commonMain dependencies:
 
 ```kotlin
-implementation("com.eignex:skema:0.3.0")
+implementation("com.eignex:skema:0.4.0")
 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
 ```
 
