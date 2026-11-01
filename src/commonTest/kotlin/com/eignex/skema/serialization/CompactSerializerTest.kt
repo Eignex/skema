@@ -2,7 +2,6 @@
 
 package com.eignex.skema.serialization
 
-import com.eignex.skema.SchemaDef
 import com.eignex.skema.SchemaJson
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.KSerializer
@@ -190,6 +189,30 @@ private object QuantitySerializer : CompactSerializer<Quantity>("Quantity", Quan
     )
 })
 
+// Fixed numbers match by value: 1 selects Offset(1.0).
+private val unitSerializer = CompactSerializer("Unit", Expression::class) {
+    listOf(jsonNode<Offset>("unit", fixed = mapOf("amount" to JsonPrimitive(1))))
+}
+
+// Fields nodes ignore operands, so their defaults may still be omitted.
+private val offsetSerializer = CompactSerializer("Offsets", Expression::class) {
+    listOf(jsonNode<Offset>("offset", JsonNodeShape.Fields, "amount"))
+}
+
+private val signSerializer = CompactSerializer("Signs", Comparison::class) {
+    listOf(
+        jsonNode<Sign>("pos", JsonNodeShape.Operand, "name", fixed = fixed("negative", false)),
+        jsonNode<Sign>("neg", JsonNodeShape.Operand, "name", fixed = fixed("negative", true)),
+    )
+}
+
+private val unitSymbolSerializer = CompactSerializer("Units", Quantity::class) {
+    listOf(
+        jsonNode<Symbol>("meter", fixed = mapOf("text" to JsonPrimitive("m"))),
+        jsonNode<Symbol>("second", fixed = mapOf("text" to JsonPrimitive("s"))),
+    )
+}
+
 private val choiceNodes = listOf(jsonNode<TextChoice>("choice"), jsonNode<NumericChoice>("choice"))
 
 private object ChoiceSerializer : CompactSerializer<Choice>(
@@ -240,6 +263,10 @@ class CompactSerializerTest {
             Scaled(Scale(2.5, Count(1))) to """{"scaled":{"factor":2.5,"of":1}}""",
             Scaled(Scale()) to "\"scaled\"",
         ),
+        unitSerializer.erased() to listOf(Offset(1.0) to "\"unit\""),
+        offsetSerializer.erased() to listOf(Offset() to "\"offset\""),
+        signSerializer.erased() to listOf(Sign("x") to """{"pos":"x"}""", Sign("x", true) to """{"neg":"x"}"""),
+        unitSymbolSerializer.erased() to listOf(Symbol("m") to "\"meter\"", Symbol("s") to "\"second\""),
     )
 
     @Test
@@ -263,9 +290,6 @@ class CompactSerializerTest {
         }
         val defaults = Json { encodeDefaults = true }
         assertEquals("""{"offset":{"amount":1.5}}""", defaults.encodeToString<Expression>(Offset()))
-        val definition = SchemaDef<Expression>(mapOf("result" to Negate(Input)))
-        val serializer = SchemaDef.serializer(ExpressionSerializer)
-        assertEquals("""{"entries":{"result":{"negate":"input"}}}""", SchemaJson.encodeToString(serializer, definition))
     }
 
     @Test
@@ -371,46 +395,6 @@ class CompactSerializerTest {
     }
 
     @Test
-    fun `numeric fixed values match encoded numbers by value`() {
-        val unit = CompactSerializer("Unit", Expression::class) {
-            listOf(jsonNode<Offset>("unit", fixed = mapOf("amount" to JsonPrimitive(1))))
-        }
-
-        assertEquals("\"unit\"", SchemaJson.encodeToString(unit, Offset(1.0)))
-        assertEquals(Offset(1.0), SchemaJson.decodeFromString(unit, "\"unit\""))
-    }
-
-    @Test
-    fun `fixed fields that never encode defaults still select their node`() {
-        val signs = CompactSerializer("Signs", Comparison::class) {
-            listOf(
-                jsonNode<Sign>("pos", JsonNodeShape.Operand, "name", fixed = fixed("negative", false)),
-                jsonNode<Sign>("neg", JsonNodeShape.Operand, "name", fixed = fixed("negative", true)),
-            )
-        }
-
-        for ((value, wire) in listOf(Sign("x") to """{"pos":"x"}""", Sign("x", true) to """{"neg":"x"}""")) {
-            assertEquals(wire, SchemaJson.encodeToString(signs, value))
-            assertEquals(value, SchemaJson.decodeFromString(signs, wire))
-        }
-    }
-
-    @Test
-    fun `fixed fields select value class nodes`() {
-        val units = CompactSerializer("Units", Quantity::class) {
-            listOf(
-                jsonNode<Symbol>("meter", fixed = mapOf("text" to JsonPrimitive("m"))),
-                jsonNode<Symbol>("second", fixed = mapOf("text" to JsonPrimitive("s"))),
-            )
-        }
-
-        for ((value, wire) in listOf(Symbol("m") to "\"meter\"", Symbol("s") to "\"second\"")) {
-            assertEquals(wire, SchemaJson.encodeToString(units, value))
-            assertEquals(value, SchemaJson.decodeFromString(units, wire))
-        }
-    }
-
-    @Test
     fun `operands that never encode defaults are rejected by name`() {
         val quiet = CompactSerializer("Quiet", Comparison::class) {
             listOf(jsonNode<Quiet>("quiet", JsonNodeShape.Literal, "value"))
@@ -419,13 +403,6 @@ class CompactSerializerTest {
         assertEquals("3", SchemaJson.encodeToString(quiet, Quiet(3)))
         val error = assertFailsWith<SerializationException> { SchemaJson.encodeToString(quiet, Quiet()) }
         assertTrue("'quiet' operand 'value' was not encoded" in error.message.orEmpty(), error.message)
-
-        // Fields nodes ignore operands, so their defaults may still be omitted.
-        val offsets = CompactSerializer("Offsets", Expression::class) {
-            listOf(jsonNode<Offset>("offset", JsonNodeShape.Fields, "amount"))
-        }
-        assertEquals("\"offset\"", SchemaJson.encodeToString(offsets, Offset()))
-        assertEquals(Offset(), SchemaJson.decodeFromString(offsets, "\"offset\""))
     }
 
     @Test

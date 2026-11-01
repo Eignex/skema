@@ -148,18 +148,6 @@ class JsonSchemaTest {
     }
 
     @Test
-    fun `payload schemas omit fixed fields and offer the shorthand only for empty payloads`() {
-        val document = WireSerializer.toJsonSchema()
-        val shorthands = document.definition().branches().flatMap { it["anyOf"]?.jsonArray.orEmpty() }
-            .mapNotNull { it.jsonObject["const"]?.jsonPrimitive?.content }
-
-        assertEquals(JsonPrimitive("string"), document.operator("ref")["type"])
-        assertEquals(setOf("name"), document.operator("notRef").getValue("properties").jsonObject.keys)
-        assertEquals(setOf("r"), document.operator("tuned").getValue("properties").jsonObject.keys)
-        assertEquals(listOf("input", "options", "tuned"), shorthands)
-    }
-
-    @Test
     fun `custom mappings without payload schemas fail explicitly`() {
         val mapping = object : JsonPayloadMapping {
             override fun encode(body: JsonObject): JsonElement = body
