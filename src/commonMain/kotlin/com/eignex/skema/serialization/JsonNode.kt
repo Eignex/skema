@@ -50,7 +50,18 @@ class JsonNode(
     val fixed: Map<String, JsonElement> = emptyMap(),
     serializer: () -> KSerializer<*>,
 ) {
-    internal val payloadMapping: JsonPayloadMapping by lazy { mapping ?: shape.payloadMapping(name, operands) }
+    internal val payloadMapping: JsonPayloadMapping by lazy {
+        val field = inlineField
+        when {
+            mapping != null -> mapping
+
+            // A value-class fields node carries the plain value.
+            shape == JsonNodeShape.Fields && field != null && field !in fixed ->
+                JsonNodeShape.Operand.payloadMapping(name, listOf(field))
+
+            else -> shape.payloadMapping(name, operands)
+        }
+    }
 
     @Suppress("UNCHECKED_CAST")
     internal val serializer: KSerializer<Any> by lazy {
@@ -63,6 +74,11 @@ class JsonNode(
         } else {
             this.serializer
         }
+    }
+
+    // Value classes encode as their field's value; nodes see them as that one-field object.
+    private val inlineField: String? by lazy {
+        this.serializer.descriptor.takeIf { it.isInline }?.getElementName(0)
     }
 
     private val integerLiteral by lazy {
@@ -110,6 +126,13 @@ class JsonNode(
         }
         return payloadMapping.encode(if (fixed.isEmpty()) body else JsonObject(body - fixed.keys))
     }
+
+    internal fun wrapBody(encoded: JsonElement): JsonObject =
+        inlineField?.let { JsonObject(mapOf(it to encoded)) } ?: encoded.jsonObject
+
+    internal fun unwrapBody(body: JsonObject): JsonElement = inlineField?.let {
+        body[it] ?: throw SerializationException("'$name' is missing field '$it'")
+    } ?: body
 
     internal fun decode(payload: JsonElement): JsonObject {
         val body = payloadMapping.decode(if (integerLiteral) (payload as JsonPrimitive).integral() else payload)

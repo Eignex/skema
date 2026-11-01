@@ -163,6 +163,33 @@ private data class TextChoice(val text: String) : Choice
 @Serializable
 private data class NumericChoice(val number: Int) : Choice
 
+@Serializable(with = QuantitySerializer::class)
+private sealed interface Quantity
+
+@Serializable
+@JvmInline
+private value class Count(val value: Int) : Quantity
+
+@Serializable
+@JvmInline
+private value class Symbol(val text: String) : Quantity
+
+@Serializable
+@JvmInline
+private value class Scaled(val by: Scale) : Quantity
+
+@Serializable
+private data class Scale(val factor: Double = 1.0, val of: Quantity? = null)
+
+// Value classes encode as their field's value in every shape.
+private object QuantitySerializer : CompactSerializer<Quantity>("Quantity", Quantity::class, nodes = {
+    listOf(
+        jsonNode<Count>("count", JsonNodeShape.Literal, "value"),
+        jsonNode<Symbol>("symbol", JsonNodeShape.Operand, "text"),
+        jsonNode<Scaled>("scaled"),
+    )
+})
+
 private val choiceNodes = listOf(jsonNode<TextChoice>("choice"), jsonNode<NumericChoice>("choice"))
 
 private object ChoiceSerializer : CompactSerializer<Choice>(
@@ -206,6 +233,12 @@ class CompactSerializerTest {
         ChoiceSerializer.erased() to listOf(
             TextChoice("hello") to """{"choice":{"text":"hello"}}""",
             NumericChoice(3) to """{"choice":{"number":3}}""",
+        ),
+        QuantitySerializer.erased() to listOf(
+            Count(3) to "3",
+            Symbol("m") to """{"symbol":"m"}""",
+            Scaled(Scale(2.5, Count(1))) to """{"scaled":{"factor":2.5,"of":1}}""",
+            Scaled(Scale()) to "\"scaled\"",
         ),
     )
 
@@ -359,6 +392,21 @@ class CompactSerializerTest {
         for ((value, wire) in listOf(Sign("x") to """{"pos":"x"}""", Sign("x", true) to """{"neg":"x"}""")) {
             assertEquals(wire, SchemaJson.encodeToString(signs, value))
             assertEquals(value, SchemaJson.decodeFromString(signs, wire))
+        }
+    }
+
+    @Test
+    fun `fixed fields select value class nodes`() {
+        val units = CompactSerializer("Units", Quantity::class) {
+            listOf(
+                jsonNode<Symbol>("meter", fixed = mapOf("text" to JsonPrimitive("m"))),
+                jsonNode<Symbol>("second", fixed = mapOf("text" to JsonPrimitive("s"))),
+            )
+        }
+
+        for ((value, wire) in listOf(Symbol("m") to "\"meter\"", Symbol("s") to "\"second\"")) {
+            assertEquals(wire, SchemaJson.encodeToString(units, value))
+            assertEquals(value, SchemaJson.decodeFromString(units, wire))
         }
     }
 

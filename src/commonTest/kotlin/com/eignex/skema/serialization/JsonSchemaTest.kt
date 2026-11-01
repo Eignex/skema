@@ -37,6 +37,9 @@ private sealed interface Wire
 
 @Serializable private data class WireTuned(val rate: Double = 0.5) : Wire
 
+@Serializable @JvmInline
+private value class WireTag(val tag: String) : Wire
+
 // Renames the only field, so the payload schema is custom yet still admits the empty object.
 private object TunedMapping : JsonPayloadMapping {
     override fun encode(body: JsonObject): JsonElement = JsonObject(body.mapKeys { "r" })
@@ -61,6 +64,7 @@ private object WireSerializer : CompactSerializer<Wire>("Wire/v~1?", Wire::class
         jsonNode<WireRef>("ref", JsonNodeShape.Operand, "name", fixed = mapOf("negated" to JsonPrimitive(false))),
         jsonNode<WireRef>("notRef", fixed = mapOf("negated" to JsonPrimitive(true))),
         jsonNode<WireTuned>("tuned", mapping = TunedMapping),
+        jsonNode<WireTag>("tag"),
     )
 })
 
@@ -187,7 +191,7 @@ internal fun schemaExamples(): List<SchemaExample> {
         WireInput, WireNumber(Long.MIN_VALUE), WireNumber(Long.MAX_VALUE), WireNegate(WireInput),
         WirePlus(WireInput, WireNumber(2)), WireOptions(null), WireOptions(WireInput, strict = true), WireLabels(),
         WireLabels(mapOf("label" to "value")), WireLegacy(TestSpec.Int(min = 0)), WireRef("a"), WireRef("a", true),
-        WireTuned(), WireTuned(0.25),
+        WireTuned(), WireTuned(0.25), WireTag("t"),
     ).map { SchemaJson.encodeToJsonElement(WireSerializer, it) }
     val invalid = listOf(
         "{}",
@@ -198,6 +202,7 @@ internal fun schemaExamples(): List<SchemaExample> {
         """{"plus":["input",1,2]}""",
         """{"notRef":{"name":"a","negated":true}}""",
         """{"tuned":{"rate":1}}""",
+        """{"tag":{"tag":"t"}}""",
     )
     val definition = SchemaDef(mapOf("a" to WireNegate(WireInput), "b" to WireNumber(1)))
     val shapes =
