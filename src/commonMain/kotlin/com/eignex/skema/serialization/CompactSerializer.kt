@@ -39,7 +39,7 @@ open class CompactSerializer<T : Any>(
 
     override val descriptor: SerialDescriptor get() = legacy.descriptor
 
-    /** Uses the catalog resolver on ambiguity. */
+    /** Matches names strictly; uses the catalog resolver on ambiguity. */
     fun selectNode(element: JsonElement): JsonNode = select(element, lenient = false).first
 
     private fun select(element: JsonElement, lenient: Boolean): Pair<JsonNode, JsonElement> {

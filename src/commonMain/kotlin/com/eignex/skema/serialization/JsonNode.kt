@@ -26,7 +26,7 @@ enum class JsonNodeShape {
 
 /** Maps a node's fields to and from its payload. */
 interface JsonPayloadMapping {
-    /** Fields to payload. */
+    /** Fields to payload; defaults may be absent, as the caller's Json encodes them. */
     fun encode(body: JsonObject): JsonElement
 
     /** Throws [SerializationException] on malformed input. */
@@ -43,7 +43,7 @@ class JsonNode(
     /** Operator key or bare name. */
     val name: String,
     val shape: JsonNodeShape = JsonNodeShape.Fields,
-    /** Fields for the operand shapes; they must always encode, so not @EncodeDefault(NEVER). */
+    /** Fields for the operand shapes; never @EncodeDefault(NEVER), as they must always encode. */
     val operands: List<String> = emptyList(),
     val mapping: JsonPayloadMapping? = null,
     /** Implied by [name] and left off the wire; tells apart nodes of one [type]. */
@@ -55,7 +55,7 @@ class JsonNode(
         when {
             mapping != null -> mapping
 
-            // A value-class fields node carries the plain value.
+            // A value-class fields node carries the underlying value.
             shape == JsonNodeShape.Fields && field != null && field !in fixed ->
                 JsonNodeShape.Operand.payloadMapping(name, listOf(field))
 
@@ -76,7 +76,7 @@ class JsonNode(
         }
     }
 
-    // Value classes encode as their field's value; nodes see them as that one-field object.
+    // Value classes encode as their underlying value; nodes treat it as a one-field object.
     private val inlineField: String? by lazy {
         this.serializer.descriptor.takeIf { it.isInline }?.getElementName(0)
     }
