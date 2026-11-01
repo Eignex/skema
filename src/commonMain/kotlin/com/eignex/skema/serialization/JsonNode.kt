@@ -43,7 +43,7 @@ class JsonNode(
     /** Operator key or bare name. */
     val name: String,
     val shape: JsonNodeShape = JsonNodeShape.Fields,
-    /** Fields for the operand shapes. */
+    /** Fields for the operand shapes; they must always encode, so not @EncodeDefault(NEVER). */
     val operands: List<String> = emptyList(),
     val mapping: JsonPayloadMapping? = null,
     /** Implied by [name] and left off the wire; tells apart nodes of one [type]. */
@@ -100,8 +100,16 @@ class JsonNode(
     private fun literalDescriptor(body: SerialDescriptor): SerialDescriptor =
         body.getElementDescriptor(body.getElementIndex(operands.single()))
 
-    internal fun encode(body: JsonObject): JsonElement =
-        payloadMapping.encode(if (fixed.isEmpty()) body else JsonObject(body - fixed.keys))
+    internal fun encode(body: JsonObject): JsonElement {
+        if (mapping == null) {
+            operands.firstOrNull { it !in body }?.let {
+                throw SerializationException(
+                    "'$name' operand '$it' was not encoded; operands cannot use @EncodeDefault(NEVER)",
+                )
+            }
+        }
+        return payloadMapping.encode(if (fixed.isEmpty()) body else JsonObject(body - fixed.keys))
+    }
 
     internal fun decode(payload: JsonElement): JsonObject {
         val body = payloadMapping.decode(if (integerLiteral) (payload as JsonPrimitive).integral() else payload)

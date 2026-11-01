@@ -79,8 +79,20 @@ open class CompactSerializer<T : Any>(
         candidates.singleOrNull()?.takeIf { it.fixed.isEmpty() }?.let { return it }
         // Forces defaults so fixed fields are always present.
         val body = json.encodeToJsonElement(JsonOperandSerializer(candidates.first().serializer), value).jsonObject
-        return candidates.singleOrNull { node -> node.fixed.all { (field, fixed) -> body[field].matches(fixed) } }
+        return candidates.singleOrNull { node -> node.implies(body, value, json) }
             ?: throw SerializationException("no unique $serialName node matches $value")
+    }
+
+    private fun JsonNode.implies(body: JsonObject, value: T, json: Json): Boolean {
+        if (fixed.keys.all { it in body }) return fixed.all { (field, fixed) -> body[field].matches(fixed) }
+        // @EncodeDefault(NEVER) fields stay absent at their default, so compare the decoded value instead.
+        return try {
+            json.decodeFromJsonElement(serializer, JsonObject(body + fixed)) == value
+        } catch (_: SerializationException) {
+            false
+        } catch (_: IllegalArgumentException) {
+            false
+        }
     }
 
     // Numbers match by value: 1 matches 1.0.
