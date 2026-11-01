@@ -101,7 +101,7 @@ class JsonNode(
         body.getElementDescriptor(body.getElementIndex(operands.single()))
 
     internal fun encode(body: JsonObject): JsonElement {
-        if (mapping == null) {
+        if (mapping == null && shape != JsonNodeShape.Fields) {
             operands.firstOrNull { it !in body }?.let {
                 throw SerializationException(
                     "'$name' operand '$it' was not encoded; operands cannot use @EncodeDefault(NEVER)",

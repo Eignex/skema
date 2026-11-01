@@ -371,6 +371,13 @@ class CompactSerializerTest {
         assertEquals("3", SchemaJson.encodeToString(quiet, Quiet(3)))
         val error = assertFailsWith<SerializationException> { SchemaJson.encodeToString(quiet, Quiet()) }
         assertTrue("'quiet' operand 'value' was not encoded" in error.message.orEmpty(), error.message)
+
+        // Fields nodes ignore operands, so their defaults may still be omitted.
+        val offsets = CompactSerializer("Offsets", Expression::class) {
+            listOf(jsonNode<Offset>("offset", JsonNodeShape.Fields, "amount"))
+        }
+        assertEquals("\"offset\"", SchemaJson.encodeToString(offsets, Offset()))
+        assertEquals(Offset(), SchemaJson.decodeFromString(offsets, "\"offset\""))
     }
 
     @Test
