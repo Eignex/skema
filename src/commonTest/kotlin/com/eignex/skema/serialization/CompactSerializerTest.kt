@@ -9,6 +9,7 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
@@ -312,6 +313,28 @@ class CompactSerializerTest {
         assertFailsWith<SerializationException> {
             SchemaJson.encodeToString<Comparison>(Compare(Bound(1), CompareOp.Equal, Bound(2)))
         }
+        val boxes = CompactSerializer("Boxes", Envelope::class) {
+            listOf(
+                jsonNode("ints") { GenericBox.serializer(Int.serializer()) },
+                jsonNode("strings") { GenericBox.serializer(String.serializer()) },
+            )
+        }
+        for (box in listOf(GenericBox(1), GenericBox("x"))) {
+            val error = assertFailsWith<SerializationException> { SchemaJson.encodeToString(boxes, box) }
+            assertTrue("type arguments are erased" in error.message.orEmpty(), error.message)
+        }
+        assertEquals(GenericBox("x"), SchemaJson.decodeFromString(boxes, """{"strings":{"value":"x"}}"""))
+    }
+
+    @Test
+    fun `lenient decoding accepts unquoted names`() {
+        val lenient = Json(SchemaJson) { isLenient = true }
+
+        assertEquals(Negate(Input), lenient.decodeFromString(ExpressionSerializer, "{negate: input}"))
+        val plus = lenient.decodeFromString(ExpressionSerializer, "{plus: [input, 2.5]}")
+        assertEquals(Plus(Input, NumberLiteral(Amount(2.5))), plus)
+        val error = assertFailsWith<SerializationException> { lenient.decodeFromString(ExpressionSerializer, "null") }
+        assertTrue("expected an operator" in error.message.orEmpty(), error.message)
     }
 
     @Test

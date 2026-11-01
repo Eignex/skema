@@ -40,13 +40,14 @@ open class CompactSerializer<T : Any>(
     override val descriptor: SerialDescriptor get() = legacy.descriptor
 
     /** Uses the catalog resolver on ambiguity. */
-    fun selectNode(element: JsonElement): JsonNode = select(element).first
+    fun selectNode(element: JsonElement): JsonNode = select(element, lenient = false).first
 
-    private fun select(element: JsonElement): Pair<JsonNode, JsonElement> {
+    private fun select(element: JsonElement, lenient: Boolean): Pair<JsonNode, JsonElement> {
         if (element is JsonPrimitive && !element.isString && element.doubleOrNull != null) {
             return catalog.select(literalNodes, element) { "unexpected number $element" } to element
         }
-        val obj = if (element is JsonPrimitive && element.isString) {
+        // Lenient parsing yields unquoted names as non-string primitives.
+        val obj = if (element is JsonPrimitive && (element.isString || (lenient && element !is JsonNull))) {
             JsonObject(mapOf(element.content to JsonObject(emptyMap())))
         } else {
             element as? JsonObject ?: throw SerializationException("expected an operator, got $element")
@@ -77,10 +78,20 @@ open class CompactSerializer<T : Any>(
         val candidates = nodesByType[value::class]
             ?: throw SerializationException("unsupported $serialName implementation ${value::class}")
         candidates.singleOrNull()?.takeIf { it.fixed.isEmpty() }?.let { return it }
+        requireSharedSerializer(candidates, value)
         // Forces defaults so fixed fields are always present.
         val body = json.encodeToJsonElement(JsonOperandSerializer(candidates.first().serializer), value).jsonObject
         return candidates.singleOrNull { node -> node.implies(body, value, json) }
             ?: throw SerializationException("no unique $serialName node matches $value")
+    }
+
+    private fun requireSharedSerializer(candidates: List<JsonNode>, value: T) {
+        if (candidates.any { it.serializer.descriptor != candidates.first().serializer.descriptor }) {
+            throw SerializationException(
+                "ambiguous $serialName nodes for ${value::class}: their serializers differ, " +
+                    "and type arguments are erased at runtime",
+            )
+        }
     }
 
     private fun JsonNode.implies(body: JsonObject, value: T, json: Json): Boolean {
@@ -103,7 +114,7 @@ open class CompactSerializer<T : Any>(
 
     override fun deserialize(decoder: Decoder): T {
         if (decoder !is JsonDecoder) return decoder.decodeSerializableValue(legacy)
-        val (node, payload) = select(decoder.decodeJsonElement())
+        val (node, payload) = select(decoder.decodeJsonElement(), decoder.json.configuration.isLenient)
         return decoder.json.decodeFromJsonElement(node.serializer, node.decode(payload)) as T
     }
 }
