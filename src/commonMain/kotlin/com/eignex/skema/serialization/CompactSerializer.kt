@@ -64,7 +64,7 @@ open class CompactSerializer<T : Any>(
             return
         }
         val node = nodeFor(value, encoder.json)
-        val payload = node.encode(encoder.json.encodeToJsonElement(node.encodingSerializer, value).jsonObject)
+        val payload = node.encode(node.wrapBody(encoder.json.encodeToJsonElement(node.encodingSerializer, value)))
         encoder.encodeJsonElement(
             when {
                 node.shape == JsonNodeShape.Literal -> payload
@@ -80,7 +80,8 @@ open class CompactSerializer<T : Any>(
         candidates.singleOrNull()?.takeIf { it.fixed.isEmpty() }?.let { return it }
         requireSharedSerializer(candidates, value)
         // Forces defaults so fixed fields are always present.
-        val body = json.encodeToJsonElement(JsonOperandSerializer(candidates.first().serializer), value).jsonObject
+        val first = candidates.first()
+        val body = first.wrapBody(json.encodeToJsonElement(JsonOperandSerializer(first.serializer), value))
         return candidates.singleOrNull { node -> node.implies(body, value, json) }
             ?: throw SerializationException("no unique $serialName node matches $value")
     }
@@ -98,7 +99,7 @@ open class CompactSerializer<T : Any>(
         if (fixed.keys.all { it in body }) return fixed.all { (field, fixed) -> body[field].matches(fixed) }
         // @EncodeDefault(NEVER) fields stay absent at their default, so compare the decoded value instead.
         return try {
-            json.decodeFromJsonElement(serializer, JsonObject(body + fixed)) == value
+            json.decodeFromJsonElement(serializer, unwrapBody(JsonObject(body + fixed))) == value
         } catch (_: SerializationException) {
             false
         } catch (_: IllegalArgumentException) {
@@ -115,6 +116,6 @@ open class CompactSerializer<T : Any>(
     override fun deserialize(decoder: Decoder): T {
         if (decoder !is JsonDecoder) return decoder.decodeSerializableValue(legacy)
         val (node, payload) = select(decoder.decodeJsonElement(), decoder.json.configuration.isLenient)
-        return decoder.json.decodeFromJsonElement(node.serializer, node.decode(payload)) as T
+        return decoder.json.decodeFromJsonElement(node.serializer, node.unwrapBody(node.decode(payload))) as T
     }
 }
