@@ -4,6 +4,7 @@ package com.eignex.skema.serialization
 
 import com.eignex.skema.SchemaDef
 import com.eignex.skema.SchemaJson
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -124,6 +125,13 @@ private data class Interval(val low: Int, val high: Int, val closed: Boolean = t
 
 @Serializable
 private enum class CompareOp { Less, Greater, Equal }
+
+@Serializable
+private data class Sign(val name: String, @EncodeDefault(EncodeDefault.Mode.NEVER) val negative: Boolean = false) :
+    Comparison
+
+@Serializable
+private data class Quiet(@EncodeDefault(EncodeDefault.Mode.NEVER) val value: Int = 0) : Comparison
 
 private fun fixed(field: String, value: String) = mapOf(field to JsonPrimitive(value))
 
@@ -314,6 +322,32 @@ class CompactSerializerTest {
 
         assertEquals("\"unit\"", SchemaJson.encodeToString(unit, Offset(1.0)))
         assertEquals(Offset(1.0), SchemaJson.decodeFromString(unit, "\"unit\""))
+    }
+
+    @Test
+    fun `fixed fields that never encode defaults still select their node`() {
+        val signs = CompactSerializer("Signs", Comparison::class) {
+            listOf(
+                jsonNode<Sign>("pos", JsonNodeShape.Operand, "name", fixed = fixed("negative", false)),
+                jsonNode<Sign>("neg", JsonNodeShape.Operand, "name", fixed = fixed("negative", true)),
+            )
+        }
+
+        for ((value, wire) in listOf(Sign("x") to """{"pos":"x"}""", Sign("x", true) to """{"neg":"x"}""")) {
+            assertEquals(wire, SchemaJson.encodeToString(signs, value))
+            assertEquals(value, SchemaJson.decodeFromString(signs, wire))
+        }
+    }
+
+    @Test
+    fun `operands that never encode defaults are rejected by name`() {
+        val quiet = CompactSerializer("Quiet", Comparison::class) {
+            listOf(jsonNode<Quiet>("quiet", JsonNodeShape.Literal, "value"))
+        }
+
+        assertEquals("3", SchemaJson.encodeToString(quiet, Quiet(3)))
+        val error = assertFailsWith<SerializationException> { SchemaJson.encodeToString(quiet, Quiet()) }
+        assertTrue("'quiet' operand 'value' was not encoded" in error.message.orEmpty(), error.message)
     }
 
     @Test
