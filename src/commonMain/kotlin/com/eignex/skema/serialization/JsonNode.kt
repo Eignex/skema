@@ -11,7 +11,7 @@ import kotlin.reflect.KClass
 
 /** Wire form of a node's fields. */
 enum class JsonNodeShape {
-    /** Object of named fields. */
+    /** Object of named fields, or a value class's underlying value. */
     Fields,
 
     /** Bare number, without the node name. */
