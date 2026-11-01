@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
-/** Ordinary sealed configuration used as an entry type and as a non-compact child in tests. */
+/** Plain sealed configuration: an entry type and a non-compact child. */
 @Serializable
 internal sealed interface TestSpec {
     @Serializable

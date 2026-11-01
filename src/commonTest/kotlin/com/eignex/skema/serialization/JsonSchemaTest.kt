@@ -40,7 +40,7 @@ private sealed interface Wire
 @Serializable @JvmInline
 private value class WireTag(val tag: String) : Wire
 
-// Renames the only field, so the payload schema is custom yet still admits the empty object.
+// Renames the only field: a custom payload schema that still admits the empty object.
 private object TunedMapping : JsonPayloadMapping {
     override fun encode(body: JsonObject): JsonElement = JsonObject(body.mapKeys { "r" })
 
@@ -101,7 +101,7 @@ private fun JsonObject.property(name: String): JsonObject = getValue("properties
 
 private fun JsonObject.branches(): List<JsonObject> = getValue("anyOf").jsonArray.map { it.jsonObject }
 
-// Operator schemas of a compact vocabulary, looking inside the anyOf that adds a bare-name shorthand.
+// Operator schemas, unwrapping the anyOf that adds the bare-name shorthand.
 private fun JsonObject.operator(name: String): JsonObject =
     definition().branches().flatMap { it["anyOf"]?.jsonArray?.map { branch -> branch.jsonObject } ?: listOf(it) }
         .single { name in it["properties"]?.jsonObject.orEmpty() }.property(name)

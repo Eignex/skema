@@ -181,7 +181,7 @@ private value class Scaled(val by: Scale) : Quantity
 @Serializable
 private data class Scale(val factor: Double = 1.0, val of: Quantity? = null)
 
-// Value classes encode as their field's value in every shape.
+// Value-class bodies encode as their underlying value in every shape.
 private object QuantitySerializer : CompactSerializer<Quantity>("Quantity", Quantity::class, nodes = {
     listOf(
         jsonNode<Count>("count", JsonNodeShape.Literal, "value"),
